@@ -38,5 +38,6 @@ int main()
     // populateNodeOne(arrayOne,n);
 
     // printArray(arrayOne,n);
+    free(arrayOne);
     return 0;
 }
