@@ -72,9 +72,9 @@ llvmGetPassPluginInfo() {
   };
 }
 ```
-6. Return to **/root/passes** and run `cmake .`
+6. Return to the folder **/root/passes/** (run `cd ..` from where your pass is located) and run `cmake .`
 
-7. Once successful, run `make` and the *passName.so" file should be generated
+7. Once successful, run `make` and the "passName.so" file should be generated
 
 8. To use the pass, go to directory of .ll or .bc file and run command:
 
@@ -87,5 +87,9 @@ opt -load-pass-plugin=../../passes/sample/printFuncName/printFuncName.so -passes
 
 `/dev/null` can be replaced with `fileName.bc` if you want to generate the optimisied/output bitcode file.
 
-9. Run the `clean.sh` bash script in the `/passes` folder to remove the junk files produced by cmake. Do this inside `./newFolderName` also
+9. Run the `clean.sh` bash script in the `/passes` folder to remove the junk files produced by cmake in all subdirectories.
+
+```bash
+source clean.sh
+```
 

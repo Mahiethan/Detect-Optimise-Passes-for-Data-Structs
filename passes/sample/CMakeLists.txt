@@ -19,3 +19,5 @@ link_directories(${LLVM_LIBRARY_DIRS})
 
 # Add new pass directories here:
 add_subdirectory(./printFuncName)
+
+add_subdirectory(./printFBI)
