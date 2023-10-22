@@ -1,4 +1,8 @@
 #include <stdio.h>
+#include <limits.h>
+int AoS_Start;
+int AoS_End;
+
 
 struct nodeOne
 {
@@ -32,7 +36,9 @@ void printArray(struct nodeOne array[],int size)
 int main()
 {
     int n = 697000; //max size before stack overflow occurs - stack has limited size
+    (void) AoS_Start;
     struct nodeOne arrayOne[n]; //static Array of Structs (stored on stack) (of size n)
+    (void) AoS_End;
 
     //populate array
     // populateNodeOne(arrayOne,n);

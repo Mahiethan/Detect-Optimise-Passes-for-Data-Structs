@@ -79,9 +79,9 @@ llvmGetPassPluginInfo() {
 8. To use the pass, go to directory of .ll or .bc file and run command:
 
 ``` bash
-#For example, running command in /root/tests/SoA folder
+#For example, running pass with name 'printFuncName' in /root/tests/SoA folder
 
-opt -load-pass-plugin=../../passes/sample/printFuncName/printFuncName.so -passes="passName"  < fileToTest.ll > /dev/null
+opt -load-pass-plugin=../../passes/sample/printFuncName/printFuncName.so -passes="printFuncName"  < fileToTest.ll > /dev/null
 ```
 `fileToTest.ll` can also be a `.bc` file (recommended as it is faster)
 

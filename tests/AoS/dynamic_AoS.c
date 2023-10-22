@@ -1,5 +1,7 @@
 #include <stdio.h>
 #include <stdlib.h>
+int AoS_Start;
+int AoS_End;
 
 struct nodeOne
 {
@@ -33,8 +35,9 @@ int main()
 {
     // int n = 500000000;
     int n = 697000; //matching size of staticAoS
+    (void) AoS_Start;
     struct nodeOne* arrayOne = (struct nodeOne*) malloc(n*sizeof(struct nodeOne)); //dynamic AoS (stored on heap) (of size n)
-
+    (void) AoS_End;
     // populateNodeOne(arrayOne,n);
 
     // printArray(arrayOne,n);
