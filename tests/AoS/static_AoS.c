@@ -1,5 +1,4 @@
 #include <stdio.h>
-#include <limits.h>
 int AoS_Start;
 int AoS_End;
 
@@ -9,6 +8,20 @@ struct nodeOne
     int a;
     int b;
     char c;
+};
+
+struct nodeTwo
+{
+    int a;
+    char b;
+    char c;
+};
+
+struct nodeThree
+{
+    int a;
+    float b;
+    double c;
 };
 
 
@@ -40,10 +53,20 @@ int main()
     struct nodeOne arrayOne[n]; //static Array of Structs (stored on stack) (of size n)
     (void) AoS_End;
 
-    //populate array
+       //populate array
     // populateNodeOne(arrayOne,n);
 
     // printArray(arrayOne,n);
+
+    n = 12432;
+    (void) AoS_Start;
+    struct nodeTwo arrayTwo[n]; //static Array of Structs (stored on stack) (of size n)
+    (void) AoS_End;
+
+    n = 124;
+    (void) AoS_Start;
+    struct nodeThree arrayThree[n]; //static Array of Structs (stored on stack) (of size n)
+    (void) AoS_End;
 
     return 0;
 }

@@ -83,7 +83,7 @@ llvmGetPassPluginInfo() {
 
 opt -load-pass-plugin=../../passes/sample/printFuncName/printFuncName.so -passes="printFuncName"  < fileToTest.ll > /dev/null
 ```
-`fileToTest.ll` can also be a `.bc` file (recommended as it is faster)
+`fileToTest.ll` can also be a `.bc` file.
 
 `/dev/null` can be replaced with `fileName.bc` if you want to generate the optimisied/output bitcode file.
 

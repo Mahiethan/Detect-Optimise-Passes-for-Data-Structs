@@ -23,9 +23,10 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
     PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM) {
 
         //AoS detection using flags
+        int detect = 0; 
+        int count = 0; //counts the number of AoS structures found
         for (auto &F : M) //iterate through all functions in the Module and print their names
         { 
-            int detect = 0;
             //errs()<<"In function: "<<F.getName()<<"\n";
             for (auto &B : F)  //iterate through all blocks in each function
             { 
@@ -42,6 +43,7 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                         if(name == "AoS_Start")
                         {
                             errs()<<"Array of Structs (AoS) detected"<<"\n";
+                            count += 1;
                             detect = 1;
                         }
                         if(name == "AoS_End")
@@ -50,7 +52,7 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                             detect = 0;
                         }
                     }
-                    //print out instructions related to AoS
+                    // //print out instructions related to AoS
                     // if(detect == 1)
                     // {
                     //     I.print(errs());
@@ -59,7 +61,7 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                 }
             }
         }
-
+        errs()<<"Number of AoS data structures: " << count <<"\n";
         //Set to ::all() if IR is unchanged, otherwise ::none()
         return PreservedAnalyses::all();
     };

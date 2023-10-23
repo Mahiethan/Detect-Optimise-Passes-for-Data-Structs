@@ -18,12 +18,21 @@ Flags `-emit-llvm -c` will produce a .bc file
 ```bash
 opt -load-pass-plugin=../../location/to/pass -passes="passName"  < fileToTest.bc > /dev/null
 ```
-fileToTest can also be a .ll file but .bc files are quicker to optimise.
+fileToTest can also be a .ll file.
 
 `/dev/null` can be replaced with `fileName.bc` if you want to generate the optimisied/output bitcode file.
 
-Use flag `--time-passes` to print out pass execution timing report.
+Use flag `--time-passes` to print out the pass execution timing report.
 
 ```bash
 opt -load-pass-plugin=../../location/to/pass -passes="passName" -time-passes < fileToTest.bc > /dev/null
 ```
+# Running unit tests
+
+To run a `.bat` file, do:
+
+```bash
+bats fileName.bats
+```
+A bash script to run all `.bats` files (all unit tests) will be created soon...
+
