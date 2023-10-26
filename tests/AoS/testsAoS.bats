@@ -2,21 +2,21 @@
 
 # Running unit tests for detection of AoS data structures (using flags)
 
-setup() {
-    load '../test_helper/bats-support/load'
-    load '../test_helper/bats-assert/load'
-}
+# setup() {
+#     load '../test_helper/bats-support/load'
+#     load '../test_helper/bats-assert/load'
+# }
 
-@test "Test 1.1: Should detect a single static AoS " {
+@test "Test 1.1: Should detect a single static AoS using flags " {
     # skip "Logs are not implemented yet"
-    run $(opt -load-pass-plugin=../../passes/detectAoS/detectAoS.so -passes="detectAoS" -time-passes < testOne.ll > /dev/null 2> outputTestOne.txt)
+    run $(opt -load-pass-plugin=../../passes/detectAoS/detectAoSFlags/detectAoSFlags.so -passes="detectAoSFlags" -time-passes < testOne.ll > /dev/null 2> outputTestOne.txt)
     
     file_content=$(sed -n "2p" "outputTestOne.txt") #get second line
     [ "$file_content" == "Number of AoS data structures: 1" ] 
 
 }
 
-@test "Test 1.2: Should detect a single static AoS within 0.5 seconds" {
+@test "Test 1.2: Complete test 1.1 within 0.5 seconds" {
 
     time_val=$(bc <<< $(sed -n "6p" "outputTestOne.txt" | awk '{print $4}')) #get 6th line from file then get the 4th word
     result2=0.5
@@ -24,16 +24,16 @@ setup() {
     [ "$fin" == "1" ]
 }
 
-@test "Test 2.1: Should detect a dynamic AoS " {
+@test "Test 1.3: Should detect a dynamic AoS using flags" {
     # skip "Logs are not implemented yet"
-    run $(opt -load-pass-plugin=../../passes/detectAoS/detectAoS.so -passes="detectAoS" -time-passes < testTwo.ll > /dev/null 2> outputTestTwo.txt)
+    run $(opt -load-pass-plugin=../../passes/detectAoS/detectAoSFlags/detectAoSFlags.so -passes="detectAoSFlags" -time-passes < testTwo.ll > /dev/null 2> outputTestTwo.txt)
     
     file_content=$(sed -n "2p" "outputTestTwo.txt") #get second line
     [ "$file_content" == "Number of AoS data structures: 1" ] 
 
 }
 
-@test "Test 2.2: Should detect a single dynamic AoS within 1 second" {
+@test "Test 1.4: Complete test 1.3 within 0.5 seconds" {
 
     time_val=$(bc <<< $(sed -n "6p" "outputTestTwo.txt" | awk '{print $4}')) #get 6th line from file then get the 4th word
     result2=0.5
@@ -42,15 +42,15 @@ setup() {
 }
 
 
-@test "Test 3.1: Should detect multiple static AoS" {
+@test "Test 1.5: Should detect multiple static AoS using flags" {
     #skip "Test file not implemented yet"
-    run $(opt -load-pass-plugin=../../passes/detectAoS/detectAoS.so -passes="detectAoS" -time-passes  < testThree.ll > /dev/null 2> outputTestThree.txt)
+    run $(opt -load-pass-plugin=../../passes/detectAoS/detectAoSFlags/detectAoSFlags.so -passes="detectAoSFlags" -time-passes  < testThree.ll > /dev/null 2> outputTestThree.txt)
 
     file_content=$(sed -n "4p" "outputTestThree.txt") #get fourth line
     [ "$file_content" == "Number of AoS data structures: 3" ] 
 }
 
-@test "Test 3.2: Should detect multiple dynamic AoS within 1 second" {
+@test "Test 1.6: Complete test 1.5 within 0.5 seconds" {
 
     time_val=$(bc <<< $(sed -n "8p" "outputTestThree.txt" | awk '{print $4}')) #get 8th line from file then get the 4th word
     result2=0.5
@@ -58,14 +58,14 @@ setup() {
     [ "$fin" == "1" ]
 }
 
-@test "Test 4.1: Should detect multiple dynamic AoS" {
-    run $(opt -load-pass-plugin=../../passes/detectAoS/detectAoS.so -passes="detectAoS" -time-passes < testFour.ll > /dev/null 2> outputTestFour.txt)
+@test "Test 1.7: Should detect multiple dynamic AoS using flags" {
+    run $(opt -load-pass-plugin=../../passes/detectAoS/detectAoSFlags/detectAoSFlags.so -passes="detectAoSFlags" -time-passes < testFour.ll > /dev/null 2> outputTestFour.txt)
 
     file_content=$(sed -n "4p" "outputTestFour.txt") #get fourth line
     [ "$file_content" == "Number of AoS data structures: 3" ] 
 }
 
-@test "Test 4.2: Should detect multiple dynamic AoS within 1 second" {
+@test "Test 1.8: Complete test 1.7 within 0.5 seconds" {
 
     time_val=$(bc <<< $(sed -n "8p" "outputTestFour.txt" | awk '{print $4}')) #get 8th line from file then get the 4th word
     result2=0.5
@@ -73,19 +73,112 @@ setup() {
     [ "$fin" == "1" ]
 }
 
-@test "Test 5.1: Should detect mixture of static and dynamic AoS" {
-    run $(opt -load-pass-plugin=../../passes/detectAoS/detectAoS.so -passes="detectAoS" -time-passes  < testFive.ll > /dev/null 2> outputTestFive.txt)
+@test "Test 1.9: Should detect mixture of static and dynamic AoS using flags" {
+    run $(opt -load-pass-plugin=../../passes/detectAoS/detectAoSFlags/detectAoSFlags.so -passes="detectAoSFlags" -time-passes  < testFiveOne.ll > /dev/null 2> outputTestFive.txt)
 
      file_content=$(sed -n "7p" "outputTestFive.txt") #get seventh line
     [ "$file_content" == "Number of AoS data structures: 6" ] 
 }
 
-@test "Test 5.2: Should detect multiple dynamic AoS within 1 second" {
+@test "Test 1.10: Complete test 1.9 within 0.5 seconds" {
 
     time_val=$(bc <<< $(sed -n "11p" "outputTestFive.txt" | awk '{print $4}')) #get 8th line from file then get the 4th word
     result2=0.5
     fin=$(echo "$time_val < $result2" | bc)
     [ "$fin" == "1" ]
+}
+
+#-------------------------------------------------------------------------------------------------------------------------------------
+
+# Detection of static AoS without flags
+
+
+@test "Test 2.1: Should detect a single static AoS without flags " {
+    # skip "Logs are not implemented yet"
+    run $(opt -load-pass-plugin=../../passes/detectAoS/detectStaticAoS.so -passes="detectStaticAoS" -time-passes < testOne.ll > /dev/null 2> outputTestOne.txt)
+    
+    file_content=$(sed -n "2p" "outputTestOne.txt") #get second line
+    [ "$file_content" == "Number of static AoS data structures: 1" ] 
+
+}
+
+@test "Test 2.2: Complete test 2.1 within 0.5 seconds" {
+    # skip "Logs are not implemented yet"
+    time_val=$(bc <<< $(sed -n "6p" "outputTestOne.txt" | awk '{print $4}')) #get 6th line from file then get the 4th word
+    result2=0.5
+    fin=$(echo "$time_val < $result2" | bc)
+    [ "$fin" == "1" ]
+}
+
+@test "Test 2.3: Should detect a single dynamic AoS without flags " {
+     skip "Not implemented yet"
+    run $(opt -load-pass-plugin=../../passes/detectAoS/detectStaticAoS.so -passes="detectStaticAoS" -time-passes < testOne.ll > /dev/null 2> outputTestTwo.txt)
+    
+    file_content=$(sed -n "2p" "outputTestTwo.txt") #get second line
+    [ "$file_content" == "Number of dynamic AoS data structures: 1" ] 
+
+}
+
+@test "Test 2.4: Complete test 2.3 within 0.5 seconds" {
+     skip "Not implemented yet"
+    time_val=$(bc <<< $(sed -n "6p" "outputTestTwo.txt" | awk '{print $4}')) #get 8th line from file then get the 4th word
+    result2=0.5
+    fin=$(echo "$time_val < $result2" | bc)
+    [ "$fin" == "1" ]
+
+}
+
+@test "Test 2.5: Should detect multiple static AoS without flags " {
+    # skip "Logs are not implemented yet"
+    run $(opt -load-pass-plugin=../../passes/detectAoS/detectStaticAoS.so -passes="detectStaticAoS" -time-passes < testThree.ll > /dev/null 2> outputTestThree.txt)
+    
+    file_content=$(sed -n "4p" "outputTestThree.txt") #get second line
+    [ "$file_content" == "Number of static AoS data structures: 3" ] 
+
+}
+
+@test "Test 2.6: Complete test 2.5 within 0.5 seconds" {
+    # skip "Logs are not implemented yet"
+    time_val=$(bc <<< $(sed -n "8p" "outputTestThree.txt" | awk '{print $4}')) #get 8th line from file then get the 4th word
+    result2=0.5
+    fin=$(echo "$time_val < $result2" | bc)
+    [ "$fin" == "1" ]
+
+}
+
+@test "Test 2.7: Should detect multiple dynamic AoS without flags " {
+    skip "Not implemented yet"
+    run $(opt -load-pass-plugin=../../passes/detectAoS/detectStaticAoS.so -passes="detectStaticAoS" -time-passes < testFour.ll > /dev/null 2> outputTestFour.txt)
+    
+    file_content=$(sed -n "4p" "outputTestFour.txt") #get second line
+    [ "$file_content" == "Number of dynamic AoS data structures: 1" ] 
+
+}
+
+@test "Test 2.8: Complete test 2.7 within 0.5 seconds" {
+     skip "Not implemented yet"
+    time_val=$(bc <<< $(sed -n "8p" "outputTestFour.txt" | awk '{print $4}')) #get 8th line from file then get the 4th word
+    result2=0.5
+    fin=$(echo "$time_val < $result2" | bc)
+    [ "$fin" == "1" ]
+
+}
+
+@test "Test 2.9: Should detect multiple static AoS among other data structures without flags " {
+    # skip "Logs are not implemented yet"
+    run $(opt -load-pass-plugin=../../passes/detectAoS/detectStaticAoS.so -passes="detectStaticAoS" -time-passes < testFiveTwo.ll > /dev/null 2> outputTestFive.txt)
+    file_content=$(sed -n "7p" "outputTestFive.txt") #get second line
+    [ "$file_content" == "Number of static AoS data structures: 6" ] 
+
+}
+
+@test "Test 2.10: Complete test 2.9 within 0.5 seconds" {
+    # skip "Logs are not implemented yet"
+    time_val=$(bc <<< $(sed -n "11p" "outputTestFive.txt" | awk '{print $4}')) #get 8th line from file then get the 4th word
+    result2=0.5
+    fin=$(echo "$time_val < $result2" | bc)
+    [ "$fin" == "1" ]
+
 }
 
 #removing output files

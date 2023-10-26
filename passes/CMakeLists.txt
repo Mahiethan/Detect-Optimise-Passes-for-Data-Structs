@@ -19,3 +19,4 @@ link_directories(${LLVM_LIBRARY_DIRS})
 
 # Add new pass directories here:
 add_subdirectory(./detectAoS)
+add_subdirectory(./detectAoS/detectAoSFlags)

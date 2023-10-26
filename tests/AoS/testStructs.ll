@@ -1,11 +1,14 @@
-; ModuleID = 'mix_staticAoS.c'
-source_filename = "mix_staticAoS.c"
+; ModuleID = 'static_AoS.c'
+source_filename = "static_AoS.c"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-unknown-linux-gnu"
 
 %struct.nodeThree = type { i32, float, double }
 %struct.nodeOne = type { i32, i32, i8 }
 %struct.nodeTwo = type { i32, i8, i8 }
+
+@AoS_Start = dso_local global i32 0, align 4
+@AoS_End = dso_local global i32 0, align 4
 
 ; Function Attrs: noinline nounwind optnone uwtable
 define dso_local i32 @main() #0 {
@@ -23,27 +26,35 @@ define dso_local i32 @main() #0 {
   %12 = alloca %struct.nodeTwo, align 4
   store i32 0, ptr %1, align 4
   store i32 697000, ptr %2, align 4
-  %13 = load i32, ptr %2, align 4
-  %14 = zext i32 %13 to i64
-  %15 = call ptr @llvm.stacksave.p0()
-  store ptr %15, ptr %3, align 8
-  %16 = alloca %struct.nodeOne, i64 %14, align 16
-  store i64 %14, ptr %4, align 8
+  %13 = load i32, ptr @AoS_Start, align 4
+  %14 = load i32, ptr %2, align 4
+  %15 = zext i32 %14 to i64
+  %16 = call ptr @llvm.stacksave.p0()
+  store ptr %16, ptr %3, align 8
+  %17 = alloca %struct.nodeOne, i64 %15, align 16
+  store i64 %15, ptr %4, align 8
+  %18 = load i32, ptr @AoS_End, align 4
   store i32 12432, ptr %2, align 4
-  %17 = load i32, ptr %2, align 4
-  %18 = zext i32 %17 to i64
-  %19 = alloca %struct.nodeTwo, i64 %18, align 16
-  store i64 %18, ptr %5, align 8
-  store i32 124, ptr %2, align 4
+  %19 = load i32, ptr @AoS_Start, align 4
   %20 = load i32, ptr %2, align 4
   %21 = zext i32 %20 to i64
-  %22 = alloca %struct.nodeThree, i64 %21, align 16
-  store i64 %21, ptr %8, align 8
+  %22 = alloca %struct.nodeTwo, i64 %21, align 16
+  store i64 %21, ptr %5, align 8
+  %23 = load i32, ptr @AoS_End, align 4
+  store i32 124, ptr %2, align 4
+  %24 = load i32, ptr @AoS_Start, align 4
+  %25 = load i32, ptr %2, align 4
+  %26 = zext i32 %25 to i64
+  %27 = alloca %struct.nodeThree, i64 %26, align 16
+  store i64 %26, ptr %8, align 8
+  %28 = load i32, ptr @AoS_End, align 4
+  %29 = load i32, ptr @AoS_Start, align 4
+  %30 = load i32, ptr @AoS_End, align 4
   store i32 0, ptr %1, align 4
-  %23 = load ptr, ptr %3, align 8
-  call void @llvm.stackrestore.p0(ptr %23)
-  %24 = load i32, ptr %1, align 4
-  ret i32 %24
+  %31 = load ptr, ptr %3, align 8
+  call void @llvm.stackrestore.p0(ptr %31)
+  %32 = load i32, ptr %1, align 4
+  ret i32 %32
 }
 
 ; Function Attrs: nocallback nofree nosync nounwind willreturn

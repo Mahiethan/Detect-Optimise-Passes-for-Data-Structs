@@ -19,7 +19,7 @@ using namespace llvm;
 
 namespace {
 
-struct detectAoS : public PassInfoMixin<detectAoS> {
+struct detectAoSFlags : public PassInfoMixin<detectAoSFlags> {
     PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM) {
 
         //AoS detection using flags
@@ -35,7 +35,7 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                     for (auto op = I.op_begin(); op != I.op_end(); op++) //iterate through all operands in each instruction in the current block
                     {
                         Value* v = op->get(); //get operand Value from pointer op
-                        StringRef name = v->getName(); //get name of operand
+                        std::string name = v->getName().str(); //get name of operand
 
                         // v->printAsOperand(errs()); //print operand
                         //errs() <<"\n"
@@ -79,8 +79,8 @@ llvmGetPassPluginInfo() {
       PB.registerPipelineParsingCallback(
         [](StringRef Name, ModulePassManager &MPM, //Module pass
         ArrayRef<PassBuilder::PipelineElement>) {
-          if(Name == "detectAoS"){ //name of pass
-            MPM.addPass(detectAoS());
+          if(Name == "detectAoSFlags"){ //name of pass
+            MPM.addPass(detectAoSFlags());
             return true;
           }
           return false;

@@ -50,7 +50,7 @@ int main()
 {
     int n = 697000; //max size before stack overflow occurs - stack has limited size
     //(void) AoS_Start;
-    struct nodeOne arrayOne[0]; //static Array of Structs (stored on stack) (of size n)
+    struct nodeOne arrayOne[n]; //static Array of Structs (stored on stack) (of size n)
     //(void) AoS_End;
 
        //populate array
@@ -58,26 +58,26 @@ int main()
 
     // printArray(arrayOne,n);
 
-    // n = 12432;
-    // //(void) AoS_Start;
-    // struct nodeTwo arrayTwo[n]; //static Array of Structs (stored on stack) (of size n)
-    // //(void) AoS_End;
+    n = 12432;
+    //(void) AoS_Start;
+    struct nodeTwo arrayTwo[n]; //static Array of Structs (stored on stack) (of size n)
+    //(void) AoS_End;
 
-    // n = 124;
-    // //(void) AoS_Start;
-    // struct nodeThree a[1]; //AoS of size 1
-    // Node c[100]; //AoS of size 100
-    // struct nodeThree arrayThree[n]; //static Array of Structs (stored on stack) (of size n)
-    // //(void) AoS_End;
+    n = 124;
+    //(void) AoS_Start;
+    struct nodeThree a[1]; //AoS of size 1
+    Node c[100]; //AoS of size 100
+    struct nodeThree arrayThree[n]; //static Array of Structs (stored on stack) (of size n)
+    //(void) AoS_End;
 
-    // //(void) AoS_Start;
-    // struct nodeOne test[2344]; //AoS of size 2344
-    // //(void) AoS_End;
+    //(void) AoS_Start;
+    struct nodeOne test[2344]; //AoS of size 2344
+    //(void) AoS_End;
 
-    // //Should not detect these as AoS
-    //  struct nodeOne x;
-    //  struct nodeTwo y;
-    //  struct nodeTwo z;
+    //Should not detect these as AoS
+     struct nodeOne x;
+     struct nodeTwo y;
+     struct nodeTwo z;
 
      //Should detect 6 AoS data structures - static
 
