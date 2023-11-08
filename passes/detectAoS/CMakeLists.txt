@@ -1,6 +1,6 @@
-add_llvm_pass_plugin(detectStaticAoS
+add_llvm_pass_plugin(detectAoS
     # List your source files here.
-    detectStaticAoS.cpp
+    detectAoS.cpp
 
 
     PLUGIN_TOOL
