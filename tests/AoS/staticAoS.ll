@@ -9,38 +9,39 @@ target triple = "x86_64-unknown-linux-gnu"
 
 ; Function Attrs: noinline nounwind optnone uwtable
 define dso_local i32 @main() #0 {
-  %1 = alloca i32, align 4
-  %2 = alloca i32, align 4
-  %3 = alloca [0 x %struct.nodeOne], align 4
-  %4 = alloca ptr, align 8
-  %5 = alloca i64, align 8
-  %6 = alloca [1 x %struct.nodeThree], align 16
-  %7 = alloca [0 x %struct.nodeThree], align 8
-  %8 = alloca [100 x %struct.nodeOne], align 16
-  %9 = alloca i64, align 8
-  %10 = alloca [2344 x %struct.nodeOne], align 16
-  %11 = alloca %struct.nodeOne, align 4
-  %12 = alloca %struct.nodeTwo, align 4
-  %13 = alloca %struct.nodeTwo, align 4
-  store i32 0, ptr %1, align 4
-  store i32 697000, ptr %2, align 4
-  store i32 12432, ptr %2, align 4
-  %14 = load i32, ptr %2, align 4
-  %15 = zext i32 %14 to i64
-  %16 = call ptr @llvm.stacksave.p0()
-  store ptr %16, ptr %4, align 8
-  %17 = alloca %struct.nodeTwo, i64 %15, align 16
-  store i64 %15, ptr %5, align 8
-  store i32 124, ptr %2, align 4
-  %18 = load i32, ptr %2, align 4
-  %19 = zext i32 %18 to i64
-  %20 = alloca %struct.nodeThree, i64 %19, align 16
-  store i64 %19, ptr %9, align 8
-  store i32 0, ptr %1, align 4
-  %21 = load ptr, ptr %4, align 8
-  call void @llvm.stackrestore.p0(ptr %21)
-  %22 = load i32, ptr %1, align 4
-  ret i32 %22
+entry:
+  %retval = alloca i32, align 4
+  %n = alloca i32, align 4
+  %arrayOne = alloca [0 x %struct.nodeOne], align 4
+  %saved_stack = alloca ptr, align 8
+  %__vla_expr0 = alloca i64, align 8
+  %a = alloca [1 x %struct.nodeThree], align 16
+  %b = alloca [0 x %struct.nodeThree], align 8
+  %c = alloca [100 x %struct.nodeOne], align 16
+  %__vla_expr1 = alloca i64, align 8
+  %test = alloca [2344 x %struct.nodeOne], align 16
+  %x = alloca %struct.nodeOne, align 4
+  %y = alloca %struct.nodeTwo, align 4
+  %z = alloca %struct.nodeTwo, align 4
+  store i32 0, ptr %retval, align 4
+  store i32 697000, ptr %n, align 4
+  store i32 12432, ptr %n, align 4
+  %0 = load i32, ptr %n, align 4
+  %1 = zext i32 %0 to i64
+  %2 = call ptr @llvm.stacksave.p0()
+  store ptr %2, ptr %saved_stack, align 8
+  %vla = alloca %struct.nodeTwo, i64 %1, align 16
+  store i64 %1, ptr %__vla_expr0, align 8
+  store i32 124, ptr %n, align 4
+  %3 = load i32, ptr %n, align 4
+  %4 = zext i32 %3 to i64
+  %vla1 = alloca %struct.nodeThree, i64 %4, align 16
+  store i64 %4, ptr %__vla_expr1, align 8
+  store i32 0, ptr %retval, align 4
+  %5 = load ptr, ptr %saved_stack, align 8
+  call void @llvm.stackrestore.p0(ptr %5)
+  %6 = load i32, ptr %retval, align 4
+  ret i32 %6
 }
 
 ; Function Attrs: nocallback nofree nosync nounwind willreturn

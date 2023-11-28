@@ -498,7 +498,15 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                     }
                     else if(auto *GEP = dyn_cast<GetElementPtrInst>(&I))
                     {
-                      
+                      for(auto it = potential.begin(); it != potential.end(); it++)
+                      {
+                        Value* aos = *it;
+                        if(checkGEP(GEP,aos) == true)
+                        {
+                          eraseFromPotential(aos);
+                          break;
+                        }
+                      }
                     }
                   }
               checkMain = true;

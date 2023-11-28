@@ -66,7 +66,7 @@ int main()
     n = 124;
     //(void) AoS_Start;
     struct nodeThree a[1]; //AoS of size 1
-    struct nodeThree b[0]; //AoS of size 1
+    struct nodeThree b[0]; //AoS of size 0 - should NOT be counted
     Node c[100]; //AoS of size 100
     struct nodeThree arrayThree[n]; //static Array of Structs (stored on stack) (of size n)
     //(void) AoS_End;

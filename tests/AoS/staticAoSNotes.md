@@ -1,12 +1,36 @@
-# Static AoS representations in LLVM IR Assembly
+# Static AoS in LLVM IR Assembly
 
-Static AoS data structures are stored in the stack, which means the `alloca` instructino is used.
+Static AoS data structures are stored in the stack, which means the `alloca` instructions is used.
 
-There are two ways static AoS are defined in C:
+## Detection 
 
-## First example
+Psuedocode:
+```pseudo
+void detectAoS(AllocaInst* v)
 
-### The size of the array is predefined in a separate variable
+  get allocatedtype
+  get allocated type as a string
+
+  if it is an arrayallocation (of size greater than 0)
+    check if allocatedtype is a struct
+      static AoS found!
+      store staticAoS in confirmed vector
+  else if string contains 'struct' word inside '[ ]' - e.g. [50 x %struct.node]
+    if size specified in string is not 0 e.g. [0 x ...]
+      static AoS found!
+      store staticAoS in confirmed vector
+    endif
+  endif
+  
+endif
+```
+## Representations in IR
+ 
+There are three ways that static AoS are defined in C:
+
+### First example
+
+#### The size of the array is predefined in a separate variable
 
 ```C
 int n = 67900
@@ -23,9 +47,9 @@ store i32 697000, ptr %2, align 4
 %6 = zext i32 %5 to i64
 %8 = alloca %struct.node, i64 %6, align 16
 ```
-## Second example
+### Second example
 
-### The struct is defined using a `type_def`.
+#### The struct is defined using a `type_def`.
 
 Even when using the new name for the struct, it does not change how it is represented in the IR.
 
@@ -55,9 +79,9 @@ store i32 697000, ptr %2, align 4
 %8 = alloca %struct.nodeOne, i64 %6, align 16
 ```
 
-## Third example
+### Third example
 
-### The size of the array is defined as a integer literal
+#### The size of the array is defined as a integer literal
 
 ```C
 struct node array[6790]; 
@@ -75,21 +99,24 @@ struct node emptyArray[0];
 ```
 CHECK: These are still AoS data structures, regardless of the size. Optimisations will still be made on `struct` datatype.
 
-## What are not AoS data structures:
+### What are not AoS data structures:
 
 These are not AoS data structures:
 
 ```C
+//even though these are allocas, they are not an array allocation
 struct nodeOne x;
 struct nodeTwo y;
 struct nodeTwo z;
 ```
 
 ```C
+//each element is not a `struct` type
 int arrayOne[5];
 ```
 
 ```C
+//element is not a `struct` type
 int n = 5;
 float array[n];
 ```

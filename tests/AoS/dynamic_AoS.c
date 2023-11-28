@@ -24,6 +24,10 @@ struct nodeThree
 
 struct nodeOne* globalOne;
 struct nodeTwo* globalTwo;
+int globalThree;
+float globalFour;
+struct nodeThree* globalFive;
+
 
 void populateNodeOne(struct nodeOne* array,int size)
 {
@@ -86,10 +90,12 @@ void populateGlobalTwo()
         globalTwo[i].b = 'b';
         globalTwo[i].c = 'a';
     }
+
 }
 
 void printArray(struct nodeOne* array,int size)
 {
+    populateGlobalTwo();
     for(int i = 0; i < size; i++)
     {
         printf("Index %d:\n",i);
@@ -97,6 +103,25 @@ void printArray(struct nodeOne* array,int size)
         // printf("b = %d ",array[i].b);
         // printf("c = %c \n",array[i].c);
     }
+}
+
+void populate(struct nodeThree* arrayFive, int n)
+{
+    populateNodeThree(n, arrayFive);
+        populateNodeThree(n, globalFive);
+
+    // populate(globalFive, n);
+
+}
+
+void populateArrayFive(int a, int n, struct nodeOne* arrayFive, int c, int d)
+{
+    printArray(globalOne,n);
+        // globalFive = (struct nodeThree*) malloc(100*sizeof(struct nodeThree)); //AoS 3
+
+    // populate(arrayFive, n);
+    // populate(globalFive, n);
+
 }
 
 int main()
@@ -109,59 +134,80 @@ int main()
 
 
     (void) AoS_Start;
-    struct nodeOne* arrayOne = (struct nodeOne*) malloc(n*sizeof(struct nodeOne)); //dynamic AoS (stored on heap) (of size n)
+    struct nodeOne* arrayOne = (struct nodeOne*) malloc(100*sizeof(struct nodeOne)); //dynamic AoS (stored on heap) (of size n) //AoS 1
     (void) AoS_End;
 
     // double* testPtr;
     // testPtr = (double*) malloc(n*sizeof(double));
 
-    for(int i = 0; i < n; i++)
-    {
-        arrayOne[i].a = 1;
-        // array[i].b = 2;
-        // array[i].c = 'a';
-    }
+    // for(int i = 0; i < n; i++)
+    // {
+    //     arrayOne[i].a = 1;
+    //     // array[i].b = 2;
+    //     // array[i].c = 'a';
+    // }
 
     int* testPtr2;
-    testPtr2 = (int*) malloc(n*sizeof(int));
+    testPtr2 = (int*) malloc(n*sizeof(int)); //Not an AoS
+    testPtr2[0] = 102313;
 
-    // struct nodeOne staticOne[0];
+    struct nodeOne staticOne[0]; //should not detect this
+    struct nodeOne staticTwo[2]; //should detect this - static AoS
 
-    globalOne = (struct nodeOne*) malloc(n*sizeof(struct nodeOne));
 
-    globalTwo = (struct nodeTwo*) malloc(n*sizeof(struct nodeTwo));
+    globalOne = (struct nodeOne*) malloc(n*sizeof(struct nodeOne)); //AoS 2
+
+    // globalTwo = (struct nodeTwo*) malloc(n*sizeof(struct nodeTwo)); //AoS 3
 
     populateGlobalOne(n);
-    populateGlobalTwo();
+    // populateGlobalTwo();
 
-    //populateNodeOne(arrayOne,n);
+    // populateNodeOne(arrayOne,n); //this will be ignored (since the array is determined as an AoS) 
 
-    // printArray(arrayOne,n);
+    // //printArray(arrayOne,n); //also ignored
 
-    n = 7080; //matching size of staticAoS
-    (void) AoS_Start;
-    struct nodeTwo* arrayTwo = (struct nodeTwo*) malloc(n*sizeof(struct nodeTwo)); //dynamic AoS (stored on heap) (of size n)
-    (void) AoS_End;
+    // // n = 7080; //matching size of staticAoS
+    // // (void) AoS_Start;
+    // // struct nodeTwo* arrayTwo = (struct nodeTwo*) malloc(n*sizeof(struct nodeTwo)); //dynamic AoS (stored on heap) (of size n) //AoS 4
+    // // (void) AoS_End;
 
-    populateNodeTwo(arrayTwo,n);
-    // arrayTwo[0] = setNodeTwo();
+    // // populateNodeTwo(arrayTwo,n);
+    // // arrayTwo[0] = setNodeTwo(); //arrayTwo is already confirmed
 
-    n = 372; //matching size of staticAoS
-    (void) AoS_Start;
-    struct nodeThree* arrayThree = (struct nodeThree*) malloc(n*sizeof(struct nodeThree)); //dynamic AoS (stored on heap) (of size n)
-    (void) AoS_End;
+    // // n = 372; //matching size of staticAoS
+    // // (void) AoS_Start;
+    // // struct nodeThree* arrayThree = (struct nodeThree*) malloc(n*sizeof(struct nodeThree)); //dynamic AoS (stored on heap) (of size n) //AoS 5
+    // // (void) AoS_End;
 
-    populateNodeThree(n,arrayThree);
+    // // populateNodeThree(n,arrayThree);
 
-    // struct nodeTwo* arrayFour = (struct nodeTwo*) malloc(n*sizeof(struct nodeTwo)); //dynamic AoS (stored on heap) (of size n)
+    // // struct nodeTwo* arrayFour = (struct nodeTwo*) malloc(n*sizeof(struct nodeTwo)); //dynamic AoS (stored on heap) (of size n) //AoS 6
 
-    // populateNodeTwo(arrayFour,n);
+    // // populateNodeTwo(arrayFour,n);
 
-    free(arrayOne);
+    // struct nodeThree* arrayFive = (struct nodeThree*) malloc(n*sizeof(struct nodeThree)); //dynamic AoS (stored on heap) (of size n) //AoS 7
 
-    free(arrayTwo);
+    // // globalFive = (struct nodeThree*) malloc(100*sizeof(struct nodeThree)); //AoS 3
 
-    free(arrayThree);
+    populateArrayFive(1,n,arrayOne,3,4);
+
+    
+
+    // free(arrayOne);
+
+    // free(arrayTwo);
+
+    // free(arrayThree);
+
+    // free(arrayFour);
+
+    // free(arrayFive);
+
+    // free(globalOne);
+
+    // free(globalTwo);
+
+    // free(testPtr2);
 
         // //NOT ALLOWED - SEG FAULT OCCURS
     // // n = 372; //matching size of staticAoS
