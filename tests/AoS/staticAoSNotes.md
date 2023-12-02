@@ -47,6 +47,8 @@ store i32 697000, ptr %2, align 4
 %6 = zext i32 %5 to i64
 %8 = alloca %struct.node, i64 %6, align 16
 ```
+
+These instructions will be referred to as `%vla`, `%vla1`, etc. when using the `-fno-discard-value-names` flag with clang
 ### Second example
 
 #### The struct is defined using a `type_def`.
@@ -91,13 +93,28 @@ LLVM IR representation:
 ```llvm
 %3 = alloca [6790 x %struct.nodeOne], align 16
 ```
-Note that if the size is 1 or 0, such as:
+Note that if the size is 1, such as:
 
 ```C
 struct node array[1];
-struct node emptyArray[0];
 ```
-CHECK: These are still AoS data structures, regardless of the size. Optimisations will still be made on `struct` datatype.
+These are still AoS data structures, as long as they are being used. If so, optimisations will still be made on `struct` datatype.
+
+### Fourth example
+
+#### Global variables
+
+Accessing global AoS directly using GEP instructions:
+
+```C
+globalFive[1].a = 100;
+```
+
+```LLVM
+store i32 100, ptr getelementptr inbounds ([100 x %struct.nodeOne], ptr @globalFive, i64 0, i64 1), align 16
+```
+
+In this case, need to find a `StoreInst` then check second operand and check its string. See if it contains 'getelementptr' and an AoS stored in potential, in this case: `@globalFive`
 
 ### What are not AoS data structures:
 
