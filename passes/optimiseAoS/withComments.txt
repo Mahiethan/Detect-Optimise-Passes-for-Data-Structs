@@ -23,16 +23,34 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
 
         for(int i = 0; i < allStructs.size(); i++)
         {
+          // errs()<<allStructs.size()<<"\n";
+          // errs()<<allStructs.at(i)->getName().str()<<"\n";
+                    // allStructs.at(i)->print(errs());
+
           //get element type array
           elemArr = allStructs.at(i)->elements();
 
+
+          // Type* intType1 = IntegerType::getInt32Ty(TheContext);
+          // Type* intType2 = IntegerType::getInt32Ty(TheContext);
+          // //   auto doubleType = IntegerType::get(TheContext, 64); // 64 bits integer (double)
+          //   Type* charType1 = IntegerType::getInt8Ty(TheContext);
+          //   Type* charType2 = IntegerType::getInt8Ty(TheContext);
+
           vector<tuple<Type*,int,int>> elems;
-        
+          //   elems.push_back(intType1);
+          //   elems.push_back(intType2);
+          //   elems.push_back(charType1);
+          //   elems.push_back(charType2);
+
+          //   ArrayRef<Type*> elemArr = ArrayRef(elems);
+
           int o = 0;
           for(auto it = elemArr.begin(); it != elemArr.end(); it++)
           {
             Type* ty = const_cast<Type*>(*it);
-
+            // ty->print(errs());
+            // errs()<<"\n";
             elems.push_back(make_tuple(ty,o,0));
             o++;
           }
@@ -99,16 +117,106 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
             }
           }
 
+          // none = false;
+          // while(none == false)
+          // {
+          //   none = true;
+          //   for(int i = 0; i < elems.size(); i++)
+          //   {
+          //     Type* ty = get<0>(elems.at(i));
+          //     int o = get<1>(elems.at(i));
+          //     if(ty->isIntegerTy(32))
+          //     {
+          //       sortedElems.push_back(make_tuple(ty,o,f));
+          //       f++;
+          //       none = false;
+          //     }
+          //   }
+          // }
+
+          // none = false;
+          // while(none == false)
+          // {
+          //   none = true;
+          //   for(int i = 0; i < elems.size(); i++)
+          //   {
+          //     Type* ty = get<0>(elems.at(i));
+          //     int o = get<1>(elems.at(i));
+          //     if(ty->isIntegerTy(8))
+          //     {
+          //       sortedElems.push_back(make_tuple(ty,o,f));
+          //       f++;
+          //       none = false;
+          //     }
+          //   }
+          // }
+
           vector<Type*> newElems;
 
           for(int i = 0; i < sortedElems.size(); i++)
+          {
+            // get<0>(sortedElems.at(i))->print(errs());
+            // errs()<<get<1>(sortedElems.at(i))<<" ,";
+            // errs()<<get<2>(sortedElems.at(i))<<" ,";
+            // errs()<<"\n";
             newElems.push_back(get<0>(sortedElems.at(i)));
-          
+          }
+
+          //pushing back in same order
+          // for(auto it = elems.begin(); it != elems.end(); it++)
+          // {
+          //   Type* ty = *it;
+          //   ty->print(errs());
+          //   errs()<<"\n";
+          //   newElems.push_back(ty);
+          // }
+
+          //reordering
+          // newElems.push_back(doub);
+          // newElems.push_back(in);
+          // newElems.push_back(c1);
+          // newElems.push_back(c2);
+
+
           ArrayRef<Type*> elemArr = ArrayRef(newElems);
 
-          allStructs.at(i)->setBody(elemArr, /* packed */ false);
-
+           for(auto it = elemArr.begin(); it != elemArr.end(); it++)
+          {
+            // Type* ty = const_cast<Type*>(*it);
+            // // ty->print(errs());
+            // // errs()<<"\n";
+            // elems.push_back(ty);
           }
+
+
+
+            allStructs.at(i)->setBody(elemArr, /* packed */ false);// Set the body of the aggregate
+            // allStructs.at(i)->setName("new");
+            // myStructPtrType = PointerType::get(allStructs.at(i), 0); // Initialise the pointer type now
+
+        
+
+          // allStructs.at(i)->print(errs());
+
+          // errs()<<"\n";
+
+          //           elemArr = allStructs.at(i)->elements();
+
+          //                     errs()<<"\n";
+
+
+
+
+        //when swapping fields
+          //find out what type replaces what and make pairs
+          //in this example:  
+            //double replaces int
+            //int replaces double
+            //chars are the same
+        
+
+
+        }
 
         for (auto &F : M) //iterate through all functions in the Module and print their names
         { 
@@ -118,10 +226,12 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
               {
                  if(auto *GEP = dyn_cast<GetElementPtrInst>(&I))
                  {
+                  //errs()<<"found\n";
                   Value* ret = GEP->getOperand(GEP->getNumIndices()); //getting last operand
                   string op_str; 
                   raw_string_ostream to_str(op_str);
                   ret->printAsOperand(to_str);
+                  // errs()<<op_str<<"\n";
 
                   if((op_str.find('%') == string::npos) & (!(GEP->getResultElementType()->isStructTy())))
                   {
@@ -141,6 +251,7 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
                     if(indexStr.find("%") == string::npos)
                       index = std::stoi(indexStr);
 
+                    // errs()<<index<<"\n";
 
                     for(int i = 0; i < sortedElems.size(); i++)
                     {
@@ -154,8 +265,18 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
                       }
 
                     }
+                    // errs()<<"index: "<<index<<"\n";
                     GEP->setOperand(GEP->getNumIndices(),ConstantInt::get(TheContext,APInt(32,index)));
                   }
+              
+                  // if()
+                  //   GEP->setOperand(GEP->getNumIndices(),ConstantInt::get(TheContext,APInt(32,1)));
+                  // if(ret == ConstantInt::get(TheContext,APInt(32,1,true)))
+                  //   GEP->setOperand(GEP->getNumIndices(),ConstantInt::get(TheContext,APInt(32,0)));
+                  // errs()<<"\n";
+
+                  // if(GEP->getPointerOperand()->getType()->isStructTy())
+                  //  GEP->setPoint(myStructPtrType);
                  }
               }
           }

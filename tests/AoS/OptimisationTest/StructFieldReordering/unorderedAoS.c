@@ -35,15 +35,19 @@ void multNodeOneOld(struct nodeOneOld* array, int size)
     for(int i = 0; i < size; i++)
     {
         array[i].a = (array[i].b * array[i].a) / (100 / 5);
+        array[i].b = (array[i].a - array[i].b) * (100 / 5);
     }
 }
 
 void multArrays(struct nodeOneOld* arrayOne, struct nodeOneOld* arrayTwo, int size)
 {
-     for(int i = 0; i < size; i++)
+    for(int j = 0; j < 70; j++)
     {
-        arrayOne[i].a = arrayOne[i].a * arrayTwo[i].a;
-        arrayOne[i].b = arrayOne[i].b * arrayTwo[i].b;
+        for(int i = 0; i < size; i++)
+        {
+            arrayOne[i].a = arrayOne[i].a * arrayTwo[i].a;
+            arrayOne[i].b = arrayOne[i].b * arrayTwo[i].b;
+        }
     }
 }
 
@@ -52,7 +56,7 @@ int main()
     // int n = 99999;
     int n = 999999;
    
-   for(int i = 0; i < 1000; i++)
+   for(int i = 0; i < 100; i++)
     {
     ////static
     // struct nodeOneOld arrayOneOld[n];
@@ -69,8 +73,22 @@ int main()
      multNodeOneOld(arrayOneOld,n);
      multArrays(arrayOneOld,arrayTwoOld,n);
 
+
+    if(i == 759)
+    {
+        printf("Validity check\n");
+        // for(int j = 5000; j < 5010; j++)
+        // {
+            printf("a: %d\n",arrayOneOld[5000].a);
+            printf("b: %f\n---\n",arrayOneOld[5000].b);
+            printf("c: %c\n---\n",arrayOneOld[5000].c);
+            printf("d: %c\n---\n",arrayOneOld[5000].d);
+        //}
+    }
+
+
     
-     free(arrayOneOld); 
+    free(arrayOneOld); 
     free(arrayTwoOld);
     }
 
