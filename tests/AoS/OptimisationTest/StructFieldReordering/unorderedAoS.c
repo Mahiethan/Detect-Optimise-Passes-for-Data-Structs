@@ -22,7 +22,7 @@ void populateNodeOneOld(struct nodeOneOld* array, int size)
 {
     for(int i = 0; i < size; i++)
     {
-        array[i].a = 1.0;
+        array[i].a = 17.0;
         array[i].b = 10;
         array[i].c = 'c';
         array[i].d = 'd';
@@ -55,8 +55,9 @@ int main()
 {
     // int n = 99999;
     int n = 999999;
+    int i;
    
-   for(int i = 0; i < 100; i++)
+   for(i = 0; i < 100; i++)
     {
     ////static
     // struct nodeOneOld arrayOneOld[n];
@@ -74,15 +75,15 @@ int main()
      multArrays(arrayOneOld,arrayTwoOld,n);
 
 
-    if(i == 759)
+    if(i == 79)
     {
         printf("Validity check\n");
         // for(int j = 5000; j < 5010; j++)
         // {
-            printf("a: %d\n",arrayOneOld[5000].a);
-            printf("b: %f\n---\n",arrayOneOld[5000].b);
-            printf("c: %c\n---\n",arrayOneOld[5000].c);
-            printf("d: %c\n---\n",arrayOneOld[5000].d);
+            printf("a: %d\n---\n",arrayOneOld[1].a);
+            printf("b: %f\n---\n",arrayOneOld[1].b);
+            printf("c: %c\n---\n",arrayOneOld[1].c);
+            printf("d: %c\n---\n",arrayOneOld[1].d);
         //}
     }
 

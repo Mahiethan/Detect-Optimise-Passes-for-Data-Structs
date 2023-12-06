@@ -6,7 +6,7 @@ target triple = "x86_64-unknown-linux-gnu"
 %struct.nodeOneOld = type { i32, double, i8, i8 }
 
 @.str = private unnamed_addr constant [16 x i8] c"Validity check\0A\00", align 1
-@.str.1 = private unnamed_addr constant [7 x i8] c"a: %d\0A\00", align 1
+@.str.1 = private unnamed_addr constant [11 x i8] c"a: %d\0A---\0A\00", align 1
 @.str.2 = private unnamed_addr constant [11 x i8] c"b: %f\0A---\0A\00", align 1
 @.str.3 = private unnamed_addr constant [11 x i8] c"c: %c\0A---\0A\00", align 1
 @.str.4 = private unnamed_addr constant [11 x i8] c"d: %c\0A---\0A\00", align 1
@@ -34,7 +34,7 @@ for.body:                                         ; preds = %for.cond
   %idxprom = sext i32 %3 to i64
   %arrayidx = getelementptr inbounds %struct.nodeOneOld, ptr %2, i64 %idxprom
   %a = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx, i32 0, i32 0
-  store i32 1, ptr %a, align 8
+  store i32 17, ptr %a, align 8
   %4 = load ptr, ptr %array.addr, align 8
   %5 = load i32, ptr %i, align 4
   %idxprom1 = sext i32 %5 to i64
@@ -270,29 +270,29 @@ for.body:                                         ; preds = %for.cond
   %11 = load i32, ptr %n, align 4
   call void @multArrays(ptr noundef %9, ptr noundef %10, i32 noundef %11)
   %12 = load i32, ptr %i, align 4
-  %cmp4 = icmp eq i32 %12, 759
+  %cmp4 = icmp eq i32 %12, 79
   br i1 %cmp4, label %if.then, label %if.end
 
 if.then:                                          ; preds = %for.body
   %call6 = call i32 (ptr, ...) @printf(ptr noundef @.str)
   %13 = load ptr, ptr %arrayOneOld, align 8
-  %arrayidx = getelementptr inbounds %struct.nodeOneOld, ptr %13, i64 5000
+  %arrayidx = getelementptr inbounds %struct.nodeOneOld, ptr %13, i64 1
   %a = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx, i32 0, i32 0
   %14 = load i32, ptr %a, align 8
   %call7 = call i32 (ptr, ...) @printf(ptr noundef @.str.1, i32 noundef %14)
   %15 = load ptr, ptr %arrayOneOld, align 8
-  %arrayidx8 = getelementptr inbounds %struct.nodeOneOld, ptr %15, i64 5000
+  %arrayidx8 = getelementptr inbounds %struct.nodeOneOld, ptr %15, i64 1
   %b = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx8, i32 0, i32 1
   %16 = load double, ptr %b, align 8
   %call9 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %16)
   %17 = load ptr, ptr %arrayOneOld, align 8
-  %arrayidx10 = getelementptr inbounds %struct.nodeOneOld, ptr %17, i64 5000
+  %arrayidx10 = getelementptr inbounds %struct.nodeOneOld, ptr %17, i64 1
   %c = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx10, i32 0, i32 2
   %18 = load i8, ptr %c, align 8
   %conv11 = sext i8 %18 to i32
   %call12 = call i32 (ptr, ...) @printf(ptr noundef @.str.3, i32 noundef %conv11)
   %19 = load ptr, ptr %arrayOneOld, align 8
-  %arrayidx13 = getelementptr inbounds %struct.nodeOneOld, ptr %19, i64 5000
+  %arrayidx13 = getelementptr inbounds %struct.nodeOneOld, ptr %19, i64 1
   %d = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx13, i32 0, i32 3
   %20 = load i8, ptr %d, align 1
   %conv14 = sext i8 %20 to i32
