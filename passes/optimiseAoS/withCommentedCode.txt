@@ -3,6 +3,7 @@
 #include "llvm/Passes/PassPlugin.h"
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/IR/LLVMContext.h"
+#include "llvm/Transforms/Utils/BasicBlockUtils.h"
 
 #include <string>
 
@@ -95,6 +96,13 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
             else
             {
               sortedElems.push_back(make_tuple(get<0>(*toDelete),get<1>(*toDelete),f,get<3>(*toDelete)));
+
+              get<0>(*toDelete)->print(errs());
+              errs()<<"\n";
+
+              errs()<<"old pos:"<<get<1>(*toDelete)<<"\n";
+              errs()<<"new pos:"<<f<<"\n";
+
               f++;
               elems.erase(toDelete);
             }
@@ -108,6 +116,7 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
           for(int i = 0; i < sortedElems.size(); i++)
           {
             int typeSize = get<3>(sortedElems.at(i));
+            // errs()<<"ts: "<<typeSize<<"\n";
             if(currWord + typeSize <= 8) 
               currWord = currWord + typeSize;
             else
@@ -124,8 +133,8 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
               }
             }
 
-            // errs()<<currWord<<"\n";
-            // errs()<<newStructSize<<"\n";
+            // errs()<<"cw: "<<currWord<<"\n";
+            // errs()<<"nss: "<<newStructSize<<"\n";
             newElems.push_back(get<0>(sortedElems.at(i)));
           }
 
@@ -144,6 +153,7 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
 
             raw_string_ostream t_str(modifiedStruct);
             allStructs.at(i)->print(t_str);
+            // errs()<<modifiedStruct<<"\n";
           }
           else
           {
@@ -151,10 +161,11 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
             if(newStructSize > oldStructSize)
               errs()<<"New size is larger than old struct by "<<newStructSize-oldStructSize<<" bytes.\n";
             else
-              errs()<<"New struct has same size as old struct: "<<newStructSize<<"bytes.\n";
+              errs()<<"New struct has same size as old struct: "<<newStructSize<<" bytes.\n";
           }
 
-        }
+        bool replaceConstExpr = false;
+        ConstantExpr* ce;
 
         //changing indices of all GEP instructions that use the modified struct
         if(performOpt == true)
@@ -164,22 +175,126 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
             for (auto &B : F)  //iterate through all blocks in each function
             { 
                 bool foundAoS = false;
+                // Instruction* prevInst;
                 for (auto &I : B) //iterate through all instructions in each block
                 {
+                  // if(replaceConstExpr)
+                  // {
+                  //   Instruction* gep = ce->getAsInstruction(&I);
+                  //   replaceConstExpr = false;
+                  // }
+                    
+                  // if(auto *LI = dyn_cast<LoadInst>(&I))
+                  // {
+                  //   LI->print(errs());
+                  //   errs()<<"\n";
+                  //   Value* op = LI->getOperand(0);
+                  //   errs()<<"work\n";
+                  //   op->print(errs());
+
+                  //   //peform string manipulation to change last index to correct one
+                  //   //so that correct value is printed
+                  //   errs()<<"\n";
+
+                  //   if(auto *CE = dyn_cast<ConstantExpr>(op))
+                  //   {
+                  //     //SORT THIS OUT! RESEARCH
+                  //     ce = CE;
+                  //     Instruction* gep = ce->getAsInstruction(&I);
+                  //     // ReplaceInstWithInst(&I,gep);
+                  //     replaceConstExpr = true;
+
+                  //     // gep->print(errs());
+
+                  // //     if(auto *GEP = dyn_cast<GetElementPtrInst>(gep))
+                  // // {
+                  // //   GEP->print(errs());
+                  // //   errs()<<"\n";
+                  // //   Value* ret = GEP->getOperand(GEP->getNumIndices()); //getting last operand
+                  // //   string op_str; 
+                  // //   raw_string_ostream to_str(op_str);
+                  // //   ret->printAsOperand(to_str);
+
+                  // //   Type* structUsed = GEP->getResultElementType();
+                  // //   string ret_str; 
+                  // //   raw_string_ostream t_str(ret_str);
+                  // //   structUsed->print(t_str);
+
+                  // //   errs()<<"curr: "<<ret_str<<"\n";
+                  // //   errs()<<"act: "<<modifiedStruct<<"\n";
+
+
+
+                  // //   //An access to an AoS elements involves two GEP instructions:
+                  // //   //First to access the struct pointer - return element type is of type struct
+                  // //   //Second to access field of the struct pointer - return element type same as the field type
+
+                  // //   //These two operations should exists within the same block, since the flag is set to false in a new block
+
+                  // //   if(ret_str == modifiedStruct) //if an access to the modified AoS is found, turn flag on to change its GEP operations
+                  // //   {
+                  // //     foundAoS = true;
+                  // //     // continue;
+                  // //   }
+
+                  // //   errs()<<foundAoS<<"\n";
+
+                  // //   if((op_str.find('%') == string::npos) & (!(GEP->getResultElementType()->isStructTy())) & (foundAoS == true))
+                  // //   {
+                  // //     errs()<<"MODIFYING!!!!!!!!!!!!!!!!\n";
+                  // //     size_t space_pos = op_str.find(" ");    
+                  // //     string type;
+                  // //     string indexStr;
+                  // //     //string manipulation to get 'type' and 'name'
+                  // //     if (space_pos != std::string::npos) 
+                  // //     {
+                  // //       type = op_str.substr(0, space_pos);
+                  // //     }
+
+                  // //     indexStr = op_str.substr(space_pos + 1);
+
+                  // //     int index;
+
+                  // //     if(indexStr.find("%") == string::npos)
+                  // //       index = std::stoi(indexStr);
+
+
+                  // //     for(int i = 0; i < sortedElems.size(); i++)
+                  // //     {
+                  // //       int currIndex = get<1>(sortedElems.at(i));
+                  // //       int newIndex = get<2>(sortedElems.at(i));
+
+                  // //       if(index == currIndex)
+                  // //       {
+                  // //         index = newIndex;
+                  // //         break;
+                  // //       }
+
+                  // //     }
+                  // //     GEP->setOperand(GEP->getNumIndices(),ConstantInt::get(TheContext,APInt(32,index)));
+                  // //     foundAoS = false;
+                  // //   }
+                  // // }
+                  //   }
+                    
+                  //}
+
                   if(auto *GEP = dyn_cast<GetElementPtrInst>(&I))
                   {
+                    GEP->print(errs());
+                    errs()<<"\n";
                     Value* ret = GEP->getOperand(GEP->getNumIndices()); //getting last operand
                     string op_str; 
                     raw_string_ostream to_str(op_str);
                     ret->printAsOperand(to_str);
 
-                    Type* structUsed = GEP->getResultElementType();
+                    Type* structUsed = GEP->getSourceElementType();
                     string ret_str; 
                     raw_string_ostream t_str(ret_str);
                     structUsed->print(t_str);
 
-                    // errs()<<ret_str<<"\n";
-
+                    errs()<<"curr: "<<ret_str<<"\n";
+                    errs()<<"act: "<<modifiedStruct<<"\n";
 
                     //An access to an AoS elements involves two GEP instructions:
                     //First to access the struct pointer - return element type is of type struct
@@ -190,11 +305,14 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
                     if(ret_str == modifiedStruct) //if an access to the modified AoS is found, turn flag on to change its GEP operations
                     {
                       foundAoS = true;
-                      continue;
+                      // continue;
                     }
+
+                    errs()<<foundAoS<<"\n";
 
                     if((op_str.find('%') == string::npos) & (!(GEP->getResultElementType()->isStructTy())) & (foundAoS == true))
                     {
+                      errs()<<"MODIFYING!!!!!!!!!!!!!!!!\n";
                       size_t space_pos = op_str.find(" ");    
                       string type;
                       string indexStr;
@@ -228,9 +346,14 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
                       foundAoS = false;
                     }
                   }
+                  //prevInst = &I;
                 }
             }
           }
+        }
+        sortedElems.clear();
+        performOpt = false;
+        modifiedStruct = "";
         }
 
         //Set to ::all() if IR is unchanged, otherwise ::none()

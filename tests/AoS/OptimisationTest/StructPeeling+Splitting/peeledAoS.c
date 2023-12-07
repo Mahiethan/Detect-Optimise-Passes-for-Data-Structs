@@ -109,11 +109,17 @@ int main()
       if(i == 77)
      {
         printf("Validity check\n");
+
+        //required for printing global AoS variables until fix is found
+        struct nodeOneHot* arrayOneTemp = (struct nodeOneHot*) malloc(999999*sizeof(struct nodeOneHot));
+        arrayOneTemp = arrayOneHot;
+
         // for(int j = 5000; j < 5010; j++)
         // {
-            printf("%d\n",arrayOneHot[5000].a);
-            printf("%f\n---\n",arrayOneHot[5000].b);
+            printf("%d\n---\n",arrayOneTemp[50].a);
+            printf("%f\n---\n",arrayOneTemp[50].b);
         //}
+        
      }
 
     // freeAoS(arrayOneHot,n); 

@@ -48,5 +48,7 @@ echo ""
 if [ "$value_a_unordered" == "$value_a_ordered" ] && [ "$value_b_unordered" == "$value_b_ordered" ] && [ "$value_c_unordered" == "$value_c_ordered" ] && [ "$value_d_unordered" == "$value_d_ordered" ] 
 then
   echo "Outputs after optimisation are correct"
+else
+  echo "Outputs after optimisation are NOT correct"
 fi
 echo ""

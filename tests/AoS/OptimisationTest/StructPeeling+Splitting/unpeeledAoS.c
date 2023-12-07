@@ -91,10 +91,13 @@ int main()
       if(i == 77)
      {
         printf("Validity check\n");
-        // for(int j = 5000; j < 5010; j++)
+
+        //required for printing global AoS variables until fix is found
+        struct nodeOneOld* arrayOneTemp = (struct nodeOneOld*) malloc(999999*sizeof(struct nodeOneOld));
+        arrayOneTemp = arrayOneOld;        // for(int j = 5000; j < 5010; j++)
         // {
-            printf("%d\n",arrayOneOld[5000].a);
-            printf("%f\n---\n",arrayOneOld[5000].b);
+            printf("%d\n---\n",arrayOneTemp[5000].a);
+            printf("%f\n---\n",arrayOneTemp[5000].b);
         //}
      }
 
