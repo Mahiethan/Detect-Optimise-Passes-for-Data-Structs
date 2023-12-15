@@ -14,7 +14,7 @@ IRBuilder<> Builder(TheContext);
 
 ArrayRef<Type*> elemArr; //original struct fields
 
-vector<tuple<Type*,int,int,int>> sortedElems; //sorted struct fields
+vector<tuple<Type*,int,int,int>> newSortedElems; //sorted struct fields
 
 string modifiedStruct; //name of modified struct
 
@@ -38,7 +38,7 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
           DataLayout* TD = new DataLayout(&M);
 
           int o = 0;
-          int oldStructSize = 0; //in bytes
+          int oldStructSize = TD->getStructLayout(allStructs.at(i))->getSizeInBytes();
           int wordSize = 0;
           int currWord = 0; 
 
@@ -47,33 +47,46 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
           for(auto it = elemArr.begin(); it != elemArr.end(); it++)
           {
             Type* ty = const_cast<Type*>(*it);
-            int size = TD->getTypeAllocSize(ty);
-            if(currWord + size <= 8) 
-              currWord = currWord + size;
+            // int size = TD->getTypeAllocSize(ty); //includes allocation padding
+
+            int size = TD->getTypeSizeInBits(ty);
+            int pad = TD->getStructLayout(allStructs.at(i))->getElementOffsetInBits(o);
+            // errs()<<" offset: "<<pad/8<<",  size: ";
+            // errs()<<size/8<<"\n";
+
+            Type* newTy;
+
+            if((size != 8) & (size != 32) & (size != 64))
+            {
+              // Create an aggregate type (somehow) so offsets are created properly - check trello
+              Type* I = IntegerType::getInt8Ty(TheContext);
+              int num = size/8;
+              newTy = ArrayType::get(I, num);
+
+              // Type* newTy = Type::getIntNTy(TheContext,size); //create a new type equal in bit size to the original field
+            }
             else
             {
-              oldStructSize += 8;
-              if(size >= 8)
-              {
-                currWord = 0;
-                oldStructSize += 8;
-              }
-              else
-              {
-                currWord = size;
-              }
+               newTy = Type::getIntNTy(TheContext,size); //create a new type equal in bit size to the original field
+              newTy = ty;
             }
-            elems.push_back(make_tuple(ty,o,0,size));
+
+            //try and create a packed struct, and set alignment bits manually after sorting
+
+            // Type* newTy = Type::getIntNTy(TheContext,size); //create a new type equal in bit size to the original field
+
+            // elems.push_back(make_tuple(newTy,o,0,size/8)); //store each struct field, with its type, original index and size
+
+            elems.push_back(make_tuple(newTy,o,0,size/8)); //store each struct field, with its type, original index and size
+
             o++;
           }
 
-          if(currWord > 0)
-            oldStructSize += 8;
-          
-          /* 
-             sort fields by decreasing type size
-             new index position of field is stored 
-          */
+          // errs()<<"---------------------------\n";
+
+          vector<tuple<Type*,int,int,int>> sortedElems; //sorted struct fields
+
+          /* sort fields by decreasing type size as well storing the new index position of the field */
           bool none = false;
           int f = 0;
           while(none == false)
@@ -94,57 +107,128 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
               }
             }
 
-            if(elems.size() == 0)
+            if(elems.size() == 0) //exit if there are no longer any fields to sort
             {
               none = true;
             }
             else
             {
-              sortedElems.push_back(make_tuple(get<0>(*toDelete),get<1>(*toDelete),f,get<3>(*toDelete)));
+              sortedElems.push_back(make_tuple(get<0>(*toDelete),get<1>(*toDelete),f,get<3>(*toDelete))); //store each struct field, with its type, original index, new index and size
               f++;
               elems.erase(toDelete);
             }
+
           }
 
-
-          /* calculate size of new struct */
-          vector<Type*> newElems;
-          int newStructSize = 0; //in bytes
-          wordSize = 0;
-          currWord = 0;
-          for(int i = 0; i < sortedElems.size(); i++)
+          int currIndex = 0;
+          for(auto it1 = sortedElems.begin(); it1 != sortedElems.end(); it1)
           {
-            int typeSize = get<3>(sortedElems.at(i));
-            if(currWord + typeSize <= 8) 
-              currWord = currWord + typeSize;
-            else
+            int size = get<3>(*it1);
+            int padding = 8 - size;
+            newSortedElems.push_back(make_tuple(get<0>(*it1),get<1>(*it1),currIndex,get<3>(*it1)));
+            sortedElems.erase(it1);
+            currIndex++;
+            if(padding == 0)
             {
-              newStructSize += 8;
-              if(typeSize >= 8)
-              {
-                currWord = 0;
-                newStructSize += 8;
-              }
-              else
-              {
-                currWord = typeSize;
-              }
-            }
+              //taken outside
 
-            newElems.push_back(get<0>(sortedElems.at(i)));
+              // newSortedElems.push_back(*it);
+              // sortedElems.erase(it);
+            }
+            else if(padding > 0)
+            {
+                for(auto it2 = sortedElems.begin(); it2 != sortedElems.end(); it2)
+                {
+                  if(padding == 0)
+                    break;
+                  size = get<3>(*it2);
+                  if(size <= padding)
+                  {
+                    padding -= size;
+                    newSortedElems.push_back(make_tuple(get<0>(*it2),get<1>(*it2),currIndex,get<3>(*it2)));
+                    sortedElems.erase(it2);
+                    currIndex++;
+                  }
+                  else
+                    it2++;
+                }
+            }
+            else
+              it1++;
           }
 
-          if(currWord > 0)
-            newStructSize += 8;
+          vector<Type*> newElems;
 
+          /* Add padding */
+          int currentWord = 8;
+          for(int i = 0; i < newSortedElems.size(); i++)
+          {
+            // int size = get<3>(newSortedElems.at(i));
+            // // errs()<<padding<<"\n";
+            // if(currentWord >= size)
+            // {
+            //   newElems.push_back(get<0>(newSortedElems.at(i)));
+            //   currentWord = currentWord - size;
+
+            // }
+            // else if((currentWord < size) & (currentWord != 0))
+            // {
+            //   Type* newTy = Type::getIntNTy(TheContext,currentWord*8); //create a new type equal in bit size to the original field
+            //   newElems.push_back(newTy);
+            //   currentWord = 8;
+            // }
+
+            // if(currentWord == 0)
+            //   currentWord = 8;
+
+            // if((i == newSortedElems.size() - 1) & (currentWord != 0))
+            // {
+            //   errs()<<"pad: "<<currentWord<<"\n";
+            //   Type* newTy = Type::getIntNTy(TheContext,currentWord*8); //create a new type equal in bit size to the original field
+            //   newElems.push_back(newTy);
+            // }
+
+            newElems.push_back(get<0>(newSortedElems.at(i)));
+          }
+
+          // vector<Type*> newElems;
+
+          // int currentWord = 0;
+          // for(int i = 0; i < newSortedElems.size(); i++)
+          // {
+          //   int size = get<3>(newSortedElems.at(i));
+          //   // errs()<<size<<"\n";
+          //   newElems.push_back(get<0>(newSortedElems.at(i)));
+          // }
 
           ArrayRef<Type*> elemArr = ArrayRef(newElems);
+
+          // StructType* temp = StructType::get(TheContext,true);
+          // temp->setBody(elemArr,true);
+
+          StructType* temp = StructType::get(TheContext,false);
+          temp->setBody(elemArr,false);
+
+          int p = 0;
+          for(auto it = elemArr.begin(); it != elemArr.end(); it++)
+          {
+            Type* ty = const_cast<Type*>(*it);
+            int size = TD->getTypeSizeInBits(ty);
+            int pad = TD->getStructLayout(temp)->getElementOffsetInBits(p);
+            // errs()<<" offset: "<<pad/8<<",  size: ";
+            // errs()<<size/8<<"\n";
+            p++;
+          }
+
+          int newStructSize = TD->getStructLayout(temp)->getSizeInBytes();
 
           /* if new struct size is smaller, perform optimisation, otherwise skip */
           if(newStructSize < oldStructSize)
           {
-            errs()<<"Performing optimisation. Saving "<<oldStructSize-newStructSize<<" bytes in struct size.\n";
+            errs()<<"Performing optimisation. Saving "<<oldStructSize-newStructSize<<" bytes in struct size from "<<oldStructSize<<" bytes to "<<newStructSize<<" bytes.\n";
             performOpt = true;
+            
+            // allStructs.at(i)->setBody(elemArr, true);
             allStructs.at(i)->setBody(elemArr, false);
 
             raw_string_ostream t_str(modifiedStruct);
@@ -154,14 +238,12 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
           {
             errs()<<"Not performing optimisation. ";
             if(newStructSize > oldStructSize)
-              errs()<<"New size is larger than old struct by "<<newStructSize-oldStructSize<<" bytes.\n";
+              errs()<<"New size is larger than old struct by "<<newStructSize-oldStructSize<<" bytes from "<<oldStructSize<<" bytes to "<<newStructSize<<" bytes.\n";
             else
               errs()<<"New struct has same size as old struct: "<<newStructSize<<" bytes.\n";
           }
 
-
-          bool replaceConstExpr = false;
-          ConstantExpr* ce;
+          /* Now replace the last index of GEP instructions that use the optimised struct */
 
           /// changing indices of all GEP instructions that use the modified struct
           if(performOpt == true)
@@ -193,10 +275,7 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
                       //These two operations should exists within the same block, since the flag is set to false in a new block
 
                       if(ret_str == modifiedStruct) //if an access to the modified AoS is found, turn flag on to change its GEP operations
-                      {
                         foundAoS = true;
-                        //continue; //skip the AoS element access, and go to the following GEP which accesses a field of the element
-                      }
 
                       /* Only access/change indicies of GEP instruction if:
                         - it is not equal to a % value - it should only be equal to a i32 value
@@ -224,30 +303,49 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
                           index = std::stoi(indexStr);
 
                         /// replace old indices with new index positions (if the field has changed position)
-                        for(int i = 0; i < sortedElems.size(); i++)
+                        for(int i = 0; i < newSortedElems.size(); i++)
                         {
-                          int currIndex = get<1>(sortedElems.at(i));
-                          int newIndex = get<2>(sortedElems.at(i));
+                          int currIndex = get<1>(newSortedElems.at(i));
+                          int newIndex = get<2>(newSortedElems.at(i));
 
-                          if(index == currIndex)
+                          if(index == currIndex) //replace old index with new index
                           {
                             index = newIndex;
+                            GEP->setResultElementType(get<0>(newSortedElems.at(i)));
                             break;
                           }
-
                         }
 
                         GEP->setOperand(GEP->getNumIndices(),ConstantInt::get(TheContext,APInt(32,index))); //new index for the GEP instruction is set
                         foundAoS = false;
+
                       }
                     }
+
+                    // //set correct alignments when storing into a struct - no effect
+                    // if(auto *SI = dyn_cast<StoreInst>(&I))
+                    // {
+                    //   //get second operand
+                    //   Value* oper = SI->getOperand(1);
+                    //   string op_str; 
+                    //   raw_string_ostream to_str(op_str);
+                    //   oper->printAsOperand(to_str);
+                    //   errs()<<"\n";
+                    //   if(op_str.find("ptr %e") != string::npos)
+                    //   {
+                    //     errs()<<"found %e\n";
+                    //     SI->setAlignment(Align(2));
+                    //   }
+                      
+
+                    // }
                   }
               }
             }
           }
 
-          /// reset values and arrays to process next AoS struct
-          sortedElems.clear();
+          /// reset values and arrays and continue to reorder next AoS struct
+          newSortedElems.clear();
           performOpt = false;
           modifiedStruct = "";
           

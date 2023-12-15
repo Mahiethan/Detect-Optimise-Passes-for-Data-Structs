@@ -99,14 +99,63 @@ This is because the programmer often uses the data layout they defined for the s
 
 But there are cases where the programmer may not have applied this optimisation to structs. This is where the compiler pass should apply this optimisation automatically and legally, by analysing whether this optimisation is profitable, then checking whether is is valid and can be applied without breaking the program functionality.
 
-There are two legality checks that will be used to check whether optimisation to struct T can be mad [4]:
+There are two legality checks that will be used to check whether optimisation to struct T can be made [4]:
 
 1) If a cast to/from a pointer-to-T is found, optimisation is invalid
     - This means that the pointer data is manipulated and can be accessed in different ways.
 2) If an address of a field of struct T is taken, optimisation is invalid
     - This indicates that address arithmetic has been applied on the data fields so changing the order of the fields may causes errors when accessing these addresses.
 
-When running the `.c` files to compare populating and multiplying times between unorderedAoS and orderedAoS, time reduction close to or at one second and memory usage saved by 16000KB, when running 200 times in a loop.
+When running the `.c` files to compare populating and multiplying times between unorderedAoS and orderedAoS, time reduction was close to or at one second and memory usage saved by 16000KB, when running 200 times in a loop.
+
+## Further optimisation
+
+It was suggested that padding can be filled with fields if they can be fitted inside.
+
+```C
+struct nodeThreeOld
+{
+    /////////////////////// Word 0
+    double a;
+    /////////////////////// Word 1
+    long long int b : 48; // 64-bit integer with bit-cast to 6 bytes (48 bits)
+    // 2 byte padding
+    /////////////////////// Word 2
+    int c;
+    int d;
+    /////////////////////// Word 3
+    char e;
+    //7 bytes padding
+};
+
+// Total size: 32 bytes
+```
+If some 6 bytes field exists, the 2 byte padding can be filled with `char d`, which reduces the 8 bytes (word 3) at the end of the struct, and overall, reduces the number of words required to access the struct.
+
+```C
+struct nodeThreeNew
+{
+    /////////////////////// Word 0
+    double a;
+    /////////////////////// Word 1
+    long long int b : 48; // 64-bit integer with bit-cast to 6 bytes (48 bits)
+    char e;
+    // 1 byte padding
+    /////////////////////// Word 2
+    int c;
+    int d;
+};
+
+// Total size: 24 bytes
+```
+
+Even though this has reduced the size of the struct and possibly reduced the memory consumption of the program, this is *not* possible.
+
+Each variable can be aligned to a power of 2 [5]. This means that struct fields are aligned to 2, 4 or 8 bytes depending on whether its size is 2, 4 or 8 bytes respectively. The above example makes use of bit-casts, which does use less bits, but still has the same alignment as a `long long int`, which is 64 bits (8 bytes). It is not possible to have a 6 byte alignment, as it is not a power-of-2. 
+
+Since all fields are aligned to powers-of-2, the example above cannot be further optimised by adding fields in the padding. If the `long long int b` variable is replaced with three `short` variables, the fields will be ordered from highest size to lowest size to ensure that the struct size is reduced.
+
+Run the script `runTestTwo.sh` to execute the `unorderedTwo.c` and `orderedTwo.c` files. There will be no significant difference in runtime and memory consumption when the `char e` field is moved, like shown above.
 
 # References
 
@@ -117,3 +166,5 @@ When running the `.c` files to compare populating and multiplying times between 
 [3] C Reference: Struct declaration, https://en.cppreference.com/w/c/language/struct (Accessed 29/11/2023)
 
 [4] https://www.capsl.udel.edu/conferences/open64/2008/Papers/111.pdf (Refer correctly)
+
+[5] https://stackoverflow.com/questions/24788262/why-alignment-is-power-of-2 (refer correctly)
