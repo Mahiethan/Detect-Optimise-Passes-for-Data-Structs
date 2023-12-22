@@ -33,41 +33,50 @@ struct nodeOneHot arrayTwoHot[999999];
 struct nodeOneCold arrayTwoCold[999999];
 
 //adding new argument for nodeOneCold struct
-void populateNodeOneOld(struct nodeOneHot* array, struct nodeOneCold* sub, int size)
+void populateNodeOneOld(int size)
 {
     for(int i = 0; i < size; i++)
     {
-        array[i].a = 1;
-        array[i].b = 10.0;
-        array[i].c = 9;
+        arrayOneHot[i].a = 1;
+        arrayOneHot[i].b = 10.0;
+        arrayOneHot[i].c = 9;
         // array[i].cold = (struct nodeOneCold*) malloc(sizeof(struct nodeOneCold));
-        sub[i].d = 23.0;
-        sub[i].e = 'a';
-        sub[i].f = 23.0;
-        sub[i].g = 23.0;  
+        arrayOneCold[i].d = 23.0;
+        arrayOneCold[i].e = 'a';
+        arrayOneCold[i].f = 23.0;
+        arrayOneCold[i].g = 23.0;  
+
+        arrayTwoHot[i].a = 1;
+        arrayTwoHot[i].b = 10.0;
+        arrayTwoHot[i].c = 9;
+        // array[i].cold = (struct nodeOneCold*) malloc(sizeof(struct nodeOneCold));
+        arrayTwoCold[i].d = 23.0;
+        arrayTwoCold[i].e = 'a';
+        arrayTwoCold[i].f = 23.0;
+        arrayTwoCold[i].g = 23.0;  
     }
 }
 
-void multNodeOneOld(struct nodeOneHot* array, int size)
+void multNodeOneOld(int size)
 {
     for(int j = 0; j < 30; j++) //the greater the limit, the more effective the optimisation is since the affinity of a and b is very high (see notes)
     {
         for(int i = 0; i < size; i++)
         {
-            array[i].a = (array[i].b * array[i].a) + (100 / 5);
-            array[i].b = (array[i].a / array[i].c) - (99 * 3);
+            arrayOneHot[i].a = (arrayOneHot[i].b * arrayOneHot[i].a) + (100 / 5);
+            arrayOneHot[i].b = (arrayOneHot[i].a / arrayOneHot[i].c) - (99 * 3);
         }
     }
 }
 
-void multArrays(struct nodeOneHot* arrayOne, struct nodeOneHot* arrayTwo, int size)
+void multArrays(int size)
 {
     for(int j = 0; j < 30; j++)
     {
         for(int i = 0; i < size; i++)
         {
-            arrayOne[i].a = arrayOne[i].a * arrayTwo[i].a;
-            arrayOne[i].b = arrayOne[i].b * arrayTwo[i].b;
+            arrayOneHot[i].a = arrayOneHot[i].a * arrayTwoHot[i].a;
+            arrayOneHot[i].b = arrayOneHot[i].b * arrayTwoHot[i].b;
         }
     }
 }
@@ -99,25 +108,22 @@ int main()
     //  struct nodeOneOld* arrayOneOld = aligned_alloc(64,sizeof(struct nodeOneOld) * n); //no difference
     // struct nodeOneOld* arrayTwoOld = aligned_alloc(64,sizeof(struct nodeOneOld) * n); //no difference
 
-     populateNodeOneOld(arrayOneHot,arrayOneCold,n);
-     populateNodeOneOld(arrayTwoHot,arrayOneCold,n);
+     populateNodeOneOld(n);
+     populateNodeOneOld(n);
 
-     multNodeOneOld(arrayOneHot,n);
-     multArrays(arrayOneHot,arrayTwoHot,n);
+     multNodeOneOld(n);
+     multArrays(n);
 
      //validity check
       if(i == 77)
      {
         printf("Validity check\n");
 
-        //required for printing global AoS variables until fix is found
-        struct nodeOneHot* arrayOneTemp = (struct nodeOneHot*) malloc(999999*sizeof(struct nodeOneHot));
-        arrayOneTemp = arrayOneHot;
 
         // for(int j = 5000; j < 5010; j++)
         // {
-            printf("%d\n---\n",arrayOneTemp[50].a);
-            printf("%f\n---\n",arrayOneTemp[50].b);
+            printf("%d\n---\n",arrayOneHot[5000].a);
+            printf("%f\n---\n",arrayOneHot[5000].b);
         //}
         
      }
