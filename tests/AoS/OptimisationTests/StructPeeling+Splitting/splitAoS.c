@@ -17,7 +17,7 @@ struct nodeOneCold
     float j;
 };
 
-struct nodeOneHot
+struct nodeOneOld
 {
     //// Hot fields - most commonly used fields
     int a;
@@ -26,11 +26,11 @@ struct nodeOneHot
     //addition of a new pointer to 'cold' structure - increase in struct size
     struct nodeOneCold* cold;
     //pointer to same type
-    struct nodeOneHot* next;
+    struct nodeOneOld* next;
 };
 
 //adding new argument for nodeOneCold struct
-void populateNodeOneOld(struct nodeOneHot* array, int size)
+void populateNodeOneOld(struct nodeOneOld* array, int size)
 {
     for(int i = 0; i < size; i++)
     {
@@ -45,7 +45,7 @@ void populateNodeOneOld(struct nodeOneHot* array, int size)
     }
 }
 
-void multNodeOneOld(struct nodeOneHot* array, int size)
+void multNodeOneOld(struct nodeOneOld* array, int size)
 {
     for(int j = 0; j < 40; j++) //the greater the limit, the more effective the optimisation is since the affinity of a and b is very high (see notes)
     {
@@ -57,7 +57,7 @@ void multNodeOneOld(struct nodeOneHot* array, int size)
     }
 }
 
-void multArrays(struct nodeOneHot* arrayOne, struct nodeOneHot* arrayTwo, int size)
+void multArrays(struct nodeOneOld* arrayOne, struct nodeOneOld* arrayTwo, int size)
 {
    for(int j = 0; j < 30; j++)
     {
@@ -69,7 +69,7 @@ void multArrays(struct nodeOneHot* arrayOne, struct nodeOneHot* arrayTwo, int si
     }
 }
 
-void freeAoS(struct nodeOneHot* array, int size)
+void freeAoS(struct nodeOneOld* array, int size)
 {
     for(int i = 0; i < size; i++)
         free(array[i].cold);
@@ -86,10 +86,10 @@ int main()
     ////static
     // struct nodeOneOld arrayOneOld[n];
     ////dynamic
-    struct nodeOneHot* arrayOneHot = (struct nodeOneHot*) malloc(n*sizeof(struct nodeOneHot));
+    struct nodeOneOld* arrayOneHot = (struct nodeOneOld*) malloc(n*sizeof(struct nodeOneOld));
     //create one for nodeOneCold struct too
 
-    struct nodeOneHot* arrayTwoHot = (struct nodeOneHot*) malloc(n*sizeof(struct nodeOneHot));
+    struct nodeOneOld* arrayTwoHot = (struct nodeOneOld*) malloc(n*sizeof(struct nodeOneOld));
 
     //  struct nodeOneOld* arrayOneOld = aligned_alloc(64,sizeof(struct nodeOneOld) * n); //no difference
     // struct nodeOneOld* arrayTwoOld = aligned_alloc(64,sizeof(struct nodeOneOld) * n); //no difference

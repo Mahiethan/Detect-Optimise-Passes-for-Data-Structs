@@ -12,6 +12,13 @@ struct StructureOne //SoA (with static arrays)
     char c[SizeC];
 };
 
+struct StructureTwo //NOT a SoA
+{
+    int a[SizeA]; //sizes predefined for static arrays
+    int b[SizeB];
+    char c;
+};
+
 void populateStructure(struct StructureOne* soa, int sizeA, int sizeB, int sizeC)
 {
     int i;
@@ -67,10 +74,15 @@ void printStructure(struct StructureOne* soa, int sizeA, int sizeB, int sizeC)
 
 int main()
 {
-    struct StructureOne* s1  = createStructureOne();
-    // populateStructure(s1,SizeA,SizeB,SizeC);
-    // printStructure(s1,SizeA,SizeB,SizeC);
+    //structs
+    struct StructureOne s1;
+    struct StructureTwo s2;
 
-    freeStructure(s1);
+    //if a store instruction is found from accessing a identifed struct, this is an SoA
+    s1.a[0] = 100;
+    s1.a[21] = 100;
+    s1.c[7] = 'b';
+    printf("%d\n", s1.a[0]);
+
     return 0;
 }
