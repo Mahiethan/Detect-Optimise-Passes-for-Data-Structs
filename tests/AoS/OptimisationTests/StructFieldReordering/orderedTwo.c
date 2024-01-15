@@ -10,7 +10,6 @@ struct nodeOneOld
     /////////////////////// Word 1
     long long int b : 48; // 64-bit integer with bit-cast to 6 bytes (48 bits)
     char e;
-    //long long int e : 16; //this fills up the 2 byte padding
     // 1 byte padding
     /////////////////////// Word 2
     int c;
@@ -59,7 +58,7 @@ void multArrays(struct nodeOneOld* arrayOne, struct nodeOneOld* arrayTwo, int si
 int main()
 {
     // int n = 99999;
-    int n = 999999;
+    int n = 9999999;
     int i;
    
 //    for(i = 0; i < 100; i++)

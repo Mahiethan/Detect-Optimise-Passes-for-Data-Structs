@@ -4,6 +4,8 @@
 #include "llvm/Support/raw_ostream.h"
 #include "llvm/IR/LLVMContext.h"
 
+#include  "llvm/Transforms/Utils/BasicBlockUtils.h"
+
 #include <string>
 
 using namespace llvm;
@@ -14,7 +16,7 @@ IRBuilder<> Builder(TheContext);
 
 ArrayRef<Type*> elemArr; //original struct fields
 
-vector<tuple<Type*,int,int,int>> newSortedElems; //sorted struct fields
+vector<tuple<Type*,int,int,int,bool>> newSortedElems; //sorted struct fields
 
 string modifiedStruct; //name of modified struct
 
@@ -33,7 +35,7 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
           //get element type array
           elemArr = allStructs.at(i)->elements();
 
-          vector<tuple<Type*,int,int,int>> elems; //the type, original index, final index and size of each field will be kept track
+          vector<tuple<Type*,int,int,int,bool>> elems; //the type, original index, final index and size of each field will be kept track. the bool shows whether it is a bitfield.
         
           DataLayout* TD = new DataLayout(&M);
 
@@ -55,6 +57,7 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
             // errs()<<size/8<<"\n";
 
             Type* newTy;
+            bool isBitfield = false;
 
             if((size != 8) & (size != 32) & (size != 64))
             {
@@ -62,6 +65,7 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
               Type* I = IntegerType::getInt8Ty(TheContext);
               int num = size/8;
               newTy = ArrayType::get(I, num);
+              isBitfield = true;
 
               // Type* newTy = Type::getIntNTy(TheContext,size); //create a new type equal in bit size to the original field
             }
@@ -77,14 +81,14 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
 
             // elems.push_back(make_tuple(newTy,o,0,size/8)); //store each struct field, with its type, original index and size
 
-            elems.push_back(make_tuple(newTy,o,0,size/8)); //store each struct field, with its type, original index and size
+            elems.push_back(make_tuple(newTy,o,0,size/8,isBitfield)); //store each struct field, with its type, original index and size
 
             o++;
           }
 
           // errs()<<"---------------------------\n";
 
-          vector<tuple<Type*,int,int,int>> sortedElems; //sorted struct fields
+          vector<tuple<Type*,int,int,int,bool>> sortedElems; //sorted struct fields
 
           /* sort fields by decreasing type size as well storing the new index position of the field */
           bool none = false;
@@ -94,7 +98,7 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
             none = true;
             int MAX = INT_MIN;
             int o; //old index
-            vector<std::tuple<llvm::Type *, int, int, int>>::iterator toDelete;
+            vector<std::tuple<llvm::Type *, int, int, int, bool>>::iterator toDelete;
             for(auto it = elems.begin(); it != elems.end(); it++)
             {
               Type* ty = get<0>(*it);
@@ -113,7 +117,7 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
             }
             else
             {
-              sortedElems.push_back(make_tuple(get<0>(*toDelete),get<1>(*toDelete),f,get<3>(*toDelete))); //store each struct field, with its type, original index, new index and size
+              sortedElems.push_back(make_tuple(get<0>(*toDelete),get<1>(*toDelete),f,get<3>(*toDelete),get<4>(*toDelete))); //store each struct field, with its type, original index, new index and size
               f++;
               elems.erase(toDelete);
             }
@@ -125,7 +129,7 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
           {
             int size = get<3>(*it1);
             int padding = 8 - size;
-            newSortedElems.push_back(make_tuple(get<0>(*it1),get<1>(*it1),currIndex,get<3>(*it1)));
+            newSortedElems.push_back(make_tuple(get<0>(*it1),get<1>(*it1),currIndex,get<3>(*it1),get<4>(*it1)));
             sortedElems.erase(it1);
             currIndex++;
             if(padding == 0)
@@ -145,7 +149,7 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
                   if(size <= padding)
                   {
                     padding -= size;
-                    newSortedElems.push_back(make_tuple(get<0>(*it2),get<1>(*it2),currIndex,get<3>(*it2)));
+                    newSortedElems.push_back(make_tuple(get<0>(*it2),get<1>(*it2),currIndex,get<3>(*it2),get<4>(*it2)));
                     sortedElems.erase(it2);
                     currIndex++;
                   }
@@ -253,10 +257,59 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
               for (auto &B : F)  
               { 
                   bool foundAoS = false;
+                  bool lookForStore = false;
+                  GetElementPtrInst* bitfieldGEP;
+                  Type* actualType;
                   for (auto &I : B) /// iterate through all instructions
                   {
+                    if(lookForStore == true) //if a value is being stored in a bitfield of a struct, may need to change its type
+                    {
+                      if(auto *SI = dyn_cast<StoreInst>(&I)) //find a Store instruction for a bitfield
+                      {
+                        Value* operand = SI->getOperand(0); //get operand that is being stored in bitfield
+                        
+                        int origSize = TD->getTypeSizeInBits(operand->getType())/8; //get size of this operand to be stored
+
+                        int newSize = TD->getTypeSizeInBits(actualType)/8; //get intended size that should be stored in bitfield
+
+
+                        if(origSize != newSize) //change store operand only if allocated size is greater than actual size - to make sure the data fits in a cache line without overflowing - it doesn't matter if the size is less that actual, this is guaranteed to fit
+                        {
+                          TruncInst* newTrunc = new TruncInst(operand,Type::getIntNTy(TheContext,newSize*8),"",&I); 
+                          SI->setOperand(0,newTrunc);
+                        }
+
+                        lookForStore = false;
+                      }
+                    }
+                    //also look out for load inst that has a GEP as its operand, then change this GEP indices
+                    // if(auto *LI = dyn_cast<LoadInst>(&I))
+                    // {
+                    //   Value* operand = LI->getOperand(0);
+                    //   operand->print(errs());
+                    //   errs()<<"\n";
+
+
+                    //   if(auto *GEP = dyn_cast<GEPOperator>(operand))
+                    //   {
+                    //     // if(GEP->getSourceElementType() == allStructs.at(i))
+                    //     // {
+                    //       errs()<<"yhh\n";
+                    //       Value* ptrOperand = GEP->getPointerOperand();
+                          
+                    //       // GEP->setOperand(GEP->getNumIndices(),ConstantInt::get(TheContext,APInt(32,7)));
+                    //       // GEP->print(errs());
+
+                    //     // }
+                    //     // GEP->getSourceElementType()->print(errs());
+                    //     // errs()<<"\n";
+
+                    //   }
+                    // }
+                    // else 
                     if(auto *GEP = dyn_cast<GetElementPtrInst>(&I)) //find a GEP instruction
                     {
+                      lookForStore = false; //if a GEP is found before a store, it means that nothing is being stored in that index, only accessed
                       Value* ret = GEP->getOperand(GEP->getNumIndices()); //getting last operand
                       string op_str; 
                       raw_string_ostream to_str(op_str);
@@ -307,11 +360,23 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
                         {
                           int currIndex = get<1>(newSortedElems.at(i));
                           int newIndex = get<2>(newSortedElems.at(i));
+                          bool isBitfield = get<4>(newSortedElems.at(i));
 
                           if(index == currIndex) //replace old index with new index
                           {
                             index = newIndex;
                             GEP->setResultElementType(get<0>(newSortedElems.at(i)));
+
+                            if(isBitfield == true)
+                            {
+                              lookForStore = true;
+                              actualType = get<0>(newSortedElems.at(i));
+                              bitfieldGEP = GEP;
+                              // errs()<<"Found bitfield\n";
+                              // I.print(errs());
+                              // errs()<<"\n";
+                            }
+
                             break;
                           }
                         }

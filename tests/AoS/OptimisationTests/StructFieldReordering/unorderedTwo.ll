@@ -259,7 +259,7 @@ entry:
   %arrayOneOld = alloca ptr, align 8
   %arrayTwoOld = alloca ptr, align 8
   store i32 0, ptr %retval, align 4
-  store i32 999999, ptr %n, align 4
+  store i32 9999999, ptr %n, align 4
   %0 = load i32, ptr %n, align 4
   %conv = sext i32 %0 to i64
   %mul = mul i64 %conv, 32

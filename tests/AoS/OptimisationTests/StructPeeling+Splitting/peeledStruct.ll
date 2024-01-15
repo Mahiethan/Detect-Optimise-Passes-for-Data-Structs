@@ -283,6 +283,7 @@ entry:
   %retval = alloca i32, align 4
   %n = alloca i32, align 4
   %i = alloca i32, align 4
+  %result = alloca ptr, align 8
   store i32 0, ptr %retval, align 4
   store i32 999999, ptr %n, align 4
   store i32 0, ptr %i, align 4
@@ -308,18 +309,25 @@ for.body:                                         ; preds = %for.cond
 
 if.then:                                          ; preds = %for.body
   %call = call i32 (ptr, ...) @printf(ptr noundef @.str)
-  %6 = load i32, ptr getelementptr inbounds ([999999 x %struct.nodeOneOld], ptr @arrayOneOld, i64 0, i64 5000), align 16
-  %call2 = call i32 (ptr, ...) @printf(ptr noundef @.str.1, i32 noundef %6)
-  %7 = load double, ptr getelementptr inbounds ([999999 x %struct.nodeOneOld], ptr @arrayOneOld, i64 0, i64 5000, i32 1), align 8
-  %call3 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %7)
+  store ptr @arrayOneOld, ptr %result, align 8
+  %6 = load ptr, ptr %result, align 8
+  %arrayidx = getelementptr inbounds %struct.nodeOneOld, ptr %6, i64 5000
+  %a = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx, i32 0, i32 0
+  %7 = load i32, ptr %a, align 8
+  %call2 = call i32 (ptr, ...) @printf(ptr noundef @.str.1, i32 noundef %7)
+  %8 = load ptr, ptr %result, align 8
+  %arrayidx3 = getelementptr inbounds %struct.nodeOneOld, ptr %8, i64 5000
+  %b = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx3, i32 0, i32 1
+  %9 = load double, ptr %b, align 8
+  %call4 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %9)
   br label %if.end
 
 if.end:                                           ; preds = %if.then, %for.body
   br label %for.inc
 
 for.inc:                                          ; preds = %if.end
-  %8 = load i32, ptr %i, align 4
-  %inc = add nsw i32 %8, 1
+  %10 = load i32, ptr %i, align 4
+  %inc = add nsw i32 %10, 1
   store i32 %inc, ptr %i, align 4
   br label %for.cond, !llvm.loop !12
 

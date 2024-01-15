@@ -106,7 +106,7 @@ int main()
         printf("Validity check\n");
         // for(int j = 5000; j < 5010; j++)
         // {
-            printf("%d\n",arrayOneHot[5000].a);
+            printf("%d\n---\n",arrayOneHot[5000].a);
             printf("%f\n---\n",arrayOneHot[5000].b);
         //}
      }

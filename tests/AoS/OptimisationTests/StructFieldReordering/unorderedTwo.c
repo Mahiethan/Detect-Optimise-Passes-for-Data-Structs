@@ -14,11 +14,6 @@ struct nodeOneOld
     int c;
     int d;
     /////////////////////// Word 3
-    // char e;
-    //7 bytes padding
-    // short r;
-    // short t;
-    // short q;
     char e;
 
 };
@@ -65,7 +60,7 @@ void multArrays(struct nodeOneOld* arrayOne, struct nodeOneOld* arrayTwo, int si
 int main()
 {
     // int n = 99999;
-    int n = 999999;
+    int n = 9999999;
     int i;
    
 //    for(i = 0; i < 100; i++)

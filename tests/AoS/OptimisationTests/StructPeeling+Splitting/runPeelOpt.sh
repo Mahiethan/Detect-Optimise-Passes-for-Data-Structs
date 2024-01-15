@@ -20,7 +20,7 @@ echo ""
 file_content=$(sed -n "10p" "output.txt") 
 echo $file_content
 echo ""
-echo "Memory usage of unordered AoS:"
+echo "Memory usage of unpeeled AoS:"
 file_content=$(sed -n "15p" "output.txt")
 echo $file_content
 rm output.txt
@@ -56,7 +56,7 @@ echo ""
 file_content=$(sed -n "10p" "output.txt") 
 echo $file_content
 echo ""
-echo "Memory usage of unordered AoS:"
+echo "Memory usage of peeled AoS:"
 file_content=$(sed -n "15p" "output.txt")
 echo $file_content
 rm output.txt
@@ -102,7 +102,7 @@ clang -g peeledAoS.c -o peeledAoS
 echo "Runtime of unoptimised code (unpeeled AoS):"
 echo ""
 
-/usr/bin/time -v ./unpeeledAoS >> output.txt 2>&1
+/usr/bin/time -v ./peeledAoS >> output.txt 2>&1
 value_a_unpeeled=$(sed -n "2p" "output.txt") 
 echo $value_a_unpeeled
 value_b_unpeeled=$(sed -n "4p" "output.txt") 
@@ -111,7 +111,7 @@ echo ""
 file_content=$(sed -n "10p" "output.txt") 
 echo $file_content
 echo ""
-echo "Memory usage of unordered AoS:"
+echo "Memory usage of peeled AoS:"
 file_content=$(sed -n "15p" "output.txt")
 echo $file_content
 rm output.txt
@@ -135,19 +135,19 @@ gcc -no-pie peeledStructTwo.s -o peeledStructTwo.native > /dev/null 2>&1 #Assemb
 rm peeledStructTwo.s
 
 echo ""
-echo "Runtime of optimised code (peeled AoS):"
+echo "Runtime of optimised code (peeled peeled AoS):"
 echo ""
 
 /usr/bin/time -v ./peeledStructTwo.native >> output.txt 2>&1
 value_a_peeled=$(sed -n "2p" "output.txt") 
 echo $value_a_peeled
 value_b_ordered=$(sed -n "4p" "output.txt") 
-echo $value_b_ordered
+echo $value_b_peeled
 echo ""
 file_content=$(sed -n "10p" "output.txt") 
 echo $file_content
 echo ""
-echo "Memory usage of unordered AoS:"
+echo "Memory usage of peeled peeled AoS:"
 file_content=$(sed -n "15p" "output.txt")
 echo $file_content
 rm output.txt
@@ -175,7 +175,7 @@ rm output.txt
 
 # echo ""
 
-if [ "$value_a_unpeeled" == "$value_a_peeled" ] && [ "$value_b_unordered" == "$value_b_ordered" ] 
+if [ "$value_a_unpeeled" == "$value_a_peeled" ] && [ "$value_b_unpeeled" == "$value_b_peeled" ] 
 then
   echo "Outputs after optimisation are correct"
 else

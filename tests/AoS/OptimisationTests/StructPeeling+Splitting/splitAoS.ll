@@ -7,7 +7,7 @@ target triple = "x86_64-unknown-linux-gnu"
 %struct.nodeOneCold = type { double, i8, double, double, double, double, float }
 
 @.str = private unnamed_addr constant [16 x i8] c"Validity check\0A\00", align 1
-@.str.1 = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+@.str.1 = private unnamed_addr constant [8 x i8] c"%d\0A---\0A\00", align 1
 @.str.2 = private unnamed_addr constant [8 x i8] c"%f\0A---\0A\00", align 1
 
 ; Function Attrs: noinline nounwind optnone uwtable
