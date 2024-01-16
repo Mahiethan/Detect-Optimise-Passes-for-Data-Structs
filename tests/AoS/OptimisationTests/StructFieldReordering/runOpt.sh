@@ -33,7 +33,7 @@ echo ""
 echo "Applying struct field reordering "
 echo ""
 
-opt -load-pass-plugin=../../../../passes/optimiseAoS/optimiseAoS.so -passes="optimiseAoS" -time-passes < orderingFields.ll > orderedFields.bc 2> output.txt
+opt -load-pass-plugin=../../../../passes/optimiseAoS/reorderAoS/reorderAoS.so -passes="reorderAoS" -time-passes < orderingFields.ll > orderedFields.bc 2> output.txt
 file_content=$(sed -n "1p" "output.txt") 
 echo $file_content
 echo ""
@@ -147,7 +147,7 @@ echo ""
 echo "Applying struct field reordering "
 echo ""
 
-opt -load-pass-plugin=../../../../passes/optimiseAoS/optimiseAoS.so -passes="optimiseAoS" -time-passes < orderingTwo.ll > orderedTwo.bc 2> output.txt
+opt -load-pass-plugin=../../../../passes/optimiseAoS/reorderAoS/reorderAoS.so -passes="reorderAoS" -time-passes < orderingTwo.ll > orderedTwo.bc 2> output.txt
 file_content=$(sed -n "1p" "output.txt") 
 echo $file_content
 echo ""

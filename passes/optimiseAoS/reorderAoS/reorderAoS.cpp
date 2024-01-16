@@ -24,7 +24,7 @@ bool performOpt = false;
 
 namespace {
 
-struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
+struct reorderAoS : public PassInfoMixin<reorderAoS> {
     PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM) {
 
         /// this is to be replaced with structs used in AoS 
@@ -427,13 +427,13 @@ struct optimiseAoS : public PassInfoMixin<optimiseAoS> {
 extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
 llvmGetPassPluginInfo() {
   return {
-    LLVM_PLUGIN_API_VERSION, "optimiseAoS", "v0.1",
+    LLVM_PLUGIN_API_VERSION, "reorderAoS", "v0.1",
     [](PassBuilder &PB) {
       PB.registerPipelineParsingCallback(
         [](StringRef Name, ModulePassManager &MPM, //For FunctionPass use FunctionPassManager &FPM
         ArrayRef<PassBuilder::PipelineElement>) {
-          if(Name == "optimiseAoS"){ //name of pass
-            MPM.addPass(optimiseAoS());
+          if(Name == "reorderAoS"){ //name of pass
+            MPM.addPass(reorderAoS());
             return true;
           }
           return false;

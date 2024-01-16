@@ -1,6 +1,6 @@
-add_llvm_pass_plugin(optimiseAoS
+add_llvm_pass_plugin(reorderAoS
     # List your source files here.
-    optimiseAoS.cpp
+    reorderAoS.cpp
 
 
     PLUGIN_TOOL
