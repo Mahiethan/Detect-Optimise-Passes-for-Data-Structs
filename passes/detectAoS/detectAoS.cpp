@@ -125,6 +125,8 @@
 #include "llvm/Passes/PassPlugin.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include "./detectAoS.h"
+
 #include <algorithm>
 #include <string>
 #include <deque>
@@ -193,7 +195,7 @@ using namespace std;
 vector<tuple<Value*,Function*,string>> potential;
 vector<Value*> argStores;
 vector<pair<Value*,Function*>> possibleGlobals;
-vector<tuple<Value*,Function*,string>> confirmed;
+// vector<tuple<Value*,Function*,string>> confirmed;
 vector<tuple<string,vector<int>,Value*>> calledFunction; //stores pair of function name and used argument index of pointer (if any)
 
 Function* originFunction = NULL;
@@ -422,7 +424,6 @@ Value* calledAoS = NULL;
 
 bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
 {
-  
     Value* operand = gep->getOperand(0);
 
     //getting operand as string
@@ -432,19 +433,42 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
 
     // errs()<<"Checking operand: "<<op_string<<"\n";
 
-    while(isa<LoadInst>(operand) == false & isa<AllocaInst>(operand) == false)
+    while(isa<LoadInst>(operand) == false & isa<AllocaInst>(operand) == false & isa<GlobalVariable>(operand) == false)
     {
       if(auto *GEP = dyn_cast<GetElementPtrInst>(operand))
       {
         operand = GEP->getOperand(0);
+        // operand->printAsOperand(ops);
       }
       else
       {
         return false;
       }
     }
+    
+    if(auto *GV = dyn_cast<GlobalVariable>(operand)) //GEP operating on a global AoS
+    {
+      std::string ptr_string; 
+      raw_string_ostream ptr(ptr_string);
+      aos->printAsOperand(ptr);
 
-    if(auto *AI = dyn_cast<AllocaInst>(operand))
+      if(op_string == ptr_string)
+      {
+        if(type == "static")
+          staticCount++;
+        else
+        {
+          type = "dynamic";
+          dynamicCount++;
+        }
+
+        confirmed.push_back(make_tuple(aos,originFunction,type));
+        eraseFromPotential(aos);
+        eraseFromPossibleGlobals(aos);
+        return true;
+      }
+    }
+    else if(auto *AI = dyn_cast<AllocaInst>(operand))
     {
       std::string ptr_string; 
       raw_string_ostream ptr(ptr_string);
@@ -458,7 +482,10 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
         if(type == "static")
           staticCount++;
         else
+        {
+          type = "dynamic";
           dynamicCount++;
+        }
 
         if(isParam)
           confirmed.push_back(make_tuple(calledAoS,originFunction,type));
@@ -495,7 +522,10 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
         if(type == "static")
           staticCount++;
         else
+        {
+          type = "dynamic";
           dynamicCount++;
+        }
 
         if(isParam)
           confirmed.push_back(make_tuple(calledAoS,originFunction,type));
@@ -774,15 +804,15 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
         }
 
         // errs()<<"Size of calledFunctions vector: "<<calledFunction.size()<<"\n";
-        for(int i = 0; i < calledFunction.size(); i++)
-        {
-          vector<int> indices = get<1>(calledFunction.at(i));
-          // errs()<<get<0>(calledFunction.at(i))<<" uses ";
-          for(int j = 0; j < indices.size(); j++)
-          {
-            // errs()<<"index "<<indices.at(j)<<"\n";
-          }
-        }
+        // for(int i = 0; i < calledFunction.size(); i++)
+        // {
+        //   vector<int> indices = get<1>(calledFunction.at(i));
+        //   // errs()<<get<0>(calledFunction.at(i))<<" uses ";
+        //   for(int j = 0; j < indices.size(); j++)
+        //   {
+        //     // errs()<<"index "<<indices.at(j)<<"\n";
+        //   }
+        // }
 
         // errs()<<potential.size()<<"\n";
         // errs()<<confirmed.size()<<"\n";
@@ -852,6 +882,8 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                 }
                 else if(auto *GEP = dyn_cast<GetElementPtrInst>(&I))
                 {
+                  // GEP->print(errs());
+                  // errs()<<"\n";
                   if(GEP->getResultElementType()->isStructTy())
                   {
                     bool found = false;
@@ -924,7 +956,7 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
           if(funcName != NULL)
           {
             funcName->printAsOperand(func);
-            errs()<<" declared in function: "<<func_str<<"\n";
+            errs()<<" used in function: "<<func_str<<"\n";
           }
           else
           {
@@ -963,7 +995,7 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
           if(funcName != NULL)
           {
             funcName->printAsOperand(func);
-            errs()<<" - "<<type<<" AoS declared in function: "<<func_str<<"\n";
+            errs()<<" - "<<type<<" AoS used in function: "<<func_str<<"\n";
           }
           else
           {
@@ -978,22 +1010,22 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
 }
 
 
-//Creates plugin for pass - required
-extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
-llvmGetPassPluginInfo() {
-  return {
-    LLVM_PLUGIN_API_VERSION, "passName", "v0.1",
-    [](PassBuilder &PB) {
-      PB.registerPipelineParsingCallback(
-        [](StringRef Name, ModulePassManager &MPM, //Module pass
-        ArrayRef<PassBuilder::PipelineElement>) {
-          if(Name == "detectAoS"){ //name of pass
-            MPM.addPass(detectAoS());
-            return true;
-          }
-          return false;
-        }
-      );
-    }
-  };
-}
+// //Creates plugin for pass - required
+// extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
+// llvmGetPassPluginInfo() {
+//   return {
+//     LLVM_PLUGIN_API_VERSION, "detectAoS", "v0.1",
+//     [](PassBuilder &PB) {
+//       PB.registerPipelineParsingCallback(
+//         [](StringRef Name, ModulePassManager &MPM, //Module pass
+//         ArrayRef<PassBuilder::PipelineElement>) {
+//           if(Name == "detectAoS"){ //name of pass
+//             MPM.addPass(detectAoS());
+//             return true;
+//           }
+//           return false;
+//         }
+//       );
+//     }
+//   };
+// }

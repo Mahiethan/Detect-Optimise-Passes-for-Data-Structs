@@ -46,7 +46,9 @@ void populateThree()
 {
     int f = 100;
     struct nodeTwo arrayFour[f]; 
-    arrayFour[67].b = 90.23; //dynamic AoS 4 - DETECTED!
+    // struct nodeTwo arrayFour[100]; 
+    arrayFour[67].b = 90.23; //dynamic AoS 4 - DETECTED! (%vla)
+
     // populateTwo(); //SHOULD NOT RUN THIS - BEING CURRENTLY CALLED - SKIP!! - AVOID INFINITE RECURSION
 }
 
@@ -86,6 +88,7 @@ void populateParam1(struct nodeOne* array, int n)
    else
    {
     populateParam2(array,n);
+    globalFour[99].a = 99; //static AoS 5 - DETECTED
    }
 }
 
@@ -93,12 +96,12 @@ void populateParam2(struct nodeOne* array, int n)
 {
     struct nodeOne innerArrayOne[100];
     populateParam3(array,n);
-    innerArrayOne[0].a = 99; //dynamic AoS 5 - DETECTED
+    innerArrayOne[0].a = 99; //static AoS 6 - DETECTED
 }
 
 void populateParam3(struct nodeOne* array, int n)
 {
-    // //dynamic AoS 6 - DETECTED
+    // //dynamic AoS 7 - DETECTED
     globalFive[1].a = 100;
     // populateNodeOne(globalFive,100);
 
@@ -107,7 +110,7 @@ void populateParam3(struct nodeOne* array, int n)
 
 void populateParam4(struct nodeOne* array, int n)
 {
-    populateNodeOne(array,n); //dynamic AoS 7 - DETECTED
+    populateNodeOne(array,n); //static AoS 8 - DETECTED
     // innerArrayOne[2].a = 99; //Won't work - this variable is out of scope
 }
 
@@ -115,11 +118,13 @@ int main()
 {
     int a = 100;
     struct nodeOne arrayOne[a]; 
-    populateNodeOne(arrayOne,a); //dynamic AoS 1 - DETECTED!
+    // struct nodeOne arrayOne[100]; 
+    populateNodeOne(arrayOne,a); //static AoS 1 - DETECTED! (%vla)
 
     int b = 100;
     struct nodeTwo arrayTwo[b];
-    arrayTwo[23].a = 1.02f; //dynamic AoS 2 - DETECTED!
+    // struct nodeTwo arrayTwo[100]; 
+    arrayTwo[23].a = 1.02f; //static AoS 2 - DETECTED! (%vla1)
 
     int c = 100;
     int intArray[c]; //not an AoS
@@ -127,12 +132,13 @@ int main()
 
     int e = 100;
     struct nodeOne arrayThree[e];
+    // struct nodeOne arrayThree[100];
 
-    globalThree[53].a = 99; //dynamic AoS 3 - DETECTED!
+    globalThree[53].a = 99; //static AoS 3 - DETECTED! (%globalThree)
 
-    populate(); //adds two static AoS: arrayFour and globalFour
+    populate(); //adds 4th static AoS: arrayFour (%vla in @populateThree)
 
-    populateParam0(arrayThree,e); //adds three static AoS: arrayThree, innerArrayOne and globalFive
+    populateParam0(arrayThree,e); //adds three static AoS: globalFive (@globalFive), arrayThree (%array.addr in @populateNodeOne), innerArrayOne (%innerArrayOne) and globalFour (@globalFour)
 
     return 0;
 }

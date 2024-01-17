@@ -24,3 +24,14 @@ add_subdirectory(./detectAoS/detectAoSFlags)
 add_subdirectory(./optimiseAoS/reorderAoS)
 add_subdirectory(./optimiseAoS/peelAoS)
 add_subdirectory(./optimiseAoS/splitAoS)
+
+add_llvm_pass_plugin(allPasses
+    # List your source files here.
+    allPasses.cpp
+
+    DEPENDS
+    intrinsics_gen
+
+    PLUGIN_TOOL
+    opt
+)

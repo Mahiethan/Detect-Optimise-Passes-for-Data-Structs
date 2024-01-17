@@ -11,6 +11,7 @@ target triple = "x86_64-unknown-linux-gnu"
 @globalFive = dso_local global ptr null, align 8
 @globalOne = dso_local global ptr null, align 8
 @globalTwo = dso_local global ptr null, align 8
+@.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 @invalidGlobal = dso_local global %struct.nodeOne zeroinitializer, align 8
 
 ; Function Attrs: noinline nounwind optnone uwtable
@@ -88,16 +89,21 @@ for.end:                                          ; preds = %for.cond
 ; Function Attrs: noinline nounwind optnone uwtable
 define dso_local void @populateThree() #0 {
 entry:
-  %0 = load ptr, ptr @globalFour, align 8
-  %arrayidx = getelementptr inbounds %struct.nodeTwo, ptr %0, i64 67
-  %b = getelementptr inbounds %struct.nodeTwo, ptr %arrayidx, i32 0, i32 1
-  store double 9.023000e+01, ptr %b, align 8
+  %call = call noalias ptr @calloc(i64 noundef 1000, i64 noundef 16) #4
+  store ptr %call, ptr @globalFour, align 8
   ret void
 }
+
+; Function Attrs: nounwind allocsize(0,1)
+declare noalias ptr @calloc(i64 noundef, i64 noundef) #1
 
 ; Function Attrs: noinline nounwind optnone uwtable
 define dso_local void @populateTwo() #0 {
 entry:
+  %0 = load ptr, ptr @globalFour, align 8
+  %arrayidx = getelementptr inbounds %struct.nodeTwo, ptr %0, i64 67
+  %b = getelementptr inbounds %struct.nodeTwo, ptr %arrayidx, i32 0, i32 1
+  store double 9.023000e+01, ptr %b, align 8
   call void @populateThree()
   ret void
 }
@@ -111,14 +117,11 @@ entry:
   store i32 100, ptr %f, align 4
   %1 = load i32, ptr %f, align 4
   %conv = sext i32 %1 to i64
-  %call = call noalias ptr @calloc(i64 noundef %conv, i64 noundef 16) #3
+  %call = call noalias ptr @calloc(i64 noundef %conv, i64 noundef 16) #4
   store ptr %call, ptr @globalFour, align 8
   call void @populateTwo()
   ret void
 }
-
-; Function Attrs: nounwind allocsize(0,1)
-declare noalias ptr @calloc(i64 noundef, i64 noundef) #1
 
 ; Function Attrs: noinline nounwind optnone uwtable
 define dso_local void @populateParam0(ptr noundef %array, i32 noundef %n) #0 {
@@ -168,7 +171,7 @@ entry:
   %innerArrayOne = alloca ptr, align 8
   store ptr %array, ptr %array.addr, align 8
   store i32 %n, ptr %n.addr, align 4
-  %call = call noalias ptr @malloc(i64 noundef 1600) #4
+  %call = call noalias ptr @malloc(i64 noundef 1600) #5
   store ptr %call, ptr %innerArrayOne, align 8
   %0 = load ptr, ptr %array.addr, align 8
   %1 = load i32, ptr %n.addr, align 4
@@ -193,7 +196,7 @@ entry:
   %0 = load ptr, ptr %array.addr, align 8
   %1 = load i32, ptr %n.addr, align 4
   call void @populateParam4(ptr noundef %0, i32 noundef %1)
-  %call = call noalias ptr @malloc(i64 noundef 1600) #4
+  %call = call noalias ptr @malloc(i64 noundef 1600) #5
   store ptr %call, ptr @globalFive, align 8
   ret void
 }
@@ -209,7 +212,7 @@ entry:
   %0 = load ptr, ptr %array.addr, align 8
   %1 = load i32, ptr %n.addr, align 4
   call void @populateNodeOne(ptr noundef %0, i32 noundef %1)
-  %call = call noalias ptr @calloc(i64 noundef 100, i64 noundef 16) #3
+  %call = call noalias ptr @calloc(i64 noundef 100, i64 noundef 16) #4
   store ptr %call, ptr %arrayTwo, align 8
   %2 = load ptr, ptr %arrayTwo, align 8
   %arrayidx = getelementptr inbounds %struct.nodeTwo, ptr %2, i64 23
@@ -231,12 +234,13 @@ entry:
   %d = alloca i32, align 4
   %e = alloca i32, align 4
   %arrayThree = alloca ptr, align 8
+  %f = alloca i32, align 4
   store i32 0, ptr %retval, align 4
   store i32 100, ptr %a, align 4
   %0 = load i32, ptr %a, align 4
   %conv = sext i32 %0 to i64
   %mul = mul i64 %conv, 16
-  %call = call noalias ptr @malloc(i64 noundef %mul) #4
+  %call = call noalias ptr @malloc(i64 noundef %mul) #5
   store ptr %call, ptr %arrayOne, align 8
   %1 = load ptr, ptr %arrayOne, align 8
   %2 = load i32, ptr %a, align 4
@@ -244,7 +248,7 @@ entry:
   store i32 100, ptr %b, align 4
   %3 = load i32, ptr %b, align 4
   %conv1 = sext i32 %3 to i64
-  %call2 = call noalias ptr @calloc(i64 noundef %conv1, i64 noundef 16) #3
+  %call2 = call noalias ptr @calloc(i64 noundef %conv1, i64 noundef 16) #4
   store ptr %call2, ptr %arrayTwo, align 8
   %4 = load ptr, ptr %arrayTwo, align 8
   %arrayidx = getelementptr inbounds %struct.nodeTwo, ptr %4, i64 23
@@ -254,7 +258,7 @@ entry:
   %5 = load i32, ptr %c, align 4
   %conv4 = sext i32 %5 to i64
   %mul5 = mul i64 %conv4, 16
-  %call6 = call noalias ptr @malloc(i64 noundef %mul5) #4
+  %call6 = call noalias ptr @malloc(i64 noundef %mul5) #5
   store ptr %call6, ptr @globalOne, align 8
   %6 = load ptr, ptr @globalOne, align 8
   %arrayidx7 = getelementptr inbounds %struct.nodeOne, ptr %6, i64 4
@@ -262,7 +266,7 @@ entry:
   store i8 118, ptr %b8, align 4
   %7 = load i32, ptr %c, align 4
   %conv9 = sext i32 %7 to i64
-  %call10 = call noalias ptr @calloc(i64 noundef %conv9, i64 noundef 4) #3
+  %call10 = call noalias ptr @calloc(i64 noundef %conv9, i64 noundef 4) #4
   store ptr %call10, ptr %intArray, align 8
   %8 = load ptr, ptr %intArray, align 8
   %arrayidx11 = getelementptr inbounds i32, ptr %8, i64 55
@@ -270,12 +274,12 @@ entry:
   %9 = load i32, ptr %c, align 4
   %conv12 = sext i32 %9 to i64
   %mul13 = mul i64 %conv12, 16
-  %call14 = call noalias ptr @malloc(i64 noundef %mul13) #4
+  %call14 = call noalias ptr @malloc(i64 noundef %mul13) #5
   store ptr %call14, ptr @globalOne, align 8
   store i32 100, ptr %d, align 4
   %10 = load i32, ptr %d, align 4
   %conv15 = sext i32 %10 to i64
-  %call16 = call noalias ptr @calloc(i64 noundef %conv15, i64 noundef 16) #3
+  %call16 = call noalias ptr @calloc(i64 noundef %conv15, i64 noundef 16) #4
   store ptr %call16, ptr @globalTwo, align 8
   %11 = load ptr, ptr @globalTwo, align 8
   %12 = load i32, ptr %d, align 4
@@ -284,27 +288,34 @@ entry:
   %13 = load i32, ptr %e, align 4
   %conv17 = sext i32 %13 to i64
   %mul18 = mul i64 %conv17, 16
-  %call19 = call noalias ptr @malloc(i64 noundef %mul18) #4
+  %call19 = call noalias ptr @malloc(i64 noundef %mul18) #5
   store ptr %call19, ptr %arrayThree, align 8
+  store i32 100, ptr %f, align 4
   %14 = load i32, ptr %e, align 4
   %conv20 = sext i32 %14 to i64
   %mul21 = mul i64 %conv20, 16
-  %call22 = call noalias ptr @malloc(i64 noundef %mul21) #4
+  %call22 = call noalias ptr @malloc(i64 noundef %mul21) #5
   store ptr %call22, ptr @globalThree, align 8
   call void @populate()
   %15 = load ptr, ptr %arrayThree, align 8
   %16 = load i32, ptr %e, align 4
   call void @populateParam0(ptr noundef %15, i32 noundef %16)
   %17 = load ptr, ptr @globalFive, align 8
-  call void @populateNodeOne(ptr noundef %17, i32 noundef 100)
+  %arrayidx23 = getelementptr inbounds %struct.nodeOne, ptr %17, i64 0
+  %a24 = getelementptr inbounds %struct.nodeOne, ptr %arrayidx23, i32 0, i32 0
+  %18 = load i32, ptr %a24, align 8
+  %call25 = call i32 (ptr, ...) @printf(ptr noundef @.str, i32 noundef %18)
   ret i32 0
 }
+
+declare i32 @printf(ptr noundef, ...) #3
 
 attributes #0 = { noinline nounwind optnone uwtable "frame-pointer"="all" "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
 attributes #1 = { nounwind allocsize(0,1) "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
 attributes #2 = { nounwind allocsize(0) "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #3 = { nounwind allocsize(0,1) }
-attributes #4 = { nounwind allocsize(0) }
+attributes #3 = { "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #4 = { nounwind allocsize(0,1) }
+attributes #5 = { nounwind allocsize(0) }
 
 !llvm.module.flags = !{!0, !1, !2, !3, !4}
 !llvm.ident = !{!5}

@@ -24,7 +24,7 @@ struct nodeOneOld
 struct nodeOneOld arrayOneOld[999999];
 // struct nodeOneOld arrayOneOldCold[999999]; //duplicate global arrays do not cause issues
 struct nodeOneOld arrayTwoOld[999999];
-
+// struct nodeOneOld* arrayTwoOld;
 
 // void populateNodeOneOld(struct nodeOneOld array[], int size)
 void populateNodeOneOld(int size)
@@ -85,7 +85,7 @@ int main()
     // struct nodeOneOld arrayOneOld[n];
     ////dynamic
     // struct nodeOneOld* arrayOneOld = (struct nodeOneOld*) malloc(n*sizeof(struct nodeOneOld));
-    // struct nodeOneOld* arrayTwoOld = (struct nodeOneOld*) malloc(n*sizeof(struct nodeOneOld));
+    // arrayTwoOld = (struct nodeOneOld*) malloc(n*sizeof(struct nodeOneOld));
 
     //  struct nodeOneOld* arrayOneOld = aligned_alloc(64,sizeof(struct nodeOneOld) * n); //no difference
     // struct nodeOneOld* arrayTwoOld = aligned_alloc(64,sizeof(struct nodeOneOld) * n); //no difference

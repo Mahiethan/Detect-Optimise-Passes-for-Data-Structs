@@ -6,6 +6,10 @@
 
 #include  "llvm/Transforms/Utils/BasicBlockUtils.h"
 
+#include "../../detectAoS/detectAoS.h"
+
+// #include "../../detectAoS/detectAoS.cpp"
+
 #include <string>
 
 using namespace llvm;
@@ -27,8 +31,23 @@ namespace {
 struct reorderAoS : public PassInfoMixin<reorderAoS> {
     PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM) {
 
+        // use vector<StructType*> allStructs = M.getIdentifiedStructTypes()if vector<> confirmed is empty i.e only reorderAoS pass is called
+        // otherwise use the confirmed vector to get all the used structs in AoS and store it in allStructs - if detectAoS and reorderAoS is called
+
         /// this is to be replaced with structs used in AoS 
-        vector<StructType*> allStructs = M.getIdentifiedStructTypes(); //get all struct types used in program
+
+        vector<StructType*> allStructs;
+
+        if(confirmed.size() == 0) //detectAoS pass has not been called
+        {
+          errs()<<"Optimising all structs\n";
+          allStructs = M.getIdentifiedStructTypes(); //get all struct types used in program
+        }
+        else
+        {
+          //get structs used by all AoS
+          errs()<<"To be implemented\n";
+        }
 
         for(int i = 0; i < allStructs.size(); i++)
         {
@@ -423,22 +442,22 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
 
 }
 
-//Creates plugin for pass - required
-extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
-llvmGetPassPluginInfo() {
-  return {
-    LLVM_PLUGIN_API_VERSION, "reorderAoS", "v0.1",
-    [](PassBuilder &PB) {
-      PB.registerPipelineParsingCallback(
-        [](StringRef Name, ModulePassManager &MPM, //For FunctionPass use FunctionPassManager &FPM
-        ArrayRef<PassBuilder::PipelineElement>) {
-          if(Name == "reorderAoS"){ //name of pass
-            MPM.addPass(reorderAoS());
-            return true;
-          }
-          return false;
-        }
-      );
-    }
-  };
-}
+// //Creates plugin for pass - required
+// extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
+// llvmGetPassPluginInfo() {
+//   return {
+//     LLVM_PLUGIN_API_VERSION, "reorderAoS", "v0.1",
+//     [](PassBuilder &PB) {
+//       PB.registerPipelineParsingCallback(
+//         [](StringRef Name, ModulePassManager &MPM, //For FunctionPass use FunctionPassManager &FPM
+//         ArrayRef<PassBuilder::PipelineElement>) {
+//           if(Name == "reorderAoS"){ //name of pass
+//             MPM.addPass(reorderAoS());
+//             return true;
+//           }
+//           return false;
+//         }
+//       );
+//     }
+//   };
+// }

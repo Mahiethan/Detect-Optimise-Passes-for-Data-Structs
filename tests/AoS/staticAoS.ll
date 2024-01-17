@@ -3,14 +3,14 @@ source_filename = "static_AoS.c"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-unknown-linux-gnu"
 
-%struct.nodeOne = type { i32, i8, double }
 %struct.nodeTwo = type { float, double }
+%struct.nodeOne = type { i32, i8, double }
 
+@globalFour = dso_local global [100 x %struct.nodeTwo] zeroinitializer, align 16
 @globalFive = dso_local global [100 x %struct.nodeOne] zeroinitializer, align 16
 @globalThree = dso_local global [100 x %struct.nodeOne] zeroinitializer, align 16
 @globalOne = dso_local global [100 x %struct.nodeOne] zeroinitializer, align 16
 @globalTwo = dso_local global [100 x %struct.nodeTwo] zeroinitializer, align 16
-@globalFour = dso_local global [100 x %struct.nodeTwo] zeroinitializer, align 16
 @invalidGlobal = dso_local global %struct.nodeOne zeroinitializer, align 8
 
 ; Function Attrs: noinline nounwind optnone uwtable
@@ -172,6 +172,7 @@ if.else:                                          ; preds = %entry
   %2 = load ptr, ptr %array.addr, align 8
   %3 = load i32, ptr %n.addr, align 4
   call void @populateParam2(ptr noundef %2, i32 noundef %3)
+  store float 9.900000e+01, ptr getelementptr inbounds ([100 x %struct.nodeTwo], ptr @globalFour, i64 0, i64 99), align 16
   br label %if.end
 
 if.end:                                           ; preds = %if.else, %if.then
