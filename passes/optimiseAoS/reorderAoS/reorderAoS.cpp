@@ -46,11 +46,42 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
         else
         {
           //get structs used by all AoS
-          errs()<<"To be implemented\n";
+          for(int i = 0; i < confirmed.size(); i++)
+          {
+            StructType* structure = get<3>(confirmed.at(i));
+            if(structure == nullptr) //should not occur
+            {
+              errs()<<"WARNING: nullptr found!\n";
+              continue;
+            }
+            bool exist = false;
+            for(int j = 0; j < allStructs.size(); j++)
+            {
+              if(allStructs.at(j) == structure)
+              {
+                exist = true;
+                break;
+              }
+            }
+            if(exist == false)
+            {
+              allStructs.push_back(structure);
+              errs()<<"Optimising "<<structure->getName()<<"\n";
+            }
+            else
+            {
+              errs()<<"Dupe found\n";
+            }
+
+          }
         }
+
+        errs()<<"Optimising "<<allStructs.size()<<" structs, which are: \n";
 
         for(int i = 0; i < allStructs.size(); i++)
         {
+          allStructs.at(i)->print(errs());
+          errs()<<"\n";
           //get element type array
           elemArr = allStructs.at(i)->elements();
 

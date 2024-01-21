@@ -11,6 +11,7 @@ target triple = "x86_64-unknown-linux-gnu"
 @globalFive = dso_local global ptr null, align 8
 @globalOne = dso_local global ptr null, align 8
 @globalTwo = dso_local global ptr null, align 8
+@globalSix = dso_local global ptr null, align 8
 @.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 @invalidGlobal = dso_local global %struct.nodeOne zeroinitializer, align 8
 
@@ -222,6 +223,24 @@ entry:
 }
 
 ; Function Attrs: noinline nounwind optnone uwtable
+define dso_local void @populateGlobal(i32 noundef %n, ptr noundef %array) #0 {
+entry:
+  %n.addr = alloca i32, align 4
+  %array.addr = alloca ptr, align 8
+  store i32 %n, ptr %n.addr, align 4
+  store ptr %array, ptr %array.addr, align 8
+  %0 = load i32, ptr %n.addr, align 4
+  %conv = sext i32 %0 to i64
+  %mul = mul i64 %conv, 16
+  %call = call noalias ptr @malloc(i64 noundef %mul) #5
+  store ptr %call, ptr %array.addr, align 8
+  %1 = load ptr, ptr %array.addr, align 8
+  %2 = load i32, ptr %n.addr, align 4
+  call void @populateNodeOne(ptr noundef %1, i32 noundef %2)
+  ret void
+}
+
+; Function Attrs: noinline nounwind optnone uwtable
 define dso_local i32 @main() #0 {
 entry:
   %retval = alloca i32, align 4
@@ -284,27 +303,30 @@ entry:
   %11 = load ptr, ptr @globalTwo, align 8
   %12 = load i32, ptr %d, align 4
   call void @populateNodeTwo(ptr noundef %11, i32 noundef %12)
+  %13 = load i32, ptr %d, align 4
+  %14 = load ptr, ptr @globalSix, align 8
+  call void @populateGlobal(i32 noundef %13, ptr noundef %14)
   store i32 100, ptr %e, align 4
-  %13 = load i32, ptr %e, align 4
-  %conv17 = sext i32 %13 to i64
+  %15 = load i32, ptr %e, align 4
+  %conv17 = sext i32 %15 to i64
   %mul18 = mul i64 %conv17, 16
   %call19 = call noalias ptr @malloc(i64 noundef %mul18) #5
   store ptr %call19, ptr %arrayThree, align 8
   store i32 100, ptr %f, align 4
-  %14 = load i32, ptr %e, align 4
-  %conv20 = sext i32 %14 to i64
+  %16 = load i32, ptr %e, align 4
+  %conv20 = sext i32 %16 to i64
   %mul21 = mul i64 %conv20, 16
   %call22 = call noalias ptr @malloc(i64 noundef %mul21) #5
   store ptr %call22, ptr @globalThree, align 8
   call void @populate()
-  %15 = load ptr, ptr %arrayThree, align 8
-  %16 = load i32, ptr %e, align 4
-  call void @populateParam0(ptr noundef %15, i32 noundef %16)
-  %17 = load ptr, ptr @globalFive, align 8
-  %arrayidx23 = getelementptr inbounds %struct.nodeOne, ptr %17, i64 0
+  %17 = load ptr, ptr %arrayThree, align 8
+  %18 = load i32, ptr %e, align 4
+  call void @populateParam0(ptr noundef %17, i32 noundef %18)
+  %19 = load ptr, ptr @globalFive, align 8
+  %arrayidx23 = getelementptr inbounds %struct.nodeOne, ptr %19, i64 0
   %a24 = getelementptr inbounds %struct.nodeOne, ptr %arrayidx23, i32 0, i32 0
-  %18 = load i32, ptr %a24, align 8
-  %call25 = call i32 (ptr, ...) @printf(ptr noundef @.str, i32 noundef %18)
+  %20 = load i32, ptr %a24, align 8
+  %call25 = call i32 (ptr, ...) @printf(ptr noundef @.str, i32 noundef %20)
   ret i32 0
 }
 

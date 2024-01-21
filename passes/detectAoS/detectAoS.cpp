@@ -192,9 +192,9 @@ using namespace std;
 //   }
 //   return false;
 // }
-vector<tuple<Value*,Function*,string>> potential;
+vector<tuple<Value*,Function*,string,StructType*>> potential;
 vector<Value*> argStores;
-vector<pair<Value*,Function*>> possibleGlobals;
+vector<tuple<Value*,Function*,StructType*>> possibleGlobals;
 // vector<tuple<Value*,Function*,string>> confirmed;
 vector<tuple<string,vector<int>,Value*>> calledFunction; //stores pair of function name and used argument index of pointer (if any)
 
@@ -221,8 +221,9 @@ void detectStaticAoS(AllocaInst* AI)
         // staticCount++;
 
         Value* AoS = cast<Instruction>(AI); //store as Value in vector
+        StructType* structure = cast<StructType>(returnType);
         // AoS->print(errs());
-        potential.push_back(make_tuple(AoS,originFunction,"static"));
+        potential.push_back(make_tuple(AoS,originFunction,"static",structure));
 
       //   errs()<<type_str<<"\n";
       }
@@ -235,19 +236,32 @@ void detectStaticAoS(AllocaInst* AI)
       // errs()<<"Static Array of Structs (AoS) found"<<"\n"; //static AoS found
       // staticCount++;
 
-      Value* AoS = cast<Instruction>(AI); //store as Value in vector
-      // AoS->print(errs());
-      potential.push_back(make_tuple(AoS,originFunction,"static"));
+      if(auto *AT = dyn_cast<ArrayType>(AI->getAllocatedType()))
+      {
+        Type* elem = AT->getArrayElementType();
+        int num = AT->getArrayNumElements();
+        if(num > 0)
+        {
+          if(auto *ST = dyn_cast<StructType>(elem))
+          {
+              Value* AoS = cast<Instruction>(AI); //store as Value in vector
+              StructType* structure = cast<StructType>(elem);
+              // AoS->print(errs());
+              potential.push_back(make_tuple(AoS,originFunction,"static",structure));
+          }
+        }
+      }
       }
   }
 }
 
-void eraseFromConfirmed(Value* val)
+StructType* eraseFromConfirmed(Value* val)
 {
   for(auto it = confirmed.begin(); it != confirmed.end(); it)
   {
     Value* aos = get<0>(*it);
     string type = get<2>(*it);
+    StructType* structure = get<3>(*it);
     std::string aos_string; 
     raw_string_ostream aos_stream(aos_string);
     aos->printAsOperand(aos_stream);
@@ -260,19 +274,22 @@ void eraseFromConfirmed(Value* val)
         staticCount--;
       else
         dynamicCount--;
+      return structure;
     }
     else
     {
     it++;
     }
   }
+  return nullptr;
 }
 
-void eraseFromPossibleGlobals(Value* val)
+StructType* eraseFromPossibleGlobals(Value* val)
 {
   for(auto it = possibleGlobals.begin(); it != possibleGlobals.end(); it)
   {
-    Value* aos = it->first;
+    Value* aos = get<0>(*it);
+    StructType* structure = get<2>(*it);
     // std::string aos_string; 
     // raw_string_ostream aos_stream(aos_string);
     // aos->printAsOperand(aos_stream);
@@ -280,15 +297,17 @@ void eraseFromPossibleGlobals(Value* val)
     {
       // errs()<<"ERasing from potential\n";
       possibleGlobals.erase(it);
+      return structure;
     }
     else
     {
     it++;
     }
   }
+  return nullptr;
 }
 
-void getPotential(Instruction* I)
+void getPotential(Instruction* I) //adding to potential vector
 {
   if(auto *SI = dyn_cast<StoreInst>(I))
   {
@@ -319,8 +338,8 @@ void getPotential(Instruction* I)
     Function* func;
     for(auto it = possibleGlobals.begin(); it != possibleGlobals.end(); it)
     {
-      aos = it->first;
-      func = it->second;
+      aos = get<0>(*it);
+      func = get<1>(*it);
       // std::string aos_string; 
       // raw_string_ostream aos_stream(aos_string);
       // aos->printAsOperand(aos_stream);
@@ -338,9 +357,11 @@ void getPotential(Instruction* I)
     if(foundInPossibleGlobals)
     {
       //errs()<<"Found possible global: "<<aos_string<<"\n";
-      eraseFromPossibleGlobals(operand);
-      confirmed.push_back(make_tuple(aos,func,"dynamic"));
+      StructType* structure = eraseFromPossibleGlobals(operand);
+      confirmed.push_back(make_tuple(aos,func,"dynamic",structure));
       dynamicCount++;
+
+      
     }
     else
     {
@@ -365,19 +386,20 @@ void getPotential(Instruction* I)
 
       if(!foundInPotential)
       {
-        eraseFromConfirmed(operand); //remove from confirmed list if it exists before adding it to potential
-        potential.push_back(make_tuple(operand,originFunction,"dynamic"));
+        StructType* structure = eraseFromConfirmed(operand); //remove from confirmed list if it exists before adding it to potential
+        potential.push_back(make_tuple(operand,originFunction,"dynamic",structure));
       }
     }
   }  
   mallocFlag = false; //disable flag - don't search for StoreInst after malloc
 }
 
-void eraseFromPotential(Value* val)
+StructType* eraseFromPotential(Value* val)
 {
   for(auto it = potential.begin(); it != potential.end(); it)
   {
     Value* aos = get<0>(*it);
+    StructType* structure = get<3>(*it);
     // std::string aos_string; 
     // raw_string_ostream aos_stream(aos_string);
     // aos->printAsOperand(aos_stream);
@@ -385,12 +407,14 @@ void eraseFromPotential(Value* val)
     {
       // errs()<<"ERasing from potential\n";
       potential.erase(it);
+      return structure;
     }
     else
     {
     it++;
     }
   }
+  return nullptr;
 }
 
 void eraseFromArgStores(Value* val)
@@ -425,11 +449,17 @@ Value* calledAoS = NULL;
 bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
 {
     Value* operand = gep->getOperand(0);
+    StructType* gepStruct = nullptr;
 
     //getting operand as string
     std::string op_string; 
     raw_string_ostream ops(op_string);
     operand->printAsOperand(ops);
+
+    if(auto *ST = dyn_cast<StructType>(gep->getResultElementType()))
+    {
+      gepStruct = ST;
+    }
 
     // errs()<<"Checking operand: "<<op_string<<"\n";
 
@@ -462,9 +492,11 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
           dynamicCount++;
         }
 
-        confirmed.push_back(make_tuple(aos,originFunction,type));
-        eraseFromPotential(aos);
-        eraseFromPossibleGlobals(aos);
+        // output not needed
+        StructType* structure = eraseFromPotential(aos);
+        if(structure == nullptr)
+          structure = eraseFromPossibleGlobals(aos);
+        confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct));
         return true;
       }
     }
@@ -487,12 +519,15 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
           dynamicCount++;
         }
 
+        // output not needed
+        StructType* structure = eraseFromPotential(aos);
+        if(structure == nullptr)
+          structure = eraseFromPossibleGlobals(aos);
+
         if(isParam)
-          confirmed.push_back(make_tuple(calledAoS,originFunction,type));
+          confirmed.push_back(make_tuple(calledAoS,originFunction,type,gepStruct));
         else
-          confirmed.push_back(make_tuple(aos,originFunction,type));
-        eraseFromPotential(aos);
-        eraseFromPossibleGlobals(aos);
+          confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct));
         // errs()<<"Size of argStores: "<<argStores.size()<<"\n";
         // errs()<<"Size of potential: "<<potential.size()<<"\n";
         return true;
@@ -527,12 +562,16 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
           dynamicCount++;
         }
 
+        // output not needed
+        StructType* structure = eraseFromPotential(aos);
+        if(structure == nullptr)
+          structure = eraseFromPossibleGlobals(aos);
+
         if(isParam)
-          confirmed.push_back(make_tuple(calledAoS,originFunction,type));
+          confirmed.push_back(make_tuple(calledAoS,originFunction,type,gepStruct));
         else
-          confirmed.push_back(make_tuple(aos,originFunction,type));
-        eraseFromPotential(aos);
-        eraseFromPossibleGlobals(aos);
+          confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct));
+      
         // errs()<<"Size of argStores: "<<argStores.size()<<"\n";
         // errs()<<"Size of potential: "<<potential.size()<<"\n";
         return true;
@@ -618,9 +657,9 @@ void getCalledFunctions(CallInst* CI)
       }
       if(detect == false) //add to possible globals
       {
-        if(auto *GV = dyn_cast<GlobalVariable>(operand))
+        if(auto *GV = dyn_cast<GlobalVariable>(operand)) //if a function call has a global parameter not yet malloced, add it to possibleGlobals
         {
-          possibleGlobals.push_back(make_pair(operand,f));
+          possibleGlobals.push_back(make_tuple(operand,f,nullptr)); 
           detect = true;
         }
       }
@@ -700,10 +739,25 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
               //allocation size can be 1 or more
               // errs()<<"Static Array of Structs (AoS) found"<<"\n"; //static AoS found
               // staticCount++;
+              Constant* constValue; 
+              constValue = gv.getInitializer(); //get the initializer
 
-              Value* AoS = cast<Value>(&gv); //store as Value in vector
-              // AoS->printAsOperand(errs());
-              potential.push_back(make_tuple(AoS,originFunction,"static"));
+              Type* t = constValue->getType(); //get the type of the global
+              string type_str;
+              raw_string_ostream tstr(type_str);
+              t->print(tstr);
+
+              Type* globalElem;
+
+              if(auto *AT = dyn_cast<ArrayType>(t)) //if global is an array, gets it element type
+                globalElem = AT->getArrayElementType();
+
+              if(auto *ST = dyn_cast<StructType>(globalElem))
+              {
+                Value* AoS = cast<Value>(&gv); //store as Value in vector
+                // AoS->printAsOperand(errs());
+                potential.push_back(make_tuple(AoS,originFunction,"static",ST));
+              }
             }
           }
         }
@@ -741,9 +795,9 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
 
                         if((op_str.find("getelementptr") != std::string::npos) & (op_str.find(ptr_string) != std::string::npos))
                         {
-                          eraseFromPotential(aos);
+                          StructType* structure = eraseFromPotential(aos);
                           staticCount++;
-                          confirmed.push_back(make_tuple(aos,originFunction,"static"));
+                          confirmed.push_back(make_tuple(aos,originFunction,"static",structure));
                           break;
                         }
                       }
@@ -791,7 +845,8 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                           {
                             if(auto *GV = dyn_cast<GlobalVariable>(gepOperand))
                             {
-                            possibleGlobals.push_back(make_pair(gepOperand,originFunction));
+                              StructType* structure = cast<StructType>(GEP->getResultElementType());
+                              possibleGlobals.push_back(make_tuple(gepOperand,originFunction,structure)); //@globalFive in dynamic_AoS.c called in main() function 
                             }
                           }
                         }
@@ -859,9 +914,9 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
 
                     if((op_str.find("getelementptr") != std::string::npos) & (op_str.find(ptr_string) != std::string::npos))
                     {
-                      eraseFromPotential(aos);
+                      StructType* structure = eraseFromPotential(aos);
                       staticCount++;
-                      confirmed.push_back(make_tuple(aos,originFunction,"static"));
+                      confirmed.push_back(make_tuple(aos,originFunction,"static",structure));
                       break;
                     }
                   }
@@ -916,7 +971,8 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                       {
                         if(auto *GV = dyn_cast<GlobalVariable>(gepOperand))
                         {
-                          possibleGlobals.push_back(make_pair(gepOperand,originFunction));
+                          StructType* structure = cast<StructType>(GEP->getResultElementType());
+                          possibleGlobals.push_back(make_tuple(gepOperand,originFunction,structure));
                         }
                       }
                     }
@@ -947,16 +1003,29 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
         {
           std::string aos_str; 
           std::string func_str; 
+          string struct_str;
           // string type = get<2>(potential.at(i));
           raw_string_ostream aos(aos_str);
           raw_string_ostream func(func_str);
+          raw_string_ostream stru(struct_str);
           get<0>(potential.at(i))->printAsOperand(aos);
           errs()<<i<<": "<<aos_str;
           Function* funcName = get<1>(potential.at(i));
+          StructType* structure = get<3>(potential.at(i));
           if(funcName != NULL)
           {
             funcName->printAsOperand(func);
-            errs()<<" used in function: "<<func_str<<"\n";
+            if(structure != nullptr)
+            {
+              structure->print(stru);
+              errs()<<" used in function: "<<func_str;
+              errs()<<" with element: "<<struct_str<<"\n";
+            }
+            else
+            {
+              errs()<<" used in function: "<<func_str;
+              errs()<<" with undefined element\n";
+            }
           }
           else
           {
@@ -971,9 +1040,9 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
           std::string func_str; 
           raw_string_ostream aos(aos_str);
           raw_string_ostream func(func_str);
-          possibleGlobals.at(i).first->printAsOperand(aos);
+          get<0>(possibleGlobals.at(i))->printAsOperand(aos);
           errs()<<i<<": "<<aos_str;
-          possibleGlobals.at(i).second->printAsOperand(func);
+          get<1>(possibleGlobals.at(i))->printAsOperand(func);
           errs()<<" used in function: "<<func_str<<"\n";
 
         }
@@ -986,23 +1055,35 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
         {
           std::string aos_str; 
           std::string func_str; 
+          string struct_str;
           string type = get<2>(confirmed.at(i));
           raw_string_ostream aos(aos_str);
           raw_string_ostream func(func_str);
+          raw_string_ostream stru(struct_str);
           get<0>(confirmed.at(i))->printAsOperand(aos);
           errs()<<i<<": "<<aos_str;
           Function* funcName = get<1>(confirmed.at(i));
+          StructType* structure = get<3>(confirmed.at(i));
           if(funcName != NULL)
           {
             funcName->printAsOperand(func);
-            errs()<<" - "<<type<<" AoS used in function: "<<func_str<<"\n";
+            if(structure != nullptr)
+            {
+              struct_str = structure->getName();
+              errs()<<" - "<<type<<" AoS used in function: "<<func_str;
+              errs()<<" with element: "<<struct_str<<"\n";
+            }
+            else
+            {
+              errs()<<" - "<<type<<" AoS used in function: "<<func_str;
+              errs()<<" with undefined element\n";
+            }
           }
           else
           {
             errs()<<" - global "<<type<<" AoS\n";
           }
         }
-
         //Set to ::all() if IR is unchanged, otherwise ::none()
         return PreservedAnalyses::all();
     };

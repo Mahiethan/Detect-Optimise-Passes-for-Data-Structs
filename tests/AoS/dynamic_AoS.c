@@ -6,6 +6,7 @@ struct nodeTwo* globalTwo;
 struct nodeOne* globalThree;
 struct nodeTwo* globalFour;
 struct nodeOne* globalFive;
+struct nodeOne* globalSix;
 
 struct nodeOne invalidGlobal;
 
@@ -113,6 +114,12 @@ void populateParam4(struct nodeOne* array, int n)
 
 }
 
+void populateGlobal(int n, struct nodeOne* array)
+{
+    array = (struct nodeOne*) malloc(n*sizeof(struct nodeOne));
+    populateNodeOne(array,n); //dynamic AoS 9 - DETECTED! (%array.addr at @populateNodeOne)
+}
+
 int main()
 {
     int a = 100;
@@ -166,6 +173,8 @@ int main()
     // printf("%d\n",globalFive[1].a); //@globalFive at @main
     // populateNodeOne(globalFive,100); //@globalFive at @populateNodeOne
     printf("%d\n",globalFive[0].a); //@globalFive at @main
+
+     populateGlobal(d,globalSix); //adds @globalSix as %array.addr
 
     return 0;
 }

@@ -17,7 +17,7 @@ using namespace std;
 // vector<tuple<Value*,Function*,string>> potential;
 // vector<Value*> argStores;
 // vector<pair<Value*,Function*>> possibleGlobals;
-vector<tuple<Value*,Function*,string>> confirmed;
+vector<tuple<Value*,Function*,string,StructType*>> confirmed;
 // vector<tuple<string,vector<int>,Value*>> calledFunction; //stores pair of function name and used argument index of pointer (if any)
 
 // Function* originFunction = NULL;
