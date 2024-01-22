@@ -5,7 +5,7 @@
 
 #include "./detectAoS/detectAoS.cpp"
 #include "./optimiseAoS/reorderAoS/reorderAoS.cpp"
-// #include "./optimiseAoS/peelAoS/peelAoS.cpp"
+#include "./optimiseAoS/peelAoS/peelAoS.cpp"
 
 using namespace llvm;
 
@@ -13,7 +13,7 @@ using namespace llvm;
 extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
 llvmGetPassPluginInfo() {
   return {
-    LLVM_PLUGIN_API_VERSION, "reorderAoS", "v0.1",
+    LLVM_PLUGIN_API_VERSION, "allPasses", "v0.1",
     [](PassBuilder &PB) {
       PB.registerPipelineParsingCallback(
         [](StringRef Name, ModulePassManager &MPM, //For FunctionPass use FunctionPassManager &FPM
@@ -31,12 +31,23 @@ llvmGetPassPluginInfo() {
             MPM.addPass(reorderAoS());
             return true;
           }
-        //   if(Name == "reorder+PeelAoS"){ //struct field reordering
-        //     // MPM.addPass(detectAoS());
-        //     // MPM.addPass(reorderAoS());
-        //     // MPM.addPass(peelAoS());
-        //     return true;
-        //   }
+          if(Name == "peelAoS"){ //struct peeling of AoS data structures
+            MPM.addPass(detectAoS());
+            MPM.addPass(peelAoS());
+            return true;
+          }
+          if(Name == "peelAoSOnly"){ //struct peeling
+            MPM.addPass(peelAoS());
+            return true;
+          }
+          if(Name == "peel+reorderAoS"){ //detect, peel and reorder AoS structs (reorder + peel gives error - related to printf())
+            MPM.addPass(detectAoS());
+            // MPM.addPass(reorderAoS());
+            MPM.addPass(peelAoS());
+            MPM.addPass(reorderAoS());
+
+            return true;
+          }
           return false;
         }
       );

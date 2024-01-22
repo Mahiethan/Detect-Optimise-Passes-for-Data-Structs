@@ -15,8 +15,8 @@
 using namespace llvm;
 using namespace std;
 
-LLVMContext TheContext;
-IRBuilder<> Builder(TheContext);
+LLVMContext reorder_Context;
+IRBuilder<> reorder_Builder(reorder_Context);
 
 ArrayRef<Type*> elemArr; //original struct fields
 
@@ -76,7 +76,7 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
           }
         }
 
-        errs()<<"Optimising "<<allStructs.size()<<" structs, which are: \n";
+        errs()<<"Optimising "<<allStructs.size()<<" struct(s), which are: \n";
 
         for(int i = 0; i < allStructs.size(); i++)
         {
@@ -112,22 +112,22 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
             if((size != 8) & (size != 32) & (size != 64))
             {
               // Create an aggregate type (somehow) so offsets are created properly - check trello
-              Type* I = IntegerType::getInt8Ty(TheContext);
+              Type* I = IntegerType::getInt8Ty(reorder_Context);
               int num = size/8;
               newTy = ArrayType::get(I, num);
               isBitfield = true;
 
-              // Type* newTy = Type::getIntNTy(TheContext,size); //create a new type equal in bit size to the original field
+              // Type* newTy = Type::getIntNTy(reorder_Context,size); //create a new type equal in bit size to the original field
             }
             else
             {
-               newTy = Type::getIntNTy(TheContext,size); //create a new type equal in bit size to the original field
+               newTy = Type::getIntNTy(reorder_Context,size); //create a new type equal in bit size to the original field
               newTy = ty;
             }
 
             //try and create a packed struct, and set alignment bits manually after sorting
 
-            // Type* newTy = Type::getIntNTy(TheContext,size); //create a new type equal in bit size to the original field
+            // Type* newTy = Type::getIntNTy(reorder_Context,size); //create a new type equal in bit size to the original field
 
             // elems.push_back(make_tuple(newTy,o,0,size/8)); //store each struct field, with its type, original index and size
 
@@ -227,7 +227,7 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
             // }
             // else if((currentWord < size) & (currentWord != 0))
             // {
-            //   Type* newTy = Type::getIntNTy(TheContext,currentWord*8); //create a new type equal in bit size to the original field
+            //   Type* newTy = Type::getIntNTy(reorder_Context,currentWord*8); //create a new type equal in bit size to the original field
             //   newElems.push_back(newTy);
             //   currentWord = 8;
             // }
@@ -238,7 +238,7 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
             // if((i == newSortedElems.size() - 1) & (currentWord != 0))
             // {
             //   errs()<<"pad: "<<currentWord<<"\n";
-            //   Type* newTy = Type::getIntNTy(TheContext,currentWord*8); //create a new type equal in bit size to the original field
+            //   Type* newTy = Type::getIntNTy(reorder_Context,currentWord*8); //create a new type equal in bit size to the original field
             //   newElems.push_back(newTy);
             // }
 
@@ -257,10 +257,10 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
 
           ArrayRef<Type*> elemArr = ArrayRef(newElems);
 
-          // StructType* temp = StructType::get(TheContext,true);
+          // StructType* temp = StructType::get(reorder_Context,true);
           // temp->setBody(elemArr,true);
 
-          StructType* temp = StructType::get(TheContext,false);
+          StructType* temp = StructType::get(reorder_Context,false);
           temp->setBody(elemArr,false);
 
           int p = 0;
@@ -325,7 +325,7 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
 
                         if(origSize != newSize) //change store operand only if allocated size is greater than actual size - to make sure the data fits in a cache line without overflowing - it doesn't matter if the size is less that actual, this is guaranteed to fit
                         {
-                          TruncInst* newTrunc = new TruncInst(operand,Type::getIntNTy(TheContext,newSize*8),"",&I); 
+                          TruncInst* newTrunc = new TruncInst(operand,Type::getIntNTy(reorder_Context,newSize*8),"",&I); 
                           SI->setOperand(0,newTrunc);
                         }
 
@@ -347,7 +347,7 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
                     //       errs()<<"yhh\n";
                     //       Value* ptrOperand = GEP->getPointerOperand();
                           
-                    //       // GEP->setOperand(GEP->getNumIndices(),ConstantInt::get(TheContext,APInt(32,7)));
+                    //       // GEP->setOperand(GEP->getNumIndices(),ConstantInt::get(reorder_Context,APInt(32,7)));
                     //       // GEP->print(errs());
 
                     //     // }
@@ -431,7 +431,7 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
                           }
                         }
 
-                        GEP->setOperand(GEP->getNumIndices(),ConstantInt::get(TheContext,APInt(32,index))); //new index for the GEP instruction is set
+                        GEP->setOperand(GEP->getNumIndices(),ConstantInt::get(reorder_Context,APInt(32,index))); //new index for the GEP instruction is set
                         foundAoS = false;
 
                       }

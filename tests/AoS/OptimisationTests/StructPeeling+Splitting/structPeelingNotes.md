@@ -115,8 +115,12 @@ This is because new parameters need to be introduced to the function prototypes 
 Struct splitting can be used instead, which makes use of a pointer inside the struct so only accesses to cold fields need to be changed, but not sure if this going to be easily implemented.
 
 The main target data structures for struct peeling are:
-1) AoS data structures declared and used within a function body
+1) AoS data structures declared and used locally within a function body (not used as function arguments anywhere in the program)
 2) Globally declared AoS data structures.
+
+This means that if AoS 1 using struct 1 is used as a function argument, AoS 2 using struct 2 cannot be peeled.
+
+First, see if an AoS can be peeled using the above criteria, if not, do struct splitting on that AoS.
 
 Similar to the conditions for struct field reordering, if addresses or casting is used, this optimisation is invalidated.
 

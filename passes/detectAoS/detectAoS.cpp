@@ -358,7 +358,7 @@ void getPotential(Instruction* I) //adding to potential vector
     {
       //errs()<<"Found possible global: "<<aos_string<<"\n";
       StructType* structure = eraseFromPossibleGlobals(operand);
-      confirmed.push_back(make_tuple(aos,func,"dynamic",structure));
+      confirmed.push_back(make_tuple(aos,func,"dynamic",structure,false));
       dynamicCount++;
 
       
@@ -496,7 +496,7 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
         StructType* structure = eraseFromPotential(aos);
         if(structure == nullptr)
           structure = eraseFromPossibleGlobals(aos);
-        confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct));
+        confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct,false));
         return true;
       }
     }
@@ -525,9 +525,9 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
           structure = eraseFromPossibleGlobals(aos);
 
         if(isParam)
-          confirmed.push_back(make_tuple(calledAoS,originFunction,type,gepStruct));
+          confirmed.push_back(make_tuple(calledAoS,originFunction,type,gepStruct,true));
         else
-          confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct));
+          confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct,false));
         // errs()<<"Size of argStores: "<<argStores.size()<<"\n";
         // errs()<<"Size of potential: "<<potential.size()<<"\n";
         return true;
@@ -568,9 +568,9 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
           structure = eraseFromPossibleGlobals(aos);
 
         if(isParam)
-          confirmed.push_back(make_tuple(calledAoS,originFunction,type,gepStruct));
+          confirmed.push_back(make_tuple(calledAoS,originFunction,type,gepStruct,true));
         else
-          confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct));
+          confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct,false));
       
         // errs()<<"Size of argStores: "<<argStores.size()<<"\n";
         // errs()<<"Size of potential: "<<potential.size()<<"\n";
@@ -797,7 +797,7 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                         {
                           StructType* structure = eraseFromPotential(aos);
                           staticCount++;
-                          confirmed.push_back(make_tuple(aos,originFunction,"static",structure));
+                          confirmed.push_back(make_tuple(aos,originFunction,"static",structure,false));
                           break;
                         }
                       }
@@ -916,7 +916,7 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                     {
                       StructType* structure = eraseFromPotential(aos);
                       staticCount++;
-                      confirmed.push_back(make_tuple(aos,originFunction,"static",structure));
+                      confirmed.push_back(make_tuple(aos,originFunction,"static",structure,false));
                       break;
                     }
                   }
@@ -1056,6 +1056,7 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
           std::string aos_str; 
           std::string func_str; 
           string struct_str;
+          bool isParam;
           string type = get<2>(confirmed.at(i));
           raw_string_ostream aos(aos_str);
           raw_string_ostream func(func_str);
@@ -1064,20 +1065,25 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
           errs()<<i<<": "<<aos_str;
           Function* funcName = get<1>(confirmed.at(i));
           StructType* structure = get<3>(confirmed.at(i));
+          isParam = get<4>(confirmed.at(i));
           if(funcName != NULL)
           {
             funcName->printAsOperand(func);
+            errs()<<" - "<<type<<" AoS used in function: "<<func_str;
             if(structure != nullptr)
             {
               struct_str = structure->getName();
-              errs()<<" - "<<type<<" AoS used in function: "<<func_str;
-              errs()<<" with element: "<<struct_str<<"\n";
+              errs()<<" with element: "<<struct_str;
             }
             else
             {
-              errs()<<" - "<<type<<" AoS used in function: "<<func_str;
-              errs()<<" with undefined element\n";
+              errs()<<" with undefined element";
             }
+            if(isParam == true)
+            {
+              errs()<<", used as function argument";
+            }
+            errs()<<"\n";
           }
           else
           {
