@@ -27,7 +27,7 @@ llvmGetPassPluginInfo() {
             MPM.addPass(reorderAoS());
             return true;
           }
-          if(Name == "reorderAoSOnly"){ //struct field reordering
+          if(Name == "reorderStructs"){ //struct field reordering of all structs
             MPM.addPass(reorderAoS());
             return true;
           }
@@ -36,7 +36,7 @@ llvmGetPassPluginInfo() {
             MPM.addPass(peelAoS());
             return true;
           }
-          if(Name == "peelAoSOnly"){ //struct peeling
+          if(Name == "peelGlobalAoS"){ //struct peeling of global AoS only
             MPM.addPass(peelAoS());
             return true;
           }

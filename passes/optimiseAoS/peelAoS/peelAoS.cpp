@@ -160,28 +160,33 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
 
           StructType* currStruct = allStructs.at(i);
 
-          /// stores all global variables that work on the current struct
-          // vector<llvm::Module::global_iterator> globalAoS;
-          // for(auto Global = M.global_begin(); Global != M.global_end(); ++Global)
-          // {
-          //   Constant* constValue; 
-          //   constValue = Global->getInitializer(); //get the initializer
+          /// stores all global variables that work on the current struct - if detectAoS pass was not run, only optimise any global AoS 
+          if(confirmed.size() == 0)
+          {
+            for(auto Global = M.global_begin(); Global != M.global_end(); ++Global)
+            {
+              Constant* constValue; 
+              constValue = Global->getInitializer(); //get the initializer
 
-          //   Type* t = constValue->getType(); //get the type of the global
-          //   string type_str;
-          //   raw_string_ostream tstr(type_str);
-          //   t->print(tstr);
+              Type* t = constValue->getType(); //get the type of the global
+              string type_str;
+              raw_string_ostream tstr(type_str);
+              t->print(tstr);
 
-          //   Type* globalElem;
+              Type* globalElem;
 
-          //   if(auto *AT = dyn_cast<ArrayType>(t)) //if global is an array, gets it element type
-          //     globalElem = AT->getArrayElementType();
+              if(auto *AT = dyn_cast<ArrayType>(t)) //if global is an array, gets it element type
+                globalElem = AT->getArrayElementType();
 
-          //   if(currStruct == globalElem) // if element type is equal to current struct, this global is an AoS
-          //     globalAoS.push_back(Global);
-          //   else // otherwise, skip to next global in program
-          //     continue;
-          // }
+              if(currStruct == globalElem) // if element type is equal to current struct, this global is an AoS
+              {
+                GlobalVariable* gv = cast<GlobalVariable>(Global);
+                globalAoS.push_back(make_pair(gv,currStruct));
+              }
+              else // otherwise, skip to next global in program
+                continue;
+            }
+          }
 
           // if(globalAoS.size() > 0) // proceed with struct peeling if some global AoS exists using current struct, otherwise continue to next struct
           // {
