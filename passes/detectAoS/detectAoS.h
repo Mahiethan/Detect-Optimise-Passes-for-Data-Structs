@@ -17,7 +17,19 @@ using namespace std;
 // vector<tuple<Value*,Function*,string>> potential;
 // vector<Value*> argStores;
 // vector<pair<Value*,Function*>> possibleGlobals;
-vector<tuple<Value*,Function*,string,StructType*,bool>> confirmed;
+
+/* 
+
+Tuple elements of each confirmed AoS:
+  - AoS
+  - origin function
+  - "static" or "dynamic"
+  - struct used
+  - if it used as a function argument - to determine whether struct peeling or splitting should be applied
+  - if the struct is recursive - to determine whether struct peeling or splitting should be applied
+*/
+
+vector<tuple<Value*,Function*,string,StructType*,bool,bool>> confirmed;
 // vector<tuple<string,vector<int>,Value*>> calledFunction; //stores pair of function name and used argument index of pointer (if any)
 
 // Function* originFunction = NULL;

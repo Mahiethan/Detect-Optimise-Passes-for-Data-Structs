@@ -55,6 +55,7 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
         /// ONLY COLLECT STRUCTS OF AoS values that:
         // - are global
         // - not used as function parameters
+        // - does not contain a ptr element - to make sure it is not recursive
 
         if(confirmed.size() == 0) //detectAoS pass has not been called
         {
@@ -69,8 +70,9 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
             StructType* structure = get<3>(confirmed.at(i));
             Value* aos = get<0>(confirmed.at(i));
             bool isParam = get<4>(confirmed.at(i));
+            bool hasPointerElem = get<5>(confirmed.at(i));
 
-            if(!isParam)
+            if(!isParam & !hasPointerElem)
             {
               if(structure == nullptr) //should not occur
               {
@@ -107,7 +109,7 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
             }
             else
             {
-              //erase the structure from globalAoS and localAoS vectors - cannot optimise it - used as function paramater
+              //erase the structure from globalAoS and localAoS vectors - cannot optimise it - used as function parameter
               for(auto it = globalAoS.begin(); it != globalAoS.end(); it)
               {
                 StructType* structToRemove = get<1>(*it);

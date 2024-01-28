@@ -358,7 +358,7 @@ void getPotential(Instruction* I) //adding to potential vector
     {
       //errs()<<"Found possible global: "<<aos_string<<"\n";
       StructType* structure = eraseFromPossibleGlobals(operand);
-      confirmed.push_back(make_tuple(aos,func,"dynamic",structure,false));
+      confirmed.push_back(make_tuple(aos,func,"dynamic",structure,false,false));
       dynamicCount++;
 
       
@@ -496,7 +496,7 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
         StructType* structure = eraseFromPotential(aos);
         if(structure == nullptr)
           structure = eraseFromPossibleGlobals(aos);
-        confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct,false));
+        confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct,false,false));
         return true;
       }
     }
@@ -525,9 +525,9 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
           structure = eraseFromPossibleGlobals(aos);
 
         if(isParam)
-          confirmed.push_back(make_tuple(calledAoS,originFunction,type,gepStruct,true));
+          confirmed.push_back(make_tuple(calledAoS,originFunction,type,gepStruct,true,false));
         else
-          confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct,false));
+          confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct,false,false));
         // errs()<<"Size of argStores: "<<argStores.size()<<"\n";
         // errs()<<"Size of potential: "<<potential.size()<<"\n";
         return true;
@@ -568,9 +568,9 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
           structure = eraseFromPossibleGlobals(aos);
 
         if(isParam)
-          confirmed.push_back(make_tuple(calledAoS,originFunction,type,gepStruct,true));
+          confirmed.push_back(make_tuple(calledAoS,originFunction,type,gepStruct,true,false));
         else
-          confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct,false));
+          confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct,false,false));
       
         // errs()<<"Size of argStores: "<<argStores.size()<<"\n";
         // errs()<<"Size of potential: "<<potential.size()<<"\n";
@@ -797,7 +797,7 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                         {
                           StructType* structure = eraseFromPotential(aos);
                           staticCount++;
-                          confirmed.push_back(make_tuple(aos,originFunction,"static",structure,false));
+                          confirmed.push_back(make_tuple(aos,originFunction,"static",structure,false,false));
                           break;
                         }
                       }
@@ -916,7 +916,7 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                     {
                       StructType* structure = eraseFromPotential(aos);
                       staticCount++;
-                      confirmed.push_back(make_tuple(aos,originFunction,"static",structure,false));
+                      confirmed.push_back(make_tuple(aos,originFunction,"static",structure,false,false));
                       break;
                     }
                   }
@@ -998,6 +998,48 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
         }
       }
 
+      vector<pair<StructType*, bool>> checkedStructs;
+
+      //iterate through all structs in the confirmed list, and determine whether it contains a ptr field - which could make it recursive
+      for(int i = 0; i < confirmed.size(); i++)
+      {
+        // if(get<5>(confirmed.at(i)) == true)
+        //   continue;
+
+        StructType* structure = get<3>(confirmed.at(i));
+
+        bool alreadyChecked = false;
+
+        for(int j = 0; j < checkedStructs.size(); j++)
+        {
+          StructType* containedStruct = checkedStructs.at(j).first;
+          bool hasPointerElem = checkedStructs.at(j).second;
+
+          if(containedStruct == structure)
+          {
+            get<5>(confirmed.at(i)) = hasPointerElem;
+            alreadyChecked = true;
+            break;
+          }
+        }
+
+        if(alreadyChecked == true)
+          continue;
+
+        ArrayRef<Type*> elemArr = structure->elements();
+
+        for(auto it = elemArr.begin(); it != elemArr.end(); it++)
+        {
+          Type* ty = const_cast<Type*>(*it);
+          if(ty->isPointerTy())
+          {
+            errs()<<"Pointer found within struct\n";
+            get<5>(confirmed.at(i)) = true;
+            break;
+          }
+        }
+      }
+
         errs()<<"Size of potential list: "<<potential.size()<<"\n";
         for(int i = 0; i < potential.size(); i++)
         {
@@ -1057,15 +1099,20 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
           std::string func_str; 
           string struct_str;
           bool isParam;
+          bool hasPointerElem;
+
           string type = get<2>(confirmed.at(i));
           raw_string_ostream aos(aos_str);
           raw_string_ostream func(func_str);
           raw_string_ostream stru(struct_str);
           get<0>(confirmed.at(i))->printAsOperand(aos);
           errs()<<i<<": "<<aos_str;
+
           Function* funcName = get<1>(confirmed.at(i));
           StructType* structure = get<3>(confirmed.at(i));
           isParam = get<4>(confirmed.at(i));
+          hasPointerElem = get<5>(confirmed.at(i));
+
           if(funcName != NULL)
           {
             funcName->printAsOperand(func);
@@ -1073,17 +1120,21 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
             if(structure != nullptr)
             {
               struct_str = structure->getName();
-              errs()<<" with element: "<<struct_str;
+              errs()<<" with element: "<<struct_str<<"\n";
             }
             else
             {
-              errs()<<" with undefined element";
+              errs()<<" with undefined element"<<"\n";
             }
+
             if(isParam == true)
             {
-              errs()<<", used as function argument";
+              errs()<<" - used as function argument\n";
             }
-            errs()<<"\n";
+            if(hasPointerElem == true)
+            {
+              errs()<<" - uses struct that contains a pointer field\n";
+            }
           }
           else
           {

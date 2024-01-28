@@ -120,6 +120,12 @@ The main target data structures for struct peeling are:
 
 This means that if AoS 1 using struct 1 is used as a function argument, AoS 2 using struct 2 cannot be peeled.
 
+3) AoS data structures that uses a struct that does **not** contain a pointer field, which could make it a recursive struct.
+
+In LLVM-IR, there is no reliable way to determine the type of a ptr. This means that it would be difficult to identify whether a struct contains a ptr to itself thus we cannot identify any recursive structs. 
+
+Therefore, it was decided that any structs that contain a ptr field element could possibly be recursive so it would not be peeled. Instead struct splitting will be applied to it
+
 First, see if an AoS can be peeled using the above criteria, if not, do struct splitting on that AoS.
 
 Similar to the conditions for struct field reordering, if addresses or casting is used, this optimisation is invalidated.
