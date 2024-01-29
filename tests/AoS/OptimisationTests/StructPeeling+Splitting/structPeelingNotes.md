@@ -115,7 +115,14 @@ This is because new parameters need to be introduced to the function prototypes 
 Struct splitting can be used instead, which makes use of a pointer inside the struct so only accesses to cold fields need to be changed, but not sure if this going to be easily implemented.
 
 The main target data structures for struct peeling are:
-1) AoS data structures declared and used locally within a function body (not used as function arguments anywhere in the program)
+1) Static, locally declared AoS data structures
+
+An AoS needs to be created to store the cold structs. For this, we need to know the number of elements in the original AoS. This can be done easily for static, locally declared AoS variables, which are created using `alloca` instruction. We can create the cold array using another `alloca` instruction with the same allocation size as the original AoS. 
+
+For dynamic AoS, however, they are created using a `malloc()/calloc()` function call. It is more difficult, though possible, to get the allocated size from the malloc/calloc call. 
+
+Therefore it was decided that struct peeling will be applied to static AoS, whilst struct splitting will be applied to dynamic AoS.
+ 
 2) Globally declared AoS data structures.
 
 This means that if AoS 1 using struct 1 is used as a function argument, AoS 2 using struct 2 cannot be peeled.

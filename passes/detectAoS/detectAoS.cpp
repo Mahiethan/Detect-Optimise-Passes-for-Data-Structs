@@ -454,7 +454,7 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
     //getting operand as string
     std::string op_string; 
     raw_string_ostream ops(op_string);
-    operand->printAsOperand(ops);
+    operand->print(ops);
 
     if(auto *ST = dyn_cast<StructType>(gep->getResultElementType()))
     {
@@ -480,7 +480,7 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
     {
       std::string ptr_string; 
       raw_string_ostream ptr(ptr_string);
-      aos->printAsOperand(ptr);
+      aos->print(ptr);
 
       if(op_string == ptr_string)
       {
@@ -504,7 +504,7 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
     {
       std::string ptr_string; 
       raw_string_ostream ptr(ptr_string);
-      aos->printAsOperand(ptr);
+      aos->print(ptr);
 
       // errs()<<"does it equal "<<ptr_string<<"\n";
 
@@ -540,14 +540,14 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
 
       std::string op_string; 
       raw_string_ostream ops(op_string);
-      operand->printAsOperand(ops);
+      operand->print(ops);
 
         // errs()<<"for operand: "<<op_string<<"\n";
       
 
       std::string ptr_string; 
       raw_string_ostream ptr(ptr_string);
-      aos->printAsOperand(ptr);
+      aos->print(ptr);
 
       // errs()<<"does it equal "<<ptr_string<<"\n";
 
@@ -1105,8 +1105,8 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
           raw_string_ostream aos(aos_str);
           raw_string_ostream func(func_str);
           raw_string_ostream stru(struct_str);
-          get<0>(confirmed.at(i))->printAsOperand(aos);
-          errs()<<i<<": "<<aos_str;
+          get<0>(confirmed.at(i))->print(aos);
+          errs()<<i+1<<": "<<aos_str;
 
           Function* funcName = get<1>(confirmed.at(i));
           StructType* structure = get<3>(confirmed.at(i));

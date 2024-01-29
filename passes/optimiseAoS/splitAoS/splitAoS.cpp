@@ -36,6 +36,12 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         //     errs() << "I saw a function called " << F.getName() << "!\n";
         // }
 
+        //when an access to a field that now belongs to the cold struct is found within a block, perform (in this order):
+          //1. create GEP inst to access the cold struct ptr
+          //2. create new malloc call inst to allocate data
+          //3. create store inst to store the returned malloc memory to the GEP 
+          //4. create a load inst to the GEP as a ptr, so the pointer operand and the indices of existing GEP inst can be changed for the cold fields
+
         //Set to ::all() if IR is unchanged, otherwise ::none()
         return PreservedAnalyses::all();
     };

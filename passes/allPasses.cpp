@@ -36,16 +36,18 @@ llvmGetPassPluginInfo() {
             MPM.addPass(peelAoS());
             return true;
           }
-          if(Name == "peelGlobalAoS"){ //struct peeling of global AoS only
-            MPM.addPass(peelAoS());
-            return true;
-          }
           if(Name == "peel+reorderAoS"){ //detect, peel and reorder AoS structs (reorder + peel gives error - related to printf())
             MPM.addPass(detectAoS());
             // MPM.addPass(reorderAoS());
             MPM.addPass(peelAoS());
             MPM.addPass(reorderAoS());
-
+            return true;
+          }
+           if(Name == "reorder+peelAoS"){ //detect, reorder and peel AoS structs (reorder + peel gives error - related to printf())
+            MPM.addPass(detectAoS());
+            MPM.addPass(reorderAoS());
+            MPM.addPass(peelAoS());
+            // MPM.addPass(reorderAoS());
             return true;
           }
           return false;
