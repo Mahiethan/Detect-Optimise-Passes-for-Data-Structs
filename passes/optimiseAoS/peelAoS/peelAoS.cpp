@@ -45,6 +45,8 @@ namespace {
 
 struct peelAoS : public PassInfoMixin<peelAoS> {
     PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM) {
+
+        errs()<<"\n-------------------------- STRUCT PEELING --------------------------\n\n";
         
         // Since there is no way to get names of each struct element, each element will be uniquely identified by its type and index
 
@@ -57,7 +59,7 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
         // - not used as function parameters
         // - does not contain a ptr element - to make sure it is not recursive
 
-        if(confirmed.size() == 0) //
+        if(confirmed.size() == 0) //if no AoS is found, do not apply this optimisation
         {
           errs()<<"No AoS values found. Not applying struct peeling.\n";
           return PreservedAnalyses::all();
@@ -166,9 +168,15 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
           //   structToRemove->print(errs());
           // }
 
-        if(confirmed.size() != 0) //detectAoS pass has not been called
+        if(allStructs.size() != 0) 
         {
           errs()<<"Optimising "<<globalAoS.size()<<" global AoS and "<<localAoS.size()<<" local AoS, which contain the following struct(s):\n";
+        }
+        else
+        {
+          errs()<<"No structs available to optimise. Not applying struct peeling.\n";
+          errs()<<"\n----------------------- END OF STRUCT PEELING -----------------------\n";
+          return PreservedAnalyses::all(); 
         }
 
         for(int i = 0; i < allStructs.size(); i++)
@@ -306,8 +314,11 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
               index++;
             }
 
-            if(coldFields.size() == 0)
+            if(coldFields.size() == 0) //no cold field required for this struct
+            {
+              errs()<<"No need to peel this struct - no cold fields found\n";
               break;
+            }
 
             //// create new hot and cold structs
             //// for hot struct, replace fields of current struct, keeping the same name
@@ -373,7 +384,7 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
 
                 GetElementPtrInst* prec; //stores preceding GEP inst - the GEP that accesses an AoS element, not the struct fields
                 bool precSet = false;
-                bool isLoad = false;
+                bool isArray = false;
 
                 //// iterate through all GEP instructions and change indices, ptr operands and source and result element types, based on whether a hot or cold struct was used 
                 for(auto &F : M) 
@@ -402,8 +413,12 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
                             if(auto *SI = dyn_cast<StoreInst>(i->getUser()))
                             {
                               ptr_string = "";
-                              isLoad = true;
                               SI->getValueOperand()->print(pstr);
+                              if(auto *GEP = dyn_cast<GetElementPtrInst>(operand))
+                              {
+                                GEP->getOperand(0)->print(pstr);
+                              }
+                              // errs()<<"yh\n";
                               // errs()<<ptr_string<<"\n";
                               // errs()<<global_str<<"\n";
                             }
@@ -414,19 +429,38 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
                         Type* elemType;
                         int numElem;
 
+                        bool condition = false;
+
                         if(auto *AT = dyn_cast<ArrayType>(op))
                         {
                           elemType = AT->getArrayElementType();
                           numElem = AT->getNumElements();
+                          condition = (op->isAggregateType() & (elemType == currStruct));
+                          if(precSet == false)
+                          {
+                            isArray = true;
+                          }
+                        }
+                        else
+                        {
+                          if(precSet == false)
+                          {
+                            isArray = false;
+                          }
+                          condition = op->isStructTy();
                         }
 
-                        if(op->isAggregateType() & (elemType == currStruct) & precSet == false & (global_str == ptr_string)) //if a GEP access to the current global AoS is found, the preceding GEP is found
+                        if(condition & precSet == false & (global_str == ptr_string)) //if a GEP access to the current global AoS is found, the preceding GEP is found
                         {
+                          // GEP->print(errs());
+                          // errs()<<"\n";
                           prec = GEP;
                           precSet = true; //flag is set to true, indicating that a global AoS is being accessed and the next GEP instruction accesses the struct fields
                         } 
                         else if(GEP->getSourceElementType() == currStruct & GEP->getResultElementType() != currStruct & precSet == true) //if the GEP that is accessing a struct field is found, following prec
                         {
+                          // GEP->print(errs());
+                          // errs()<<"\n";
                           string operand_str;
                           raw_string_ostream opstr(operand_str);
                           Value* index = GEP->getOperand(GEP->getNumIndices()); //get last index value being access
@@ -478,26 +512,35 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
 
                           if(isHotIndex & !isColdIndex) // if the GEP operates on a index that should be in a hot struct
                           {
-                            Type* newTy = ArrayType::get(currStruct,numElem);
-                            prec->setSourceElementType(newTy); // set this to array of hot structs
-                            if(isLoad)
+                            if(isArray)
+                            {
+                              Type* newTy = ArrayType::get(currStruct,numElem);
+                              prec->setSourceElementType(newTy); // set this to array of hot structs
+                            }
+                            else
                               prec->setSourceElementType(currStruct);
+
                             prec->setResultElementType(currStruct); // set result element type of prec to hot struct
                             GEP->setOperand(GEP->getNumIndices(),ConstantInt::get(peel_Context,APInt(32,newIndex))); // change the index
                             GEP->setSourceElementType(currStruct); // set source element type to hot struct
                           }
                           else if(!isHotIndex & isColdIndex)  // if the GEP operates on a index that should be in a cold struct
                           {
-                            Type* newTy = ArrayType::get(coldStruct,numElem); 
-                            prec->setSourceElementType(newTy); // set this to array of cold structs
-                            if(isLoad)
+                            if(isArray)
+                            {
+                              Type* newTy = ArrayType::get(coldStruct,numElem); 
+                              prec->setSourceElementType(newTy); // set this to array of cold structs
+                            }
+                            else
                               prec->setSourceElementType(coldStruct);
+
                             prec->setResultElementType(coldStruct); // set result element type of prec to cold struct
                             GEP->setOperand(GEP->getNumIndices(),ConstantInt::get(peel_Context,APInt(32,newIndex))); // change the index
                             GEP->setSourceElementType(coldStruct); // set source element type to cold struct
                             prec->setOperand(0,coldArray); //change ptr operand of prec to cold array
                           }
                           precSet = false; // set this to false so next array access GEP can be found
+                          isArray = false;
                         }
                         // GEP->print(errs());
                         // errs()<<"\n";
@@ -513,6 +556,10 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
           for(int j = 0; j < localAoS.size(); j++)
           {
             Value* aos = get<0>(localAoS.at(j));
+            string aos_string;
+            raw_string_ostream aos_str(aos_string);
+            aos->print(aos_str);
+
             StructType* structure = get<1>(localAoS.at(j));
             Function* origFunc = get<2>(localAoS.at(j));
             // errs()<<"AOS:\n";
@@ -521,10 +568,9 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
 
             if(structure == currStruct) //only optimise structs that have a size greater than a word length (8 bytes)
             {
-              if(auto *AI = dyn_cast<AllocaInst>(aos))
+              if(auto *AI = dyn_cast<AllocaInst>(aos)) //static AoS
               {
                 Value* size = AI->getOperand(0);
-                // Instruction* temp = cast<Instruction>(size);
                 string name = AI->getName().str();
                 int addressSpace = AI->getAddressSpace();
                 name.append("Cold");
@@ -543,7 +589,9 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
                 // coldArray->setName(name);
                 // coldArray->setAlignment(alignment);
                 // coldArray->print(errs());
+                bool isArray = false;
 
+                Instruction* aosLocation = nullptr;
 
                 for(auto &B : *origFunc)  
                 {
@@ -554,6 +602,19 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
                       //   errs()<<"Found aos\n";
                       //   break;
                       // }
+                      if(aosLocation == nullptr)
+                      {
+                        string inst_string;
+                        raw_string_ostream inst_str(inst_string);
+                        I.print(inst_str);
+
+                        if(aos_string == inst_string)
+                        {
+                          aosLocation = &I;
+                        }
+
+                      }
+
                       if(auto *GEP = dyn_cast<GetElementPtrInst>(&I))
                       {
                         Type* op = GEP->getSourceElementType(); // get the type the GEP is accessing from
@@ -566,17 +627,51 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
                         if(auto *LI = dyn_cast<LoadInst>(operand))
                         {
                           Value* ptrOp = LI->getPointerOperand();
-                          errs()<<"LOAD FOUND\n";
-                          for (Value::use_iterator i = LI->use_begin(), e = LI->use_end(); i != e; ++i)
+                          // errs()<<"LOAD FOUND\n";
+                          for (Value::use_iterator i = ptrOp->use_begin(), e = ptrOp->use_end(); i != e; ++i)
                           {
-                            if(auto *SI = dyn_cast<StoreInst>(*i))
+                            if(auto *SI = dyn_cast<StoreInst>(i->getUser()))
                             {
-                              errs()<<"STORE FOUND\n";
+                              ptr_string = "";
+                              operand = SI->getValueOperand();
+                              // errs()<<"yh\n";
+                              if(auto *GEP = dyn_cast<GetElementPtrInst>(operand))
+                              {
+                                operand = GEP->getOperand(0);
+                              }
+                              // errs()<<ptr_string<<"\n";
+                              // errs()<<global_str<<"\n";
+                              // errs()<<"STORE FOUND\n";
                             }
                           }
                         }
 
-                        if((op->isStructTy()) & precSet == false & (aos == GEP->getOperand(0))) //if a GEP access to the current global AoS is found, the preceding GEP is found
+                        //// if the source element of the GEP is an array, get its element type and number of elements
+                        Type* elemType;
+                        int numElem;
+
+                        bool condition = false;
+
+                        if(auto *AT = dyn_cast<ArrayType>(op))
+                        {
+                          elemType = AT->getArrayElementType();
+                          numElem = AT->getNumElements();
+                          condition = (op->isAggregateType() & (elemType == currStruct));
+                          if(precSet == false)
+                          {
+                            isArray = true;
+                          }
+                        }
+                        else
+                        {
+                          if(precSet == false)
+                          {
+                            isArray = false;
+                          }
+                          condition = op->isStructTy();
+                        }
+
+                        if(condition & precSet == false & (aos == operand)) //if a GEP access to the current global AoS is found, the preceding GEP is found
                         {
                           prec = GEP;
                           precSet = true; //flag is set to true, indicating that a global AoS is being accessed and the next GEP instruction accesses the struct fields
@@ -584,7 +679,6 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
                         else if(GEP->getSourceElementType() == currStruct & GEP->getResultElementType() != currStruct & precSet == true) //if the GEP that is accessing a struct field is found, following prec
                         {
                           // coldArray->print(errs());
-
                           string operand_str;
                           raw_string_ostream opstr(operand_str);
                           Value* index = GEP->getOperand(GEP->getNumIndices()); //get last index value being access
@@ -634,11 +728,32 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
                             }
                           }
 
+                          if(coldArray == nullptr & isColdIndex) //only create the cold array if a cold index is being referenced
+                          {
+                            // IRBuilder<> TmpB(&origFunc->getEntryBlock(),origFunc->getEntryBlock().begin());
+                            if(isArray)
+                            {
+                              coldArray = new AllocaInst(ArrayType::get(coldStruct,numElem),0,size,alignment,name,aosLocation);
+                              // new AllocaInst(ArrayType::get(coldStruct,numElem),0,size,alignment,name,aosLocation);
+                            }
+                            else
+                              coldArray = new AllocaInst(coldStruct,0,size,alignment,name,aosLocation);
+
+                            coldArray->setName(name);
+                            coldArray->setAlignment(alignment);
+                          }
+
                           if(isHotIndex & !isColdIndex) // if the GEP operates on a index that should be in a hot struct
                           {
                             // errs()<<"HOT\n";
-                            // Type* newTy = ArrayType::get(currStruct,numElem);
-                            // prec->setSourceElementType(newTy); // set this to array of hot structs
+                            if(isArray)
+                            {
+                              Type* newTy = ArrayType::get(currStruct,numElem);
+                              prec->setSourceElementType(newTy); // set this to array of hot structs
+                            }
+                            else
+                              prec->setSourceElementType(currStruct);
+
                             prec->setResultElementType(currStruct); // set result element type of prec to hot struct
                             GEP->setOperand(GEP->getNumIndices(),ConstantInt::get(peel_Context,APInt(32,newIndex))); // change the index
                             GEP->setSourceElementType(currStruct); // set source element type to hot struct
@@ -646,21 +761,23 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
                           else if(!isHotIndex & isColdIndex)  // if the GEP operates on a index that should be in a cold struct
                           {
                             // errs()<<"COLD\n";
-                            if(coldArray == nullptr)
-                            {
-                              coldArray = new AllocaInst(coldStruct,addressSpace,size,alignment,name,prec);
-                              coldArray->setName(name);
-                              coldArray->setAlignment(alignment);
-                            }
                             // Type* newTy = ArrayType::get(coldStruct,numElem); 
                             // prec->setSourceElementType(newTy); // set this to array of cold structs
-                            prec->setSourceElementType(coldStruct);
+                            if(isArray)
+                            {
+                              Type* newTy = ArrayType::get(coldStruct,numElem); 
+                              prec->setSourceElementType(newTy); // set this to array of cold structs
+                            }
+                            else
+                              prec->setSourceElementType(coldStruct);
+
                             prec->setResultElementType(coldStruct); // set result element type of prec to cold struct
                             GEP->setOperand(GEP->getNumIndices(),ConstantInt::get(peel_Context,APInt(32,newIndex))); // change the index
                             GEP->setSourceElementType(coldStruct); // set source element type to cold struct
                             prec->setOperand(0,coldArray); //change ptr operand of prec to cold array
                           }
                           precSet = false; // set this to false so next array access GEP can be found
+                          isArray = false;
                         }
                         // GEP->print(errs());
                         // errs()<<"\n";
@@ -669,19 +786,10 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
                 }
               }
             }
-
-
-              
-              // while(!isa<LoadInst>(temp))
-              // {
-              //   size = temp->getOperand(0);
-              //   temp = cast<Instruction>(size); 
-              // }
-              // temp->print(errs());
-            }
-          
+          } 
         }
 
+        errs()<<"\n----------------------- END OF STRUCT PEELING -----------------------\n";
         //// Set to ::all() if IR is unchanged, otherwise ::none()
         return PreservedAnalyses::none();
     };

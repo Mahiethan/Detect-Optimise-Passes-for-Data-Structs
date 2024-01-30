@@ -42,6 +42,9 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           //3. create store inst to store the returned malloc memory to the GEP 
           //4. create a load inst to the GEP as a ptr, so the pointer operand and the indices of existing GEP inst can be changed for the cold fields
 
+        errs()<<"\n-------------------------- STRUCT SPLITTING --------------------------\n\n";
+
+        errs()<<"\n----------------------- END OF STRUCT SPLITTING -----------------------\n";
         //Set to ::all() if IR is unchanged, otherwise ::none()
         return PreservedAnalyses::all();
     };

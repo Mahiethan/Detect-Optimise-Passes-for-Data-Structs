@@ -31,6 +31,8 @@ namespace {
 struct reorderAoS : public PassInfoMixin<reorderAoS> {
     PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM) {
 
+        errs()<<"\n-------------------------- STRUCT FIELD REORDERING --------------------------\n\n";
+
         // use vector<StructType*> allStructs = M.getIdentifiedStructTypes()if vector<> confirmed is empty i.e only reorderAoS pass is called
         // otherwise use the confirmed vector to get all the used structs in AoS and store it in allStructs - if detectAoS and reorderAoS is called
 
@@ -38,41 +40,50 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
 
         vector<StructType*> allStructs;
 
-        if(confirmed.size() == 0) //detectAoS pass has not been called
+        if(detectAoSCalled == false)
         {
-          errs()<<"Optimising all structs\n";
-          allStructs = M.getIdentifiedStructTypes(); //get all struct types used in program
+           errs()<<"Optimising all structs\n";
+           allStructs = M.getIdentifiedStructTypes(); //get all struct types used in program
         }
         else
         {
-          //get structs used by all AoS
-          for(int i = 0; i < confirmed.size(); i++)
+          if(confirmed.size() == 0) //detectAoS pass has not been called
           {
-            StructType* structure = get<3>(confirmed.at(i));
-            if(structure == nullptr) //should not occur
+            errs()<<"No AoS values found. Not applying struct field reordering.\n";
+            errs()<<"\n----------------------- END OF STRUCT FIELD REORDERING -----------------------\n";
+            return PreservedAnalyses::all();
+          }
+          else
+          {
+            //get structs used by all AoS
+            for(int i = 0; i < confirmed.size(); i++)
             {
-              errs()<<"WARNING: nullptr found!\n";
-              continue;
-            }
-            bool exist = false;
-            for(int j = 0; j < allStructs.size(); j++)
-            {
-              if(allStructs.at(j) == structure)
+              StructType* structure = get<3>(confirmed.at(i));
+              if(structure == nullptr) //should not occur
               {
-                exist = true;
-                break;
+                errs()<<"WARNING: nullptr found!\n";
+                continue;
               }
-            }
-            if(exist == false)
-            {
-              allStructs.push_back(structure);
-              errs()<<"Optimising "<<structure->getName()<<"\n";
-            }
-            else
-            {
-              errs()<<"Dupe found\n";
-            }
+              bool exist = false;
+              for(int j = 0; j < allStructs.size(); j++)
+              {
+                if(allStructs.at(j) == structure)
+                {
+                  exist = true;
+                  break;
+                }
+              }
+              if(exist == false)
+              {
+                allStructs.push_back(structure);
+                errs()<<"Optimising "<<structure->getName()<<"\n";
+              }
+              else
+              {
+                errs()<<"Dupe found\n";
+              }
 
+            }
           }
         }
 
@@ -467,6 +478,7 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
         }
 
         //Set to ::all() if IR is unchanged, otherwise ::none()
+        errs()<<"\n----------------------- END OF STRUCT FIELD REORDERING -----------------------\n";
         return PreservedAnalyses::none();
     };
 };

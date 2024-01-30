@@ -30,6 +30,7 @@ Tuple elements of each confirmed AoS:
 */
 
 vector<tuple<Value*,Function*,string,StructType*,bool,bool>> confirmed;
+bool detectAoSCalled;
 // vector<tuple<string,vector<int>,Value*>> calledFunction; //stores pair of function name and used argument index of pointer (if any)
 
 // Function* originFunction = NULL;

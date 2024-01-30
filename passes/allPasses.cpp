@@ -36,14 +36,14 @@ llvmGetPassPluginInfo() {
             MPM.addPass(peelAoS());
             return true;
           }
-          if(Name == "peel+reorderAoS"){ //detect, peel and reorder AoS structs (reorder + peel gives error - related to printf())
+          if(Name == "peel+reorderAoS"){ //detect, peel and reorder AoS structs 
             MPM.addPass(detectAoS());
             // MPM.addPass(reorderAoS());
             MPM.addPass(peelAoS());
             MPM.addPass(reorderAoS());
             return true;
           }
-           if(Name == "reorder+peelAoS"){ //detect, reorder and peel AoS structs (reorder + peel gives error - related to printf())
+           if(Name == "reorder+peelAoS"){ //detect, reorder and peel AoS structs - may need reordering again after struct peel
             MPM.addPass(detectAoS());
             MPM.addPass(reorderAoS());
             MPM.addPass(peelAoS());

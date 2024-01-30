@@ -721,6 +721,10 @@ namespace {
 struct detectAoS : public PassInfoMixin<detectAoS> {
     PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM) {
 
+        errs()<<"\n-------------------------- AOS DETECTION --------------------------\n\n";
+
+        detectAoSCalled = true;
+
         vector<Value*> possibleAoSList; //vector which stores pointer locations of possible AoS - these need to be inspected and confirmed
         vector<Value*> AoS_Values; //vector which stores pointer locations of possible AoS - these need to be inspected and confirmed
         deque<tuple<string, int, Value*>> functionInspectionList; //vector that stores functions that need to be inspected for GPE instructions in order to fully determine that a dynamic AoS exists
@@ -1141,6 +1145,7 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
             errs()<<" - global "<<type<<" AoS\n";
           }
         }
+        errs()<<"\n----------------------- END OF AOS DETECTION -----------------------\n";
         //Set to ::all() if IR is unchanged, otherwise ::none()
         return PreservedAnalyses::all();
     };
