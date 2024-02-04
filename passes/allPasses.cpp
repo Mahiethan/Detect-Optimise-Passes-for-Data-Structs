@@ -3,6 +3,7 @@
 #include "llvm/Passes/PassPlugin.h"
 #include "llvm/Support/raw_ostream.h"
 
+#include "./helper/removeConstantGEP.cpp"
 #include "./detectAoS/detectAoS.cpp"
 #include "./optimiseAoS/reorderAoS/reorderAoS.cpp"
 #include "./optimiseAoS/peelAoS/peelAoS.cpp"
@@ -19,6 +20,9 @@ llvmGetPassPluginInfo() {
       PB.registerPipelineParsingCallback(
         [](StringRef Name, ModulePassManager &MPM, //For FunctionPass use FunctionPassManager &FPM
         ArrayRef<PassBuilder::PipelineElement>) {
+
+          MPM.addPass(removeConstantGEP()); //converts any constant GEP to standalone GEP instructions
+
           if(Name == "detectAoS"){ //detectAoS
             MPM.addPass(detectAoS());
             return true;

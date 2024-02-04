@@ -36,3 +36,17 @@ bats fileName.bats
 ```
 A bash script to run all `.bats` files (all unit tests) will be created soon...
 
+# To fix the current date and time before commiting to the git repository
+
+Run the following command:
+
+```bash
+sudo ntpdate ntp.ubuntu.com
+```
+
+And check if the date and time is correct using the following command:
+
+```bash
+date
+```
+

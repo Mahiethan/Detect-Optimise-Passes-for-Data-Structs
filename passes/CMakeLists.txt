@@ -18,6 +18,8 @@ include_directories(${LLVM_INCLUDE_DIRS})
 link_directories(${LLVM_LIBRARY_DIRS})
 
 # Add new pass directories here:
+add_subdirectory(./helper)
+
 add_subdirectory(./detectAoS)
 add_subdirectory(./detectSoA)
 add_subdirectory(./detectAoS/detectAoSFlags)
