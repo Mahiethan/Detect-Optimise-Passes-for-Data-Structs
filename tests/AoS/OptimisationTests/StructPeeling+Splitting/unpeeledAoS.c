@@ -105,9 +105,11 @@ int main()
         // struct nodeOneOld* arrayOneTemp = (struct nodeOneOld*) malloc(999999*sizeof(struct nodeOneOld));
         // arrayOneTemp = arrayOneOld;        // for(int j = 5000; j < 5010; j++)
         // {
-            struct nodeOneOld* result = arrayOneOld;
-            printf("%d\n---\n",result[5000].a);
-            printf("%f\n---\n",result[5000].b);
+            // struct nodeOneOld* result = arrayOneOld;
+            // printf("%d\n---\n",result[5000].a);
+            // printf("%f\n---\n",result[5000].b);
+            printf("%d\n---\n",arrayOneOld[5000].a);
+            printf("%f\n---\n",arrayOneOld[5000].b);
         //}
      }
 

@@ -12,7 +12,7 @@ struct nodeOneOld
     double b;
     int c;
     //// Cold fields - least used fields
-    double d;
+    long long int d : 48;
     char e;
     double f;
     double g;
@@ -97,6 +97,11 @@ void multArrays(int size)
     }
 }
 
+void checkIndex(double e)
+{
+    printf("Yes\n");
+}
+
 int main()
 {
    // int n = 99999;
@@ -146,18 +151,62 @@ int main()
         // struct nodeOneOld* arrayOneTemp = (struct nodeOneOld*) malloc(999999*sizeof(struct nodeOneOld));
         // arrayOneTemp = arrayOneOld;        // for(int j = 5000; j < 5010; j++)
         // {
+            // FILE *fptr = fopen("sample.txt", "w"); 
             struct nodeOneOld* result = arrayOneOld;
-            // printf("%f\n---\n",arrayOneOld[5000].f);
-            // printf("%f\n---\n",arrayOneOld[5000].g);
             printf("%d\n---\n",result[5000].a);
-            printf("%f\n---\n",result[5000].f);
+            // printf("%d\n---\n",result[5000].a);
+            //  printf("%d\n---\n",result[5000].a);
+            // printf("%d\n---\n",result[5000].a);
+            //  printf("%d\n---\n",result[5000].a);
+            // printf("%d\n---\n",result[5000].a);
+            //  printf("%d\n---\n",result[5000].a);
+            //  printf("%d\n---\n",result[5000].a);
+            //  printf("%d\n---\n",result[5000].a);
+            //  printf("%d\n---\n",result[5000].a);
+            //  printf("%d\n---\n",result[5000].a);
+            //  printf("%d\n---\n",result[5000].a);
+            //  printf("%d\n---\n",result[5000].a);
+            //  printf("%d\n---\n",result[5000].a);
+            //  printf("%d\n---\n",result[5000].a);
+            //  printf("%d\n---\n",result[5000].a);
+            //  printf("%d\n---\n",result[5000].a);
+            //  printf("%d\n---\n",result[5000].a);
+            //  printf("%d\n---\n",result[5000].a);
+            //  printf("%d\n---\n",result[5000].a);
+            //  printf("%d\n---\n",result[5000].a);
+            //  printf("%d\n---\n",result[5000].a);
+            //  printf("%d\n---\n",result[5000].a);
+            //  printf("%d\n---\n",result[5000].a);
+            //  printf("%d\n---\n",result[5000].a);
+
+             arrayOneLocal[67].d = 90;
+             printf("%lld\n",arrayOneLocal[67].d);
+
+
+            //GEP index now updating
+            // fprintf(fptr,"%d\n---\n",arrayOneOld[5000].a);
+            // printf("%d\n---\n",arrayOneOld[5000].a);
+            // printf("%d\n---\n",result[5000].a);
+            printf("\na: ---\n%d",arrayOneOld[5000].a);
+            printf("\nb: ---\n%f",arrayOneOld[5000].b);
+            printf("\nc: ---\n%d",arrayOneOld[5000].c);
+            printf("\nd: ---\n%lld",arrayOneOld[5000].d);
+            printf("\ne: ---\n%d",arrayOneOld[5000].e);
+            printf("\nf: ---\n%f",arrayOneOld[5000].f);
+            printf("\ng: ---\n%f",arrayOneOld[5000].g);
+            printf("\nh: ---\n%f",arrayOneOld[5000].h);
+            printf("\ni: ---\n%f",arrayOneOld[5000].i);
+            printf("\nj: ---\n%f\n",arrayOneOld[5000].j);
 
             //GIVES ERROR - cannot re-use a ptr like the one above - can caused undefined behaviour (may work or may not work) because the field being accessed may now have a nodeOneCold struct
+            //MAYBE IT DOES WORK NOW ?!!
             // result = arrayOneLocal;
-            // printf("%f\n---\n",result[43].f);
-            // // printf("%f\n---\n",resultTwo[43].f);
+            // printf("%f\n---\n",result[43].g);
+            // // // printf("%f\n---\n",resultTwo[43].f);
             // result = arrayTwoLocal;
             // printf("%f\n---\n",result[43].g);
+
+            // checkIndex(result[96].d);
             // printf("%f\n---\n",result[43].g);
             //
             //// BUT THIS WORKS WHEN REUSING ptr result - BECAUSE both fields belong in the hot struct

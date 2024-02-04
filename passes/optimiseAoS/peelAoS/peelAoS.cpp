@@ -62,6 +62,7 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
         if(confirmed.size() == 0) //if no AoS is found, do not apply this optimisation
         {
           errs()<<"No AoS values found. Not applying struct peeling.\n";
+          errs()<<"\n----------------------- END OF STRUCT PEELING -----------------------\n";
           return PreservedAnalyses::all();
         }
         else

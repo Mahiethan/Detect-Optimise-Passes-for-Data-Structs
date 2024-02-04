@@ -6,6 +6,7 @@
 #include "./detectAoS/detectAoS.cpp"
 #include "./optimiseAoS/reorderAoS/reorderAoS.cpp"
 #include "./optimiseAoS/peelAoS/peelAoS.cpp"
+#include "./optimiseAoS/splitAoS/splitAoS.cpp"
 
 using namespace llvm;
 
@@ -38,16 +39,30 @@ llvmGetPassPluginInfo() {
           }
           if(Name == "peel+reorderAoS"){ //detect, peel and reorder AoS structs 
             MPM.addPass(detectAoS());
-            // MPM.addPass(reorderAoS());
             MPM.addPass(peelAoS());
             MPM.addPass(reorderAoS());
             return true;
           }
-           if(Name == "reorder+peelAoS"){ //detect, reorder and peel AoS structs - may need reordering again after struct peel
+          if(Name == "reorder+peelAoS"){ //detect, reorder and peel AoS structs - may need reordering again after struct peel
             MPM.addPass(detectAoS());
             MPM.addPass(reorderAoS());
             MPM.addPass(peelAoS());
-            // MPM.addPass(reorderAoS());
+            return true;
+          }
+          if(Name == "splitAoS"){ //detect, reorder and peel AoS structs - may need reordering again after struct peel
+            MPM.addPass(detectAoS());
+            MPM.addPass(splitAoS());
+            return true;
+          }
+          // if(Name == "splitStructs")
+          // {
+          //   MPM.addPass(splitAoS());
+          //   return true;  
+          // }
+          if(Name == "peel+splitAoS"){ //detect, reorder and peel AoS structs - may need reordering again after struct peel
+            MPM.addPass(detectAoS());
+            MPM.addPass(peelAoS());
+            MPM.addPass(splitAoS());
             return true;
           }
           return false;

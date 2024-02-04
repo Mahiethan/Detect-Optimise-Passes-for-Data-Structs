@@ -122,9 +122,11 @@ int main()
 
         // for(int j = 5000; j < 5010; j++)
         // {
-            struct nodeOneHot* result = arrayOneHot;
-            printf("%d\n---\n",result[5000].a);
-            printf("%f\n---\n",result[5000].b);
+            // struct nodeOneHot* result = arrayOneHot;
+            // printf("%d\n---\n",result[5000].a);
+            // printf("%f\n---\n",result[5000].b);
+            printf("%d\n---\n",arrayOneHot[5000].a);
+            printf("%f\n---\n",arrayOneHot[5000].b);
         //}
         
      }
