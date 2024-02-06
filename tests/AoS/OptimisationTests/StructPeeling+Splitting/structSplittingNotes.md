@@ -54,6 +54,8 @@ This optimisation shares the same details and benefits of struct peeling (see no
 
 The only major difference is that the 'cold' struct is accessed using a pointer inside the 'hot' struct, instead of accessing it as a separate struct. There will be no overheads in accessing the 'hot' fields but there will be an increase in overheads when accessing the 'cold' fields since these fields are accessed via a pointer [1]. 
 
+When splitting this struct, the `next` pointer field will always remain in the hot structure, regardless of whether it was used less frequently than the other 'hot' fields. Therefore, the recursive pointer field must be identified within a struct, if it exists, before it can be split. Since LLVM-17 now uses opaque (un-typed) pointers, there is no direct way to determine the type of a pointer, so we have to iterate through whole IR and look for GEP instructions that access the ptr field, and see whether an AoS in the 'confirmed' list or a struct has been stored in that field.
+
 This optimisation only requires changes to the struct layout and changes to the accesses to the 'cold' fields in the code. They can be passed into functions as arguments without needing to change the function prototype, unlike struct peeling, therefore this optimisation can be applied to structs that are used as function arguments.
 
 The main target data structures for struct splitting are:

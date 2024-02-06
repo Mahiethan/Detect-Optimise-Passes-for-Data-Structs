@@ -65,7 +65,8 @@ void multArrays(struct nodeOneOld* arrayOne, struct nodeOneOld* arrayTwo, int si
 int main()
 {
    // int n = 99999;
-   int n = 999999;
+   int n = 100; //works
+//    int n = 999999; //does not run
    int i;
    for(i = 0; i < 100; i++)
     {
@@ -85,13 +86,26 @@ int main()
      multArrays(arrayOneOld,arrayTwoOld,n);
 
      //validity check
-       if(i == 77)
+    if(i == 77)
      {
         printf("Validity check\n");
         // for(int j = 5000; j < 5010; j++)
         // {
-            printf("%d\n---\n",arrayOneOld[5000].a);
-            printf("%f\n---\n",arrayOneOld[5000].b);
+            printf("%d\n---\n",arrayOneOld[5].a);
+            printf("%f\n---\n",arrayOneOld[5].b);
+
+            // arrayOneOld[5000].d = 90;
+
+            printf("%f\n---\n",arrayOneOld[5].d);
+            printf("%c\n---\n",arrayOneOld[5].e);
+
+            // printf("%d\n---\n",arrayOneOld[5000].a);
+            // printf("%f\n---\n",arrayOneOld[5000].b);
+
+            // // arrayOneOld[5000].d = 90;
+
+            // printf("%f\n---\n",arrayOneOld[5000].d);
+            // printf("%c\n---\n",arrayOneOld[5000].e);
         //}
      }
 

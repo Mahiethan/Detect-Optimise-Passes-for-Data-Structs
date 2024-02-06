@@ -37,6 +37,8 @@ void populateNodeOneOld(struct nodeOneOld* array, int size)
         array[i].a = 1;
         array[i].b = 10.0;
         array[i].c = 9;
+        // struct nodeOneCold test;
+        // array[i].cold = &test;
         array[i].cold = (struct nodeOneCold*) malloc(sizeof(struct nodeOneCold));
         array[i].cold->d = 23.0;
         array[i].cold->e = 'a';
@@ -108,16 +110,23 @@ int main()
         // {
             printf("%d\n---\n",arrayOneHot[5000].a);
             printf("%f\n---\n",arrayOneHot[5000].b);
+
+            // arrayOneHot[5000].cold->d = 90;
+
+            printf("%f\n---\n",arrayOneHot[5000].cold->d);
+            printf("%c\n---\n",arrayOneHot[5000].cold->e);
         //}
      }
 
 
-    freeAoS(arrayOneHot,n); 
+    freeAoS(arrayOneHot,n); //required for large AoS, otherwise program will crash
     // free(arrayOneHot);
     // free(arrayOneCold); 
-    freeAoS(arrayTwoHot,n); 
+    freeAoS(arrayTwoHot,n); //required for large AoS, otherwise program will crash
     // free(arrayTwoHot);
     // free(arrayTwoCold); 
+    // free(arrayOneHot);
+    // free(arrayTwoHot);
     }
 
 

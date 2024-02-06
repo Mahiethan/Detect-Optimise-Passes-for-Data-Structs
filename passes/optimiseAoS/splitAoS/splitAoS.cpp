@@ -48,6 +48,8 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         // vector<pair<GlobalVariable*,StructType*>> globalAoS;
         // vector<tuple<Value*,StructType*,Function*>> localAoS;
 
+        DataLayout* TD = new DataLayout(&M); //to get size and layout of structs
+
         /// ONLY COLLECT STRUCTS OF AoS values that satisfy one or multiple of the following criteria:
         // - are used as function arguments
         // - dynamic
@@ -55,8 +57,8 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
 
         if(confirmed.size() == 0) //if no AoS is found, do not apply this optimisation (MAYBE GET RID OF THIS, IT IS POSSIBLE TO SPLIT ALL STRUCTS)
         {
-          errs()<<"No AoS values found. Not applying struct peeling.\n";
-          errs()<<"\n----------------------- END OF STRUCT PEELING -----------------------\n";
+          errs()<<"No AoS values found. Not applying struct splitting.\n";
+          errs()<<"\n----------------------- END OF STRUCT SPLITTING -----------------------\n";
           return PreservedAnalyses::all();
         }
         else
@@ -72,8 +74,6 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
               isDynamic = true;
             bool isParam = get<4>(confirmed.at(i));
             bool hasPointerElem = get<5>(confirmed.at(i));
-
-            DataLayout* TD = new DataLayout(&M);
 
             if((isParam | hasPointerElem | isDynamic) & (TD->getStructLayout(structure)->getSizeInBytes() > 8)) //only optimise structs that have a size greater than a word length (8 bytes)
             {
@@ -163,8 +163,8 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         }
         else
         {
-          errs()<<"No structs available to optimise. Not applying struct peeling.\n";
-          errs()<<"\n----------------------- END OF STRUCT PEELING -----------------------\n";
+          errs()<<"No structs available to optimise. Not applying struct splitting.\n";
+          errs()<<"\n----------------------- END OF STRUCT SPLITTING -----------------------\n";
           return PreservedAnalyses::all(); 
         }
         
@@ -176,7 +176,14 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           
           StructType* currStruct = allStructs.at(i);
 
+          //Need to identify if the struct contains a recursive ptr to itself
+
           vector<float> elems; //this is used to store the no. of times each field element was used in the current struct
+
+          vector<int> pointerIndices;
+          vector<int> recursivePointerIndices;
+
+          int inspectingIndex = -1;
 
           for(int j = 0; j < currStruct->elements().size(); j++) //initialise counts to zero
             elems.push_back(0.0);
@@ -193,9 +200,74 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
               // Loop* l = LI.getLoopFor(&B); 
               // runOnLoop(l); //gives seg fault
 
+              bool searchForStore = false;
+
               for (auto &I : B) /// iterate through all instructions
               {
-                if(auto *GEP = dyn_cast<GetElementPtrInst>(&I)) //for GEP instructions
+                if(searchForStore)
+                {
+                  if(auto *SI = dyn_cast<StoreInst>(&I))
+                  {
+                    Value* elem = SI->getValueOperand();
+
+                    //check whether this operand is a struct alloca, or a AoS present in 'confirmed' list
+                    if(auto *AI = dyn_cast<AllocaInst>(elem))
+                    {
+                      AI->print(errs());
+                      errs()<<"\n";
+                      // AI->getAllocatedType()->print(errs());
+                      // errs()<<"\n";
+                      if(AI->getAllocatedType() == currStruct) //single struct allocation
+                      {
+                        recursivePointerIndices.push_back(inspectingIndex);
+                        elems.at(inspectingIndex) = INT_MAX;
+                        errs()<<"Found recursive ptr at index "<<inspectingIndex<<"\n";
+                      }
+                      // else if(auto *Array = dyn_cast<ArrayType>(AI->getAllocatedType())) //static AoS allocation
+                      // {
+                      //   if(Array->getArrayElementType() == currStruct)
+                      //   {
+                      //     recursivePointerIndices.push_back(inspectingIndex);
+                      //     errs()<<"Found recursive static AoS ptr at index "<<inspectingIndex<<"\n";
+                      //   }
+                      // }
+                    }
+                    else if(auto *LI = dyn_cast<LoadInst>(elem))
+                    {
+                      Value* loadedElem = LI->getPointerOperand();
+                      for(int j = 0; j < confirmed.size(); j++)
+                      {
+                        Value* aos = get<0>(confirmed.at(j));
+                        if(loadedElem == aos & (get<3>(confirmed.at(j)) == currStruct))
+                        {
+                          recursivePointerIndices.push_back(inspectingIndex);
+                          elems.at(inspectingIndex) = INT_MAX;
+                          errs()<<"Found recursive AoS ptr at index "<<inspectingIndex<<"\n";
+                          break;
+                        }
+                      }
+                    }
+                    else if(auto *GEP = dyn_cast<GetElementPtrInst>(elem))
+                    {
+                      Value* sourceElem = GEP->getPointerOperand();
+                      for(int j = 0; j < confirmed.size(); j++)
+                      {
+                        Value* aos = get<0>(confirmed.at(j));
+                        if(sourceElem == aos & (get<3>(confirmed.at(j)) == currStruct))
+                        {
+                          recursivePointerIndices.push_back(inspectingIndex);
+                          elems.at(inspectingIndex) = INT_MAX;
+                          errs()<<"Found recursive AoS ptr at index "<<inspectingIndex<<"\n";
+                          break;
+                        }
+                      }
+                    }
+
+                    searchForStore = false;
+                    inspectingIndex = -1;
+                  }
+                }
+                else if(auto *GEP = dyn_cast<GetElementPtrInst>(&I)) //for GEP instructions
                 {
                   // only inspect GEP instructions that access the current struct, but does not return the current struct
                   if(GEP->getSourceElementType() == currStruct & GEP->getResultElementType() != currStruct)
@@ -223,11 +295,24 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
                     float count = elems.at(in);
                     count++;
                     elems.at(in) = count;
+
+                    if(GEP->getResultElementType()->isPointerTy() & elems.at(in) != INT_MAX)
+                    {
+                      pointerIndices.push_back(in);
+                      searchForStore = true;
+                      inspectingIndex = in;
+                    }
                   }
                 }
               }
           }
         }
+
+        // /// printing out all recursive pointer fields in struct
+        // for(int j = 0; j < recursivePointerIndices.size(); j++)
+        // {
+        //   errs()<<"Index "<<recursivePointerIndices.at(i)<<" is recursive\n";
+        // }
 
         /// finding mean no. of accesses
         float total = 0.0;
@@ -235,10 +320,12 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         for(int j = 0; j < elems.size(); j++)
         {
           // errs()<<elems.at(j)<<"\n";
-          total += elems.at(j);  
+          if(elems.at(j) != INT_MAX)
+            total += elems.at(j);
         }
 
-        mean = total/elems.size();
+        mean = total/(elems.size() - recursivePointerIndices.size());
+        errs()<<"Mean: "<<mean<<"\n";
 
         // split fields based on mean no. of accesses
         // with no. of accesses >= mean, put field in hot struct
@@ -298,6 +385,8 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         coldStruct->setBody(coldFields);
 
         PointerType* coldStructPtr = PointerType::get(coldStruct, 0); // Initialise the pointer type now
+        int coldStructPtrIndex = hotIndex++;
+        errs()<<"Cold struct accessed at index: "<<coldStructPtrIndex<<"\n";
 
         // //// creating hot struct
         hotFields.push_back(coldStructPtr);
@@ -306,9 +395,18 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
 
         errs()<<"Hot Struct:\n";
         currStruct->print(errs());
+        errs()<<"\n";
+        for(int j = 0; j < hotIndices.size(); j++)
+        {
+          errs()<<"Old index: "<<hotIndices.at(j).first<<" --> New index: "<<hotIndices.at(j).second<<"\n";
+        }
         errs()<<"\nCold Struct:\n";
         coldStruct->print(errs());
         errs()<<"\n";
+        for(int j = 0; j < coldIndices.size(); j++)
+        {
+          errs()<<"Old index: "<<coldIndices.at(j).first<<" --> New index: "<<coldIndices.at(j).second<<"\n";
+        }
 
         // //change GEP
 
@@ -317,6 +415,212 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         //2. create new malloc call inst to allocate data
         //3. create store inst to store the returned malloc memory to the GEP 
         //4. create a load inst to the GEP as a ptr, so the pointer operand and the indices of existing GEP inst can be changed for the cold fields
+
+        GetElementPtrInst* prec; //stores preceding GEP inst - the GEP that accesses an AoS element, not the struct fields
+        GetElementPtrInst* coldGEP; //need to create a GEP inst to access the cold pointer struct
+        bool precSet = false;
+        bool isArray = false;
+
+        bool isMalloced = false;
+
+            //// iterate through all GEP instructions and change indices, ptr operands and source and result element types, based on whether a hot or cold struct was used 
+        for(auto &F : M) 
+        { 
+          for(auto &B : F)  
+          {
+            coldGEP = nullptr;
+            for(auto &I : B) /// iterate through all instructions
+            {
+              if(auto *GEP = dyn_cast<GetElementPtrInst>(&I))
+              {
+                Type* op = GEP->getSourceElementType(); // get the type the GEP is accessing from
+
+                //// if the source element of the GEP is an array, get its element type and number of elements
+                Type* elemType;
+                int numElem;
+
+                bool condition = false;
+
+                if(auto *AT = dyn_cast<ArrayType>(op))
+                {
+                  elemType = AT->getArrayElementType();
+                  numElem = AT->getNumElements();
+                  condition = (op->isAggregateType() & (elemType == currStruct));
+                  if(precSet == false)
+                  {
+                    isArray = true;
+                  }
+                }
+                else
+                {
+                  if(precSet == false)
+                  {
+                    isArray = false;
+                  }
+                  condition = op->isStructTy();
+                }
+
+                if(condition & precSet == false) //if a GEP access to the current global AoS is found, the preceding GEP is found
+                {
+                  // GEP->print(errs());
+                  // errs()<<"\n";
+                  prec = GEP;
+                  precSet = true; //flag is set to true, indicating that a global AoS is being accessed and the next GEP instruction accesses the struct fields
+                } 
+                else if(GEP->getSourceElementType() == currStruct & GEP->getResultElementType() != currStruct & precSet == true) //if the GEP that is accessing a struct field is found, following prec
+                {
+                  // GEP->print(errs());
+                  // errs()<<"\n";
+                  string operand_str;
+                  raw_string_ostream opstr(operand_str);
+                  Value* index = GEP->getOperand(GEP->getNumIndices()); //get last index value being access
+                  index->printAsOperand(opstr);
+
+                  size_t space_pos = operand_str.find(" ");    
+                  string type;
+                  string indexStr;
+
+                  //string manipulation to get 'type' and 'name' of the indices
+                  if (space_pos != std::string::npos) 
+                  {
+                    type = operand_str.substr(0, space_pos);
+                  }
+
+                  indexStr = operand_str.substr(space_pos + 1);
+
+                  int in = std::stoi(indexStr); // the index being accessed by the GEP instruction
+
+                  //// determine whether the index now belongs to the hot or cold struct
+                  bool isColdIndex = false;
+                  bool isHotIndex = false;
+                  int newIndex = 0;
+
+                  while(isColdIndex == false & isHotIndex == false)
+                  {
+                    //// checking if this index matches any of the cold indices
+                    for(int j = 0; j < coldIndices.size(); j++)
+                    {
+                      if(coldIndices.at(j).first == in)
+                      {
+                        isColdIndex = true;
+                        newIndex = coldIndices.at(j).second;
+                        break;
+                      }
+                    }
+
+                    //// checking if this index matches any of the hot indices
+                    for(int j = 0; j < hotIndices.size(); j++)
+                    {
+                      if(hotIndices.at(j).first == in)
+                      {
+                        isHotIndex = true;
+                        newIndex = hotIndices.at(j).second;
+                        break;
+                      }
+                    }
+                  }
+
+                  errs()<<"hot:"<<isHotIndex<<" or cold:"<<isColdIndex<<"\n";
+                  errs()<<"old index:"<<in<<" new index:"<<newIndex<<"\n";
+
+                  if(isHotIndex & !isColdIndex) // if the GEP operates on a index that should be in a hot struct
+                  {
+                    // if(isArray)
+                    // {
+                    //   Type* newTy = ArrayType::get(currStruct,numElem);
+                    //   prec->setSourceElementType(newTy); // set this to array of hot structs
+                    // }
+                    // else
+                    //   prec->setSourceElementType(currStruct);
+
+                    // prec->setResultElementType(currStruct); // set result element type of prec to hot struct
+                    GEP->setOperand(GEP->getNumIndices(),ConstantInt::get(split_Context,APInt(32,newIndex))); // change the index
+                    // GEP->setSourceElementType(currStruct); // set source element type to hot struct
+                  }
+                  else if(!isHotIndex & isColdIndex)  // if the GEP operates on a index that should be in a cold struct
+                  {
+                    // if(coldGEP == nullptr)
+                    // {
+                      vector<Value*> indexVector;
+                      indexVector.push_back(ConstantInt::get(split_Context,APInt(32,0)));
+                      indexVector.push_back(ConstantInt::get(split_Context,APInt(32,coldStructPtrIndex)));
+                      ArrayRef<Value*> indexList = ArrayRef(indexVector);
+                      coldGEP = GetElementPtrInst::CreateInBounds(currStruct, prec, indexList, "cold", &I);
+                      errs()<<"RET:";
+                      coldGEP->getResultElementType()->print(errs());
+                                            errs()<<"\n";
+
+                      coldGEP->print(errs());
+                      errs()<<"\n";
+
+                      // // create alloca inst for cold struct ptr - doesn't work
+                      // if(isMalloced == false)
+                      // {
+                      // Instruction* allocaInst = new AllocaInst(coldStruct,0,ConstantInt::get(split_Context,APInt(32,1)),"",&I);
+                      // allocaInst->print(errs());
+                      // errs()<<"\n";
+
+                      // Instruction* storeInst = new StoreInst(allocaInst,coldGEP,&I);
+                      // storeInst->print(errs());
+                      // errs()<<"\n";
+                      // isMalloced = true;
+                      // }
+
+                      //find a way to create a malloc() call that works without seg fault
+
+                      if(isMalloced == false)
+                      {
+                        IRBuilder<> TmpB(&I);
+                        int size = TD->getStructLayout(coldStruct)->getSizeInBytes();
+                        Value* structSize = ConstantInt::get(split_Context,APInt(32,size));
+                        Type* ITy = Type::getInt32Ty(split_Context);
+                        Instruction* mallocInst = TmpB.CreateMalloc(ITy, coldStruct, structSize,ConstantInt::get(split_Context,APInt(32,1)), nullptr, "");
+
+
+                        Instruction* storeInst = new StoreInst(mallocInst,coldGEP,&I);
+                        storeInst->print(errs());
+                        errs()<<"\n";
+                        isMalloced = true;
+                      }
+
+                    //}
+
+                    /* with a coldGEP created/existing, edit the current GEP to access the cold struct by
+                      - changing the sourceElementptr to cold struct
+                      - changing the ptr operand to the coldGEP
+                      - changing the index to the new index
+                    */
+
+                    Instruction* loadInst = new LoadInst(PointerType::get(split_Context,0),coldGEP,"",&I);
+
+                    GEP->setSourceElementType(coldStruct);
+                    GEP->setOperand(0,loadInst);
+                    GEP->setOperand(GEP->getNumIndices(),ConstantInt::get(split_Context,APInt(32,newIndex))); // change the index
+                    
+
+                    // if(isArray)
+                    // {
+                    //   Type* newTy = ArrayType::get(coldStruct,numElem); 
+                    //   prec->setSourceElementType(newTy); // set this to array of cold structs
+                    // }
+                    // else
+                    //   prec->setSourceElementType(coldStruct);
+
+                    // prec->setResultElementType(coldStruct); // set result element type of prec to cold struct
+                    // GEP->setOperand(GEP->getNumIndices(),ConstantInt::get(peel_Context,APInt(32,newIndex))); // change the index
+                    // GEP->setSourceElementType(coldStruct); // set source element type to cold struct
+                    // prec->setOperand(0,coldArray); //change ptr operand of prec to cold array
+                  }
+                  precSet = false; // set this to false so next array access GEP can be found
+                  isArray = false;
+                }
+                // GEP->print(errs());
+                // errs()<<"\n";
+              }
+            }
+          }
+        }
+
 
         }
 

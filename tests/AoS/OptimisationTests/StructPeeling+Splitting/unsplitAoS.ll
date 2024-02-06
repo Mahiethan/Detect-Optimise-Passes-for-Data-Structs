@@ -8,6 +8,7 @@ target triple = "x86_64-unknown-linux-gnu"
 @.str = private unnamed_addr constant [16 x i8] c"Validity check\0A\00", align 1
 @.str.1 = private unnamed_addr constant [8 x i8] c"%d\0A---\0A\00", align 1
 @.str.2 = private unnamed_addr constant [8 x i8] c"%f\0A---\0A\00", align 1
+@.str.3 = private unnamed_addr constant [8 x i8] c"%c\0A---\0A\00", align 1
 
 ; Function Attrs: noinline nounwind optnone uwtable
 define dso_local void @populateNodeOneOld(ptr noundef %array, i32 noundef %size) #0 {
@@ -273,7 +274,7 @@ entry:
   %arrayOneOld = alloca ptr, align 8
   %arrayTwoOld = alloca ptr, align 8
   store i32 0, ptr %retval, align 4
-  store i32 999999, ptr %n, align 4
+  store i32 100, ptr %n, align 4
   store i32 0, ptr %i, align 4
   br label %for.cond
 
@@ -313,27 +314,38 @@ for.body:                                         ; preds = %for.cond
 if.then:                                          ; preds = %for.body
   %call6 = call i32 (ptr, ...) @printf(ptr noundef @.str)
   %13 = load ptr, ptr %arrayOneOld, align 8
-  %arrayidx = getelementptr inbounds %struct.nodeOneOld, ptr %13, i64 5000
+  %arrayidx = getelementptr inbounds %struct.nodeOneOld, ptr %13, i64 5
   %a = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx, i32 0, i32 0
   %14 = load i32, ptr %a, align 8
   %call7 = call i32 (ptr, ...) @printf(ptr noundef @.str.1, i32 noundef %14)
   %15 = load ptr, ptr %arrayOneOld, align 8
-  %arrayidx8 = getelementptr inbounds %struct.nodeOneOld, ptr %15, i64 5000
+  %arrayidx8 = getelementptr inbounds %struct.nodeOneOld, ptr %15, i64 5
   %b = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx8, i32 0, i32 1
   %16 = load double, ptr %b, align 8
   %call9 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %16)
+  %17 = load ptr, ptr %arrayOneOld, align 8
+  %arrayidx10 = getelementptr inbounds %struct.nodeOneOld, ptr %17, i64 5
+  %d = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx10, i32 0, i32 3
+  %18 = load double, ptr %d, align 8
+  %call11 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %18)
+  %19 = load ptr, ptr %arrayOneOld, align 8
+  %arrayidx12 = getelementptr inbounds %struct.nodeOneOld, ptr %19, i64 5
+  %e = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx12, i32 0, i32 4
+  %20 = load i8, ptr %e, align 8
+  %conv13 = sext i8 %20 to i32
+  %call14 = call i32 (ptr, ...) @printf(ptr noundef @.str.3, i32 noundef %conv13)
   br label %if.end
 
 if.end:                                           ; preds = %if.then, %for.body
-  %17 = load ptr, ptr %arrayOneOld, align 8
-  call void @free(ptr noundef %17) #6
-  %18 = load ptr, ptr %arrayTwoOld, align 8
-  call void @free(ptr noundef %18) #6
+  %21 = load ptr, ptr %arrayOneOld, align 8
+  call void @free(ptr noundef %21) #6
+  %22 = load ptr, ptr %arrayTwoOld, align 8
+  call void @free(ptr noundef %22) #6
   br label %for.inc
 
 for.inc:                                          ; preds = %if.end
-  %19 = load i32, ptr %i, align 4
-  %inc = add nsw i32 %19, 1
+  %23 = load i32, ptr %i, align 4
+  %inc = add nsw i32 %23, 1
   store i32 %inc, ptr %i, align 4
   br label %for.cond, !llvm.loop !12
 
