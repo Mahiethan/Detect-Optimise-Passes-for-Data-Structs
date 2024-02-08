@@ -45,6 +45,7 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         errs()<<"\n-------------------------- STRUCT SPLITTING --------------------------\n\n";
 
         vector<StructType*> allStructs; //stores all structs to be optimised
+        vector<tuple<Value*,StructType*,int,bool>> aosValues; //AoS values to optimise - int is the index of cold struct ptr
         // vector<pair<GlobalVariable*,StructType*>> globalAoS;
         // vector<tuple<Value*,StructType*,Function*>> localAoS;
 
@@ -82,6 +83,7 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
                 errs()<<"WARNING: nullptr found!\n";
                 continue;
               }
+              aosValues.push_back(make_tuple(aos,structure,0,false));
               bool exist = false;
               for(int j = 0; j < allStructs.size(); j++)
               {
@@ -126,18 +128,18 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
               //   }
               // }
 
-              // for(auto it = localAoS.begin(); it != localAoS.end(); it)
-              // {
-              //   StructType* structToRemove = get<1>(*it);
-              //   if(structToRemove == structure)
-              //   {
-              //     localAoS.erase(it);
-              //   }
-              //   else
-              //   {
-              //     it++;
-              //   }
-              // }
+              for(auto it = aosValues.begin(); it != aosValues.end(); it)
+              {
+                Value* AoSToRemove = get<0>(*it);
+                if(AoSToRemove == aos)
+                {
+                  aosValues.erase(it);
+                }
+                else
+                {
+                  it++;
+                }
+              }
 
               for(auto it = allStructs.begin(); it != allStructs.end(); it)
               {
@@ -156,10 +158,10 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           }
         }
 
-        if(allStructs.size() != 0) 
+        if(allStructs.size() != 0 & aosValues.size() != 0) 
         {
           // errs()<<"Optimising "<<globalAoS.size()<<" global AoS and "<<localAoS.size()<<" local AoS, which contain the following struct(s):\n";
-          errs()<<"Optimising the following struct(s):\n";
+          errs()<<"Optimising "<<aosValues.size()<<" AoS data structures with the following struct(s):\n";
         }
         else
         {
@@ -387,6 +389,13 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         PointerType* coldStructPtr = PointerType::get(coldStruct, 0); // Initialise the pointer type now
         int coldStructPtrIndex = hotIndex++;
         errs()<<"Cold struct accessed at index: "<<coldStructPtrIndex<<"\n";
+        //store coldStructPtrIndex
+        for(int s = 0; s < aosValues.size(); s++)
+        {
+          StructType* structure = get<1>(aosValues.at(s));
+          if(structure == currStruct)
+            get<2>(aosValues.at(s)) = coldStructPtrIndex;
+        }
 
         // //// creating hot struct
         hotFields.push_back(coldStructPtr);
@@ -422,6 +431,7 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         bool isArray = false;
 
         bool isMalloced = false;
+        bool temp = false;
 
             //// iterate through all GEP instructions and change indices, ptr operands and source and result element types, based on whether a hot or cold struct was used 
         for(auto &F : M) 
@@ -431,6 +441,25 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
             coldGEP = nullptr;
             for(auto &I : B) /// iterate through all instructions
             {
+              /// below works for splitAoS only
+              // if(F.getName() == "main")
+              // {
+              //   if(auto *CI = dyn_cast<CallInst>(&I))
+              //   {
+              //     if(CI->getCalledFunction()->getName() == "malloc")
+              //       temp = true;
+              //   }
+              //   else
+              //   {
+              //     if(temp)
+              //     {
+              //   IRBuilder<> TmpB(&I);
+              //   // Instruction* loadInst = new LoadInst(PointerType::get(split_Context,0),coldGEP,"",&I);
+              //   TmpB.CreateCall(M.getFunction("malloc_usable_size"),get<0>(confirmed.at(0)),"",nullptr);
+              //   temp = false;
+              //     }
+              //   }
+              // }
               if(auto *GEP = dyn_cast<GetElementPtrInst>(&I))
               {
                 Type* op = GEP->getSourceElementType(); // get the type the GEP is accessing from
@@ -620,8 +649,297 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
             }
           }
         }
+        }
 
+        //now for every AoS used as function arguments, create a for/whileloop that frees the allocated cold pointer struct (if it is not NULL)
+        //to determine where to create this for/while loop, get the LAST use of the AoS, and add the for/while loop in the next block?
 
+        for(int i = 0; i < aosValues.size(); i++)
+        {
+          Value* currentAoS = get<0>(aosValues.at(i));
+          StructType* currentStruct = get<1>(aosValues.at(i));
+          int coldStructPtrIndex = get<2>(aosValues.at(i));
+          bool functionCreated = get<3>(aosValues.at(i));
+
+          BasicBlock* blockToAdd = nullptr;
+
+          Instruction* terminator = nullptr; //point where the new instructions are being added
+
+          LoadInst* aosLoadInst = nullptr;
+
+          bool freeAoSExists = false;
+
+          //eliminate any calls to free() for this AoS
+
+          Function* freeFunc = M.getFunction("free");
+          auto usersList = freeFunc->users();
+          for(auto usr = usersList.begin(); usr != usersList.end(); usr++)
+          {
+            Value* call = *usr;
+            call->print(errs());
+            errs()<<"\n";
+            if(auto *CI = dyn_cast<CallInst>(call))
+            {
+              Value* operand = CI->getArgOperand(0);
+              if(auto *LI = dyn_cast<LoadInst>(operand))
+              {
+                if(LI->getPointerOperand() == currentAoS)
+                {
+                  // if(CI->getNumUses() == 0)
+                    // CI->eraseFromParent(); //erase this free() call
+                  
+                  blockToAdd = CI->getParent();
+                  blockToAdd->print(errs());
+                  terminator = CI;
+                  aosLoadInst = LI;
+                  freeAoSExists = true;
+                  errs()<<"\n";
+                }
+              }
+            }
+          }
+          
+
+          User* lastUsage = *(currentAoS->users().begin()); //last user of the AoS
+          lastUsage->print(errs());
+          errs()<<"\n";
+
+          Instruction* lastInstructionUsage = cast<Instruction>(lastUsage);
+          lastInstructionUsage->print(errs());
+          errs()<<" in function: ";
+          lastInstructionUsage->getFunction()->printAsOperand(errs());
+          errs()<<"\n";
+
+          BasicBlock* currentBlock = lastInstructionUsage->getParent(); 
+          currentBlock->printAsOperand(errs());
+          errs()<<" in function: ";
+          currentBlock->getParent()->printAsOperand(errs());
+          errs()<<"\n";
+          if(blockToAdd == nullptr)
+            blockToAdd = currentBlock->getSingleSuccessor(); //this may break for blocks with return statements - test it out
+          if(blockToAdd == nullptr)
+          {
+            // errs()<<"No successor\n";
+            auto inst = currentBlock->getTerminator();
+            inst->print(errs());
+            errs()<<"\n";
+            if(auto *BR = dyn_cast<BranchInst>(inst))
+            {
+              blockToAdd = BR->getSuccessor(BR->getNumSuccessors() - 1);
+            }
+          }
+          blockToAdd->printAsOperand(errs());
+          if(terminator == nullptr)
+            terminator = blockToAdd->getTerminator();
+          errs()<<"\n";
+
+          IRBuilder<> FreeBuilder(terminator);
+
+          string funcName = "freeAoS";
+          funcName.append(currentStruct->getName());
+
+          // Function* aosFreeFunction = M.getFunction("freeAoS");
+
+          if(functionCreated == false)
+          {
+          vector<Type *> ArgTypes;
+
+          ArgTypes.push_back(PointerType::get(M.getContext(),0)); //AoS parameter
+          // ArgTypes.push_back(Type::getInt32Ty(split_Context)); //size parameter
+
+          FunctionType *FT = FunctionType::get(Type::getVoidTy(M.getContext()), ArgTypes, false);
+
+          Function* freeAoSFunction = Function::Create(FT,Function::ExternalLinkage,funcName,M);
+          get<3>(aosValues.at(i)) = true;
+
+          // M.getFunctionList().push_back(freeAoSFunction);
+
+          BasicBlock *entryBlock = BasicBlock::Create(split_Context, "entry", freeAoSFunction);
+
+          // //at entry block, obtain the size of AoS
+          FreeBuilder.SetInsertPoint(entryBlock);
+
+          Type* argTy = M.getFunction("malloc_usable_size")->getArg(0)->getType();
+          // // Function* mallocFunc = M.getFunction("malloc_usable_size");
+          // // Value* a = *(mallocFunc->users().begin());
+          // // CallInst* c = cast<CallInst>(a);
+          // // a->print(errs());
+          // // errs()<<"\n";
+          // // argTy = c->getArgOperand(0)->getType();
+          // // auto list = c->getAttributes();
+          // // auto list = M.getFunction("malloc_usable_size")->getAttributes();
+          // // argTy->print(errs());
+          // // errs()<<"\n";
+
+          //loading the function argument: aos ptr
+
+          AllocaInst* aosStore = FreeBuilder.CreateAlloca(PointerType::get(split_Context,0), 0, "aos"); //stores aos pointer
+          FreeBuilder.CreateStore(freeAoSFunction->getArg(0), aosStore);
+
+          AllocaInst* sizeStore = FreeBuilder.CreateAlloca(Type::getInt32Ty(split_Context), 0, "size"); //stores number of AoS elements
+          // FreeBuilder.CreateStore(freeAoSFunction->getArg(1), sizeStore);
+
+          AllocaInst* indexStore = FreeBuilder.CreateAlloca(Type::getInt32Ty(split_Context), 0, "index"); //stores while loop index
+          FreeBuilder.CreateStore(ConstantInt::get(split_Context,APInt(32,0)), indexStore); //initialise index to 0
+
+          LoadInst* aosLoad = new LoadInst(argTy,aosStore,"",entryBlock);
+
+          CallInst* mallocSizeCall = FreeBuilder.CreateCall(M.getFunction("malloc_usable_size"),aosLoad,"",nullptr);
+          // mallocSizeCall->setAttributes(list);
+
+          // //create variable to store number of elements in AoS
+          // Instruction* numElements = new AllocaInst(Type::getInt32Ty(split_Context),0,ConstantInt::get(split_Context,APInt(32,1)),"",terminator);
+
+          //get size of struct used by the AoS
+          int elementSize = TD->getStructLayout(currentStruct)->getSizeInBytes();
+          Value* elementSizeValue = ConstantInt::get(split_Context,APInt(32,elementSize));
+
+          ///divide the size of AoS by element size to get the number of elements in AoS, store it in numElements
+
+          //divide operation
+
+          mallocSizeCall->getType()->print(errs());
+          errs()<<"\n";
+          elementSizeValue->getType()->print(errs());
+          errs()<<"\n";
+
+          if(mallocSizeCall->getType() == elementSizeValue->getType())
+            errs()<<"yes\n";
+
+          Instruction* trunc = new TruncInst(mallocSizeCall,Type::getInt32Ty(split_Context),"",entryBlock);
+
+          Value* result = FreeBuilder.CreateUDiv(trunc,elementSizeValue,"");
+
+          Instruction* storeSize = new StoreInst(result,sizeStore,entryBlock);
+          
+          //creating while.cond block
+
+          BasicBlock *whileCond = BasicBlock::Create(split_Context, "while.cond", freeAoSFunction);
+          
+          FreeBuilder.CreateBr(whileCond);
+          /// End of entry block
+
+          /// Start of whileCond block
+
+          FreeBuilder.SetInsertPoint(whileCond);
+
+          LoadInst* indexLoad = FreeBuilder.CreateLoad(Type::getInt32Ty(split_Context),indexStore); //load index
+          LoadInst* sizeLoad = FreeBuilder.CreateLoad(Type::getInt32Ty(split_Context),sizeStore); //load size
+
+          Value* whileConditon = FreeBuilder.CreateICmp(ICmpInst::ICMP_NE,indexLoad,sizeLoad,"condition");
+
+          //creating whileBody block
+
+          BasicBlock* whileBody = BasicBlock::Create(split_Context, "while.body", freeAoSFunction);
+
+          //creating whileEnd block
+
+          BasicBlock *whileEnd = BasicBlock::Create(split_Context, "while.end", freeAoSFunction);
+
+          FreeBuilder.CreateCondBr(whileConditon,whileBody,whileEnd);
+
+          /// End of whileCond
+
+          /// Start of whileEnd
+
+          FreeBuilder.SetInsertPoint(whileEnd);
+          FreeBuilder.CreateRetVoid(); // end of function
+
+          /// End of whileEnd
+
+          /// Start of whileBody
+
+          FreeBuilder.SetInsertPoint(whileBody);
+
+          aosLoad = FreeBuilder.CreateLoad(argTy,aosStore,"aos"); //load aos to be accessed
+          indexLoad = FreeBuilder.CreateLoad(Type::getInt32Ty(split_Context),indexStore); //load index
+
+          //extend index from i32 to i64
+
+          Value* extendedIndex = FreeBuilder.CreateSExt(indexLoad,Type::getInt64Ty(split_Context));
+
+          Value* elemAccess = FreeBuilder.CreateGEP(currentStruct,aosLoad,extendedIndex,"elemAccess",true);
+
+          vector<Value*> indices;
+          indices.push_back(ConstantInt::get(split_Context,APInt(32,0)));
+          indices.push_back(ConstantInt::get(split_Context,APInt(32,coldStructPtrIndex)));
+
+          Value* coldStructPtrAccess = FreeBuilder.CreateGEP(currentStruct,elemAccess,indices,"coldStructPtr",true);
+
+          LoadInst* gepLoad = FreeBuilder.CreateLoad(coldStructPtrAccess->getType(),coldStructPtrAccess,"coldStruct");
+
+          // Value* ifCondition = FreeBuilder.CreateIsNotNull(gepLoad,"isNull");
+
+          // //creating ifThen and ifEnd
+
+          // BasicBlock *ifThen = BasicBlock::Create(split_Context, "if.then", freeAoSFunction);
+
+          // BasicBlock *ifEnd = BasicBlock::Create(split_Context, "if.end", freeAoSFunction);
+
+          // FreeBuilder.CreateCondBr(ifCondition,ifEnd,ifThen);
+
+          /// End of whileBody
+
+          /// Start of ifEnd
+
+          // FreeBuilder.SetInsertPoint(ifEnd);
+
+          // indexLoad = FreeBuilder.CreateLoad(Type::getInt32Ty(split_Context),indexStore); //load index
+          // Value* inc = FreeBuilder.CreateAdd(indexLoad,ConstantInt::get(split_Context,APInt(32,1)),"",false,true);
+          // FreeBuilder.CreateStore(inc,indexStore);
+          // FreeBuilder.CreateBr(whileCond);
+
+          /// End of ifEnd
+
+          /// Start of ifThen
+
+          // FreeBuilder.SetInsertPoint(ifThen);
+          // aosLoad = FreeBuilder.CreateLoad(argTy,aosStore,"aos"); //load aos to be accessed
+          // indexLoad = FreeBuilder.CreateLoad(Type::getInt32Ty(split_Context),indexStore); //load index
+
+          // //extend index from i32 to i64
+
+          // extendedIndex = FreeBuilder.CreateSExt(indexLoad,Type::getInt64Ty(split_Context));
+
+          // elemAccess = FreeBuilder.CreateGEP(currentStruct,aosLoad,extendedIndex,"elemAccess",true);
+
+          // indices.clear();
+          // indices.push_back(ConstantInt::get(split_Context,APInt(32,0)));
+          // indices.push_back(ConstantInt::get(split_Context,APInt(32,coldStructPtrIndex)));
+
+          // coldStructPtrAccess = FreeBuilder.CreateGEP(currentStruct,elemAccess,indices,"coldStructPtr",true);
+
+          // gepLoad = FreeBuilder.CreateLoad(coldStructPtrAccess->getType(),coldStructPtrAccess,"coldStruct");
+
+          Value* freeColdStruct = FreeBuilder.CreateCall(M.getFunction("free"),gepLoad,"");
+          // FreeBuilder.CreateBr(ifEnd);
+
+          indexLoad = FreeBuilder.CreateLoad(Type::getInt32Ty(split_Context),indexStore); //load index
+          Value* inc = FreeBuilder.CreateAdd(indexLoad,ConstantInt::get(split_Context,APInt(32,1)),"",false,true);
+          FreeBuilder.CreateStore(inc,indexStore);
+
+          FreeBuilder.CreateBr(whileCond);
+
+          /// End of ifThen
+
+                    // canBeFreed()  <- probably use this somewhere - use this on the currentAoS Value*
+
+          functionCreated = true;
+          }
+
+          FreeBuilder.SetInsertPoint(terminator);
+
+          if(aosLoadInst == nullptr)
+            aosLoadInst = new LoadInst(currentAoS->getType(),currentAoS,"",terminator);
+
+          
+          CallInst* freeAoSCall = FreeBuilder.CreateCall(M.getFunction(funcName),aosLoadInst,"",nullptr);
+
+          if(freeAoSExists == false)
+          {
+            CallInst* freeAoSCall = FreeBuilder.CreateCall(freeFunc,aosLoadInst,"",nullptr);
+          }
+          
         }
 
         errs()<<"\n----------------------- END OF STRUCT SPLITTING -----------------------\n";

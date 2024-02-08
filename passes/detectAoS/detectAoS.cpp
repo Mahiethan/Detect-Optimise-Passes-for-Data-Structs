@@ -192,11 +192,44 @@ using namespace std;
 //   }
 //   return false;
 // }
+
+//get AoS arg
+
+/*
+map<Value*, vector<value>> aosArgs
+// first = param
+// second = vector of AoS that are associated with that param during func call
+
+func getAoSArgs(aos,param,F,index) //initially, this is called in main(), param = aos
+  For B in F
+    For I in B
+      if I is callInst
+        get called function
+        get Function arg list
+        for i in function arg list
+          if arglist.at(i) == param
+            index = i
+            param = F->getArg(i) //get parameter somehow
+            if(aosArgs.find(param) != aosArgs.end())
+              aosArgs.find(param).second.push_back(aos);
+            endif
+            else
+              vector<Value*> list
+              list.push_back(aos)
+              aosArgs.insert(make_pair<param,list>)
+            endif
+            getAoSArgs(aos, param, calledFunction, index)
+          endif
+        endfor
+      endif
+  endfor
+*/
+
 vector<tuple<Value*,Function*,string,StructType*>> potential;
 vector<Value*> argStores;
 vector<tuple<Value*,Function*,StructType*>> possibleGlobals;
 // vector<tuple<Value*,Function*,string>> confirmed;
-vector<tuple<string,vector<int>,Value*>> calledFunction; //stores pair of function name and used argument index of pointer (if any)
+vector<tuple<string,vector<int>,Value*,Function*>> calledFunction; //stores pair of function name and used argument index of pointer (if any)
 
 Function* originFunction = NULL;
 
@@ -445,6 +478,7 @@ void eraseFromArgStores(Value* val)
 
 Value* gepOperand = NULL;
 Value* calledAoS = NULL;
+Function* paramFunction = NULL;
 
 bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
 {
@@ -525,7 +559,7 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
           structure = eraseFromPossibleGlobals(aos);
 
         if(isParam)
-          confirmed.push_back(make_tuple(calledAoS,originFunction,type,gepStruct,true,false));
+          confirmed.push_back(make_tuple(calledAoS,paramFunction,type,gepStruct,true,false));
         else
           confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct,false,false));
         // errs()<<"Size of argStores: "<<argStores.size()<<"\n";
@@ -568,7 +602,7 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
           structure = eraseFromPossibleGlobals(aos);
 
         if(isParam)
-          confirmed.push_back(make_tuple(calledAoS,originFunction,type,gepStruct,true,false));
+          confirmed.push_back(make_tuple(calledAoS,paramFunction,type,gepStruct,true,false));
         else
           confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct,false,false));
       
@@ -583,7 +617,7 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
   return false;
 }
 
-void getCalledFunctions(CallInst* CI)
+void getCalledFunctions(CallInst* CI, Function* orig)
 {
   vector<int> indices;
   Value* aos;
@@ -668,7 +702,7 @@ void getCalledFunctions(CallInst* CI)
   }
   // errs()<<"Size of indices: "<<indices.size()<<"\n";
   // errs()<<"Adding function: "<<funcName<<"with indices size"<<indices.size()<<"that operates on"<<valName<<"\n";
-  calledFunction.push_back(std::make_tuple(funcName,indices,paramAoS));
+  calledFunction.push_back(std::make_tuple(funcName,indices,paramAoS,orig));
 }
 
 vector<Value*> getArgumentStores(Function *F, vector<int> indices)
@@ -816,7 +850,7 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                       if(funcName == "malloc" | funcName == "calloc")
                         mallocFlag = true;
                       else if(funcName != "free")
-                        getCalledFunctions(CI);
+                        getCalledFunctions(CI,&F);
                     }
                     else if(auto *GEP = dyn_cast<GetElementPtrInst>(&I))
                     {
@@ -876,12 +910,13 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
         // errs()<<potential.size()<<"\n";
         // errs()<<confirmed.size()<<"\n";
 
-      while(calledFunction.size() != 0)
+      for(auto it = calledFunction.begin(); it != calledFunction.end(); it)
       {
-        tuple<string,vector<int>,Value*> searchFunc = calledFunction.back();
-        calledFunction.pop_back();
+        tuple<string,vector<int>,Value*,Function*> searchFunc = *it;
+        calledFunction.erase(it);
         vector<int> argIndices = get<1>(searchFunc);
         calledAoS = get<2>(searchFunc); //get AoS that was used as parameter in function call
+        paramFunction = get<3>(searchFunc);
         for (auto &F : M) //iterate through all functions in the Module and print their names
         { 
           if(F.getName() == get<0>(searchFunc))
@@ -936,7 +971,7 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                     mallocFlag = true;
                   else if(funcName != "free")
                   {
-                    getCalledFunctions(CI);
+                    getCalledFunctions(CI,&F);
                   }
                 }
                 else if(auto *GEP = dyn_cast<GetElementPtrInst>(&I))

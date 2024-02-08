@@ -1,5 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
+#include <malloc.h>
 
 // #pragma pack(1)
 
@@ -8,6 +9,7 @@
 struct nodeOneCold
 {
     //// Cold fields - least used fields
+    int c;
     double d;
     char e;
     double f;
@@ -22,7 +24,6 @@ struct nodeOneOld
     //// Hot fields - most commonly used fields
     int a;
     double b;
-    int c;
     //addition of a new pointer to 'cold' structure - increase in struct size
     struct nodeOneCold* cold;
     //pointer to same type
@@ -36,10 +37,10 @@ void populateNodeOneOld(struct nodeOneOld* array, int size)
     {
         array[i].a = 1;
         array[i].b = 10.0;
-        array[i].c = 9;
         // struct nodeOneCold test;
         // array[i].cold = &test;
         array[i].cold = (struct nodeOneCold*) malloc(sizeof(struct nodeOneCold));
+        array[i].cold->c = 9;
         array[i].cold->d = 23.0;
         array[i].cold->e = 'a';
         array[i].cold->f = 23.0;
@@ -54,7 +55,7 @@ void multNodeOneOld(struct nodeOneOld* array, int size)
         for(int i = 0; i < size; i++)
         {
             array[i].a = (array[i].b * array[i].a) + (100 / 5);
-            array[i].b = (array[i].a / array[i].c) - (99 * 3);
+            array[i].b = (array[i].a / array[i].cold->c) - (99 * 3);
         }
     }
 }
@@ -71,11 +72,28 @@ void multArrays(struct nodeOneOld* arrayOne, struct nodeOneOld* arrayTwo, int si
     }
 }
 
-void freeAoS(struct nodeOneOld* array, int size)
+// void freeAoS(struct nodeOneOld* array, int size)
+// {
+//     for(int i = 0; i < size; i++)
+//         free(array[i].cold);
+//     free(array);
+// }
+
+void freeAoS(struct nodeOneOld* aos)
 {
-    for(int i = 0; i < size; i++)
-        free(array[i].cold);
-    free(array);
+     int arrayOneOldSize = malloc_usable_size(aos)/sizeof(struct nodeOneOld);
+     int currElem = 0;
+     while(currElem != arrayOneOldSize)
+     {
+        // if(!aos[currElem].cold)
+        free(aos[currElem].cold);
+        currElem++;
+     }
+    // for(currElem = 0; currElem < arrayOneOldSize; currElem++)
+    // {
+    //     if(!arrayOneOld[currElem].next)
+    //         free(arrayOneOld[currElem].next);
+    // }
 }
 
 int main()
@@ -108,25 +126,25 @@ int main()
         printf("Validity check\n");
         // for(int j = 5000; j < 5010; j++)
         // {
-            printf("%d\n---\n",arrayOneHot[5000].a);
-            printf("%f\n---\n",arrayOneHot[5000].b);
+            printf("%d\n---\n",arrayOneHot[5].a);
+            printf("%f\n---\n",arrayOneHot[5].b);
 
             // arrayOneHot[5000].cold->d = 90;
 
-            printf("%f\n---\n",arrayOneHot[5000].cold->d);
-            printf("%c\n---\n",arrayOneHot[5000].cold->e);
+            printf("%f\n---\n",arrayOneHot[5].cold->d);
+            printf("%c\n---\n",arrayOneHot[5].cold->e);
         //}
      }
 
 
-    freeAoS(arrayOneHot,n); //required for large AoS, otherwise program will crash
+    freeAoS(arrayOneHot); //required for large AoS, otherwise program will crash
     // free(arrayOneHot);
     // free(arrayOneCold); 
-    freeAoS(arrayTwoHot,n); //required for large AoS, otherwise program will crash
+    freeAoS(arrayTwoHot); //required for large AoS, otherwise program will crash
     // free(arrayTwoHot);
     // free(arrayTwoCold); 
-    // free(arrayOneHot);
-    // free(arrayTwoHot);
+    free(arrayOneHot);
+    free(arrayTwoHot);
     }
 
 

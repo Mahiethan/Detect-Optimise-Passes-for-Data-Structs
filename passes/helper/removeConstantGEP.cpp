@@ -198,7 +198,7 @@ struct removeConstantGEP : public PassInfoMixin<removeConstantGEP> {
 
                         //removing old GEP if not used elsewhere
                         if(newInst->getNumUses() == 0)
-                        newInst->eraseFromParent();
+                          newInst->eraseFromParent();
         
                         //remove the loadInst
                         if(loadedGEP->getNumUses() == 0)
