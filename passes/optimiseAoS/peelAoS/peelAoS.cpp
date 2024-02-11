@@ -338,6 +338,8 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
             StructType* coldStruct = StructType::create(peel_Context, coldName);
             coldStruct->setBody(coldFields);
 
+            coldStructs.push_back(coldStruct);
+
             //// now for each global AoS, iterate through all GEP instructions that access the global AoS and its struct element and change its:
             //// - indices
             //// - accessed ptr

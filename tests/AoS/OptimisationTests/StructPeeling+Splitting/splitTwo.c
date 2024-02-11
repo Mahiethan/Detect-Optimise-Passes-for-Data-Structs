@@ -101,9 +101,6 @@ int main()
 {
    // int n = 99999;
    int n = 999999;
-   int i;
-   for(i = 0; i < 100; i++)
-    {
     ////static
     // struct nodeOneOld arrayOneOld[n];
     ////dynamic
@@ -122,8 +119,7 @@ int main()
      multArrays(arrayOneHot,arrayTwoHot,n);
 
       //validity check
-     if(i == 77)
-     {
+
         printf("Validity check\n");
         // for(int j = 5000; j < 5010; j++)
         // {
@@ -136,7 +132,6 @@ int main()
             printf("%f\n---\n",arrayOneHot[5].cold->d);
             printf("%c\n---\n",arrayOneHot[5].cold->e);
         //}
-     }
 
 
     freeAoS(arrayOneHot); //required for large AoS, otherwise program will crash
@@ -149,7 +144,7 @@ int main()
     //     free(arrayOneHot);
     // if(!arrayOneHot)
     //     free(arrayTwoHot);
-    }
+
 
 
     return 0;

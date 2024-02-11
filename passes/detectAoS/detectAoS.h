@@ -31,7 +31,14 @@ Tuple elements of each confirmed AoS:
 
 vector<tuple<Value*,Function*,string,StructType*,bool,bool>> confirmed;
 bool detectAoSCalled;
+map<StructType*,int> origStructSizes;
+vector<StructType*> coldStructs; //stores cold structs used within AoS - created in etiher struct peeling struct splitting optimisation. These structs need to be added to the structList in reorderAoS() to have its fields reordered.
+
 // vector<tuple<string,vector<int>,Value*>> calledFunction; //stores pair of function name and used argument index of pointer (if any)
+
+// AttributeList mallocAttributes;
+
+bool permitStructSplitting; //bool is set in detectAoS()
 
 // Function* originFunction = NULL;
 

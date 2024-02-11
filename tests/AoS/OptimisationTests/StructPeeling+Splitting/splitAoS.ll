@@ -323,6 +323,8 @@ while.body:                                       ; preds = %while.cond
   br label %while.cond, !llvm.loop !12
 
 while.end:                                        ; preds = %while.cond
+  %7 = load ptr, ptr %aos.addr, align 8
+  call void @free(ptr noundef %7) #6
   ret void
 }
 
@@ -412,15 +414,11 @@ if.end:                                           ; preds = %if.then, %for.body
   call void @freeAoS(ptr noundef %23)
   %24 = load ptr, ptr %arrayTwoHot, align 8
   call void @freeAoS(ptr noundef %24)
-  %25 = load ptr, ptr %arrayOneHot, align 8
-  call void @free(ptr noundef %25) #6
-  %26 = load ptr, ptr %arrayTwoHot, align 8
-  call void @free(ptr noundef %26) #6
   br label %for.inc
 
 for.inc:                                          ; preds = %if.end
-  %27 = load i32, ptr %i, align 4
-  %inc = add nsw i32 %27, 1
+  %25 = load i32, ptr %i, align 4
+  %inc = add nsw i32 %25, 1
   store i32 %inc, ptr %i, align 4
   br label %for.cond, !llvm.loop !13
 

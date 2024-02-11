@@ -623,8 +623,14 @@ void getCalledFunctions(CallInst* CI, Function* orig)
   Value* aos;
   Value* paramAoS;
   int index = 0;
+  // CI->print(errs());
+  // errs()<<"\n";
+  CI->setTailCall(false);
+  // CI->print(errs());
+  // errs()<<"\n";
   Function* f = CI->getCalledFunction();
   string funcName = f->getName().str();
+  // errs()<<funcName<<"\n";
   // errs()<<"Checking func call "<<funcName<<"\n";
   for(auto a = CI->arg_begin(); a != CI->arg_end(); a++) //get all function arguments
   {
@@ -766,6 +772,12 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
         // errs()<<"Getting globals\n";
         for(GlobalVariable& gv : M.globals())
         {
+          // if((gv.getLinkage() == GlobalValue::LinkageTypes::PrivateLinkage) & (gv.getType() == Type::getInt1Ty(split_Context)) & ())
+          if(gv.getName() == "permitStructSplittingFlag")
+            permitStructSplitting = false;
+          else
+            permitStructSplitting = true;
+
            std::string type_str; 
            raw_string_ostream to_str(type_str);
            gv.print(to_str);
@@ -845,10 +857,19 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                       detectStaticAoS(AI);
                     else if(auto *CI = dyn_cast<CallInst>(&I))
                     {
+                      // CI->print(errs());
+                      // errs()<<"\n";
+                      CI->setTailCall(false);
+                      // CI->print(errs());
+                      // errs()<<"\n";
                       Function* f = CI->getCalledFunction();
                       string funcName = f->getName().str();
+                      // errs()<<funcName<<"\n";
                       if(funcName == "malloc" | funcName == "calloc")
+                      {
+                        // mallocAttributes = f->getAttributes();
                         mallocFlag = true;
+                      }
                       else if(funcName != "free")
                         getCalledFunctions(CI,&F);
                     }
@@ -965,8 +986,14 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                   detectStaticAoS(AI);
                 else if(auto *CI = dyn_cast<CallInst>(&I))
                 {
+                  // CI->print(errs());
+                  // errs()<<"\n";
+                  CI->setTailCall(false);
+                  // CI->print(errs());
+                  // errs()<<"\n";
                   Function* f = CI->getCalledFunction();
                   string funcName = f->getName().str();
+                  // errs()<<funcName<<"\n";
                   if(funcName == "malloc" | funcName == "calloc")
                     mallocFlag = true;
                   else if(funcName != "free")
@@ -1046,6 +1073,12 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
         //   continue;
 
         StructType* structure = get<3>(confirmed.at(i));
+
+        /// for each used structure, store the size of each struct
+
+        DataLayout* TD = new DataLayout(&M); //to get size and layout of structs
+
+        origStructSizes.insert(make_pair(structure,TD->getStructLayout(structure)->getSizeInBytes()));
 
         bool alreadyChecked = false;
 
@@ -1182,7 +1215,7 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
         }
         errs()<<"\n----------------------- END OF AOS DETECTION -----------------------\n";
         //Set to ::all() if IR is unchanged, otherwise ::none()
-        return PreservedAnalyses::all();
+        return PreservedAnalyses::none();
     };
 };
 }

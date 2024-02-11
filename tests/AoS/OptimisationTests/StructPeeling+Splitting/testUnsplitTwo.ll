@@ -1,4 +1,4 @@
-; ModuleID = 'testUnsplitTwo.bc'
+; ModuleID = 'test.bc'
 source_filename = "unsplitTwo.c"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-unknown-linux-gnu"
@@ -12,6 +12,7 @@ target triple = "x86_64-unknown-linux-gnu"
 @.str.1 = private unnamed_addr constant [8 x i8] c"%d\0A---\0A\00", align 1
 @.str.2 = private unnamed_addr constant [8 x i8] c"%f\0A---\0A\00", align 1
 @.str.3 = private unnamed_addr constant [8 x i8] c"%c\0A---\0A\00", align 1
+@permitStructSplittingFlag = private constant i1 false
 
 ; Function Attrs: noinline nounwind optnone uwtable
 define dso_local void @populateNodeOneOld(ptr noundef %array, i32 noundef %size) #0 {
@@ -66,7 +67,7 @@ for.body:                                         ; preds = %for.cond
   %idxprom9 = sext i32 %13 to i64
   %arrayidx10 = getelementptr inbounds %struct.nodeOneOld, ptr %12, i64 %idxprom9
   %cold = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx10, i32 0, i32 5
-  %14 = tail call ptr @malloc(i32 48)
+  %14 = call ptr @malloc(i64 48)
   store ptr %14, ptr %cold, align 8
   %15 = load ptr, ptr %cold, align 8
   %f = getelementptr inbounds %struct.nodeOneOldCold, ptr %15, i32 0, i32 0
@@ -126,7 +127,7 @@ for.body:                                         ; preds = %for.cond
   %idxprom3 = sext i32 %7 to i64
   %arrayidx4 = getelementptr inbounds %struct.nodeTwoOld, ptr %6, i64 %idxprom3
   %cold = getelementptr inbounds %struct.nodeTwoOld, ptr %arrayidx4, i32 0, i32 4
-  %8 = tail call ptr @malloc(i32 56)
+  %8 = call ptr @malloc(i64 56)
   store ptr %8, ptr %cold, align 8
   %9 = load ptr, ptr %cold, align 8
   %c = getelementptr inbounds %struct.nodeTwoOldCold, ptr %9, i32 0, i32 0

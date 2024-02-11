@@ -1,4 +1,4 @@
-; ModuleID = 'testUnsplitAoS.bc'
+; ModuleID = 'test.bc'
 source_filename = "unsplitAoS.c"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-unknown-linux-gnu"
@@ -10,6 +10,7 @@ target triple = "x86_64-unknown-linux-gnu"
 @.str.1 = private unnamed_addr constant [8 x i8] c"%d\0A---\0A\00", align 1
 @.str.2 = private unnamed_addr constant [8 x i8] c"%f\0A---\0A\00", align 1
 @.str.3 = private unnamed_addr constant [8 x i8] c"%c\0A---\0A\00", align 1
+@permitStructSplittingFlag = private constant i1 false
 
 ; Function Attrs: noinline nounwind optnone uwtable
 define dso_local void @populateNodeOneOld(ptr noundef %array, i32 noundef %size) #0 {
@@ -46,7 +47,7 @@ for.body:                                         ; preds = %for.cond
   %idxprom3 = sext i32 %7 to i64
   %arrayidx4 = getelementptr inbounds %struct.nodeOneOld, ptr %6, i64 %idxprom3
   %cold = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx4, i32 0, i32 2
-  %8 = tail call ptr @malloc(i32 72)
+  %8 = call ptr @malloc(i64 72)
   store ptr %8, ptr %cold, align 8
   %9 = load ptr, ptr %cold, align 8
   %c = getelementptr inbounds %struct.nodeOneOldCold, ptr %9, i32 0, i32 0
@@ -83,11 +84,35 @@ for.body:                                         ; preds = %for.cond
   %21 = load ptr, ptr %cold4, align 8
   %g = getelementptr inbounds %struct.nodeOneOldCold, ptr %21, i32 0, i32 4
   store double 2.300000e+01, ptr %g, align 8
+  %22 = load ptr, ptr %array.addr, align 8
+  %23 = load i32, ptr %i, align 4
+  %idxprom13 = sext i32 %23 to i64
+  %arrayidx14 = getelementptr inbounds %struct.nodeOneOld, ptr %22, i64 %idxprom13
+  %cold5 = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx14, i32 0, i32 2
+  %24 = load ptr, ptr %cold5, align 8
+  %h = getelementptr inbounds %struct.nodeOneOldCold, ptr %24, i32 0, i32 5
+  store double 2.300000e+01, ptr %h, align 8
+  %25 = load ptr, ptr %array.addr, align 8
+  %26 = load i32, ptr %i, align 4
+  %idxprom15 = sext i32 %26 to i64
+  %arrayidx16 = getelementptr inbounds %struct.nodeOneOld, ptr %25, i64 %idxprom15
+  %cold6 = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx16, i32 0, i32 2
+  %27 = load ptr, ptr %cold6, align 8
+  %i17 = getelementptr inbounds %struct.nodeOneOldCold, ptr %27, i32 0, i32 6
+  store double 2.300000e+01, ptr %i17, align 8
+  %28 = load ptr, ptr %array.addr, align 8
+  %29 = load i32, ptr %i, align 4
+  %idxprom18 = sext i32 %29 to i64
+  %arrayidx19 = getelementptr inbounds %struct.nodeOneOld, ptr %28, i64 %idxprom18
+  %cold7 = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx19, i32 0, i32 2
+  %30 = load ptr, ptr %cold7, align 8
+  %j = getelementptr inbounds %struct.nodeOneOldCold, ptr %30, i32 0, i32 7
+  store float 2.300000e+01, ptr %j, align 8
   br label %for.inc
 
 for.inc:                                          ; preds = %for.body
-  %22 = load i32, ptr %i, align 4
-  %inc = add nsw i32 %22, 1
+  %31 = load i32, ptr %i, align 4
+  %inc = add nsw i32 %31, 1
   store i32 %inc, ptr %i, align 4
   br label %for.cond, !llvm.loop !6
 
@@ -388,43 +413,6 @@ declare noalias ptr @malloc(i64 noundef) #3
 declare i32 @printf(ptr noundef, ...) #4
 
 define void @freeAoSstruct.nodeOneOld(ptr %0) {
-entry:
-  %aos = alloca ptr, align 8
-  store ptr %0, ptr %aos, align 8
-  %size = alloca i32, align 4
-  %index = alloca i32, align 4
-  store i32 0, ptr %index, align 4
-  %1 = load ptr, ptr %aos, align 8
-  %2 = call i64 @malloc_usable_size(ptr %1)
-  %3 = trunc i64 %2 to i32
-  %4 = udiv i32 %3, 88
-  store i32 %4, ptr %size, align 4
-  br label %while.cond
-
-while.cond:                                       ; preds = %while.body, %entry
-  %5 = load i32, ptr %index, align 4
-  %6 = load i32, ptr %size, align 4
-  %condition = icmp ne i32 %5, %6
-  br i1 %condition, label %while.body, label %while.end
-
-while.body:                                       ; preds = %while.cond
-  %aos1 = load ptr, ptr %aos, align 8
-  %7 = load i32, ptr %index, align 4
-  %8 = sext i32 %7 to i64
-  %elemAccess = getelementptr inbounds %struct.nodeOneOld, ptr %aos1, i64 %8
-  %coldStructPtr = getelementptr inbounds %struct.nodeOneOld, ptr %elemAccess, i32 0, i32 2
-  %coldStruct = load ptr, ptr %coldStructPtr, align 8
-  call void @free(ptr %coldStruct)
-  %9 = load i32, ptr %index, align 4
-  %10 = add nsw i32 %9, 1
-  store i32 %10, ptr %index, align 4
-  br label %while.cond
-
-while.end:                                        ; preds = %while.cond
-  ret void
-}
-
-define void @freeAoSstruct.nodeOneOld.1(ptr %0) {
 entry:
   %aos = alloca ptr, align 8
   store ptr %0, ptr %aos, align 8

@@ -1,14 +1,16 @@
-; ModuleID = 'unsplitAoS.c'
-source_filename = "unsplitAoS.c"
+; ModuleID = 'disableStructSplit.c'
+source_filename = "disableStructSplit.c"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-unknown-linux-gnu"
 
 %struct.nodeOneOld = type { i32, double, i32, double, i8, double, double, double, double, float, ptr }
+%struct.nodeTwoOld = type { i32, double, i32, double, i8, double, double, double, double, float, ptr }
 
 @.str = private unnamed_addr constant [16 x i8] c"Validity check\0A\00", align 1
 @.str.1 = private unnamed_addr constant [8 x i8] c"%d\0A---\0A\00", align 1
 @.str.2 = private unnamed_addr constant [8 x i8] c"%f\0A---\0A\00", align 1
 @.str.3 = private unnamed_addr constant [8 x i8] c"%c\0A---\0A\00", align 1
+@permitStructSplittingFlag = dso_local global i8 0, align 1
 
 ; Function Attrs: noinline nounwind optnone uwtable
 define dso_local void @populateNodeOneOld(ptr noundef %array, i32 noundef %size) #0 {
@@ -70,31 +72,85 @@ for.body:                                         ; preds = %for.cond
   %arrayidx12 = getelementptr inbounds %struct.nodeOneOld, ptr %14, i64 %idxprom11
   %g = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx12, i32 0, i32 6
   store double 2.300000e+01, ptr %g, align 8
-  %16 = load ptr, ptr %array.addr, align 8
-  %17 = load i32, ptr %i, align 4
-  %idxprom13 = sext i32 %17 to i64
-  %arrayidx14 = getelementptr inbounds %struct.nodeOneOld, ptr %16, i64 %idxprom13
-  %h = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx14, i32 0, i32 7
-  store double 2.300000e+01, ptr %h, align 8
-  %18 = load ptr, ptr %array.addr, align 8
-  %19 = load i32, ptr %i, align 4
-  %idxprom15 = sext i32 %19 to i64
-  %arrayidx16 = getelementptr inbounds %struct.nodeOneOld, ptr %18, i64 %idxprom15
-  %i17 = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx16, i32 0, i32 8
-  store double 2.300000e+01, ptr %i17, align 8
-  %20 = load ptr, ptr %array.addr, align 8
-  %21 = load i32, ptr %i, align 4
-  %idxprom18 = sext i32 %21 to i64
-  %arrayidx19 = getelementptr inbounds %struct.nodeOneOld, ptr %20, i64 %idxprom18
-  %j = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx19, i32 0, i32 9
-  store float 2.300000e+01, ptr %j, align 8
   br label %for.inc
 
 for.inc:                                          ; preds = %for.body
-  %22 = load i32, ptr %i, align 4
-  %inc = add nsw i32 %22, 1
+  %16 = load i32, ptr %i, align 4
+  %inc = add nsw i32 %16, 1
   store i32 %inc, ptr %i, align 4
   br label %for.cond, !llvm.loop !6
+
+for.end:                                          ; preds = %for.cond
+  ret void
+}
+
+; Function Attrs: noinline nounwind optnone uwtable
+define dso_local void @populateNodeTwoOld(ptr noundef %array, i32 noundef %size) #0 {
+entry:
+  %array.addr = alloca ptr, align 8
+  %size.addr = alloca i32, align 4
+  %i = alloca i32, align 4
+  store ptr %array, ptr %array.addr, align 8
+  store i32 %size, ptr %size.addr, align 4
+  store i32 0, ptr %i, align 4
+  br label %for.cond
+
+for.cond:                                         ; preds = %for.inc, %entry
+  %0 = load i32, ptr %i, align 4
+  %1 = load i32, ptr %size.addr, align 4
+  %cmp = icmp slt i32 %0, %1
+  br i1 %cmp, label %for.body, label %for.end
+
+for.body:                                         ; preds = %for.cond
+  %2 = load ptr, ptr %array.addr, align 8
+  %3 = load i32, ptr %i, align 4
+  %idxprom = sext i32 %3 to i64
+  %arrayidx = getelementptr inbounds %struct.nodeTwoOld, ptr %2, i64 %idxprom
+  %a = getelementptr inbounds %struct.nodeTwoOld, ptr %arrayidx, i32 0, i32 0
+  store i32 1, ptr %a, align 8
+  %4 = load ptr, ptr %array.addr, align 8
+  %5 = load i32, ptr %i, align 4
+  %idxprom1 = sext i32 %5 to i64
+  %arrayidx2 = getelementptr inbounds %struct.nodeTwoOld, ptr %4, i64 %idxprom1
+  %b = getelementptr inbounds %struct.nodeTwoOld, ptr %arrayidx2, i32 0, i32 1
+  store double 1.000000e+01, ptr %b, align 8
+  %6 = load ptr, ptr %array.addr, align 8
+  %7 = load i32, ptr %i, align 4
+  %idxprom3 = sext i32 %7 to i64
+  %arrayidx4 = getelementptr inbounds %struct.nodeTwoOld, ptr %6, i64 %idxprom3
+  %c = getelementptr inbounds %struct.nodeTwoOld, ptr %arrayidx4, i32 0, i32 2
+  store i32 9, ptr %c, align 8
+  %8 = load ptr, ptr %array.addr, align 8
+  %9 = load i32, ptr %i, align 4
+  %idxprom5 = sext i32 %9 to i64
+  %arrayidx6 = getelementptr inbounds %struct.nodeTwoOld, ptr %8, i64 %idxprom5
+  %d = getelementptr inbounds %struct.nodeTwoOld, ptr %arrayidx6, i32 0, i32 3
+  store double 2.300000e+01, ptr %d, align 8
+  %10 = load ptr, ptr %array.addr, align 8
+  %11 = load i32, ptr %i, align 4
+  %idxprom7 = sext i32 %11 to i64
+  %arrayidx8 = getelementptr inbounds %struct.nodeTwoOld, ptr %10, i64 %idxprom7
+  %e = getelementptr inbounds %struct.nodeTwoOld, ptr %arrayidx8, i32 0, i32 4
+  store i8 97, ptr %e, align 8
+  %12 = load ptr, ptr %array.addr, align 8
+  %13 = load i32, ptr %i, align 4
+  %idxprom9 = sext i32 %13 to i64
+  %arrayidx10 = getelementptr inbounds %struct.nodeTwoOld, ptr %12, i64 %idxprom9
+  %f = getelementptr inbounds %struct.nodeTwoOld, ptr %arrayidx10, i32 0, i32 5
+  store double 2.300000e+01, ptr %f, align 8
+  %14 = load ptr, ptr %array.addr, align 8
+  %15 = load i32, ptr %i, align 4
+  %idxprom11 = sext i32 %15 to i64
+  %arrayidx12 = getelementptr inbounds %struct.nodeTwoOld, ptr %14, i64 %idxprom11
+  %g = getelementptr inbounds %struct.nodeTwoOld, ptr %arrayidx12, i32 0, i32 6
+  store double 2.300000e+01, ptr %g, align 8
+  br label %for.inc
+
+for.inc:                                          ; preds = %for.body
+  %16 = load i32, ptr %i, align 4
+  %inc = add nsw i32 %16, 1
+  store i32 %inc, ptr %i, align 4
+  br label %for.cond, !llvm.loop !8
 
 for.end:                                          ; preds = %for.cond
   ret void
@@ -176,7 +232,7 @@ for.inc:                                          ; preds = %for.body3
   %20 = load i32, ptr %i, align 4
   %inc = add nsw i32 %20, 1
   store i32 %inc, ptr %i, align 4
-  br label %for.cond1, !llvm.loop !8
+  br label %for.cond1, !llvm.loop !9
 
 for.end:                                          ; preds = %for.cond1
   br label %for.inc19
@@ -185,7 +241,7 @@ for.inc19:                                        ; preds = %for.end
   %21 = load i32, ptr %j, align 4
   %inc20 = add nsw i32 %21, 1
   store i32 %inc20, ptr %j, align 4
-  br label %for.cond, !llvm.loop !9
+  br label %for.cond, !llvm.loop !10
 
 for.end21:                                        ; preds = %for.cond
   ret void
@@ -233,8 +289,8 @@ for.body3:                                        ; preds = %for.cond1
   %6 = load ptr, ptr %arrayTwo.addr, align 8
   %7 = load i32, ptr %i, align 4
   %idxprom4 = sext i32 %7 to i64
-  %arrayidx5 = getelementptr inbounds %struct.nodeOneOld, ptr %6, i64 %idxprom4
-  %a6 = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx5, i32 0, i32 0
+  %arrayidx5 = getelementptr inbounds %struct.nodeTwoOld, ptr %6, i64 %idxprom4
+  %a6 = getelementptr inbounds %struct.nodeTwoOld, ptr %arrayidx5, i32 0, i32 0
   %8 = load i32, ptr %a6, align 8
   %mul = mul nsw i32 %5, %8
   %9 = load ptr, ptr %arrayOne.addr, align 8
@@ -252,8 +308,8 @@ for.body3:                                        ; preds = %for.cond1
   %14 = load ptr, ptr %arrayTwo.addr, align 8
   %15 = load i32, ptr %i, align 4
   %idxprom12 = sext i32 %15 to i64
-  %arrayidx13 = getelementptr inbounds %struct.nodeOneOld, ptr %14, i64 %idxprom12
-  %b14 = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx13, i32 0, i32 1
+  %arrayidx13 = getelementptr inbounds %struct.nodeTwoOld, ptr %14, i64 %idxprom12
+  %b14 = getelementptr inbounds %struct.nodeTwoOld, ptr %arrayidx13, i32 0, i32 1
   %16 = load double, ptr %b14, align 8
   %mul15 = fmul double %13, %16
   %17 = load ptr, ptr %arrayOne.addr, align 8
@@ -268,7 +324,7 @@ for.inc:                                          ; preds = %for.body3
   %19 = load i32, ptr %i, align 4
   %inc = add nsw i32 %19, 1
   store i32 %inc, ptr %i, align 4
-  br label %for.cond1, !llvm.loop !10
+  br label %for.cond1, !llvm.loop !11
 
 for.end:                                          ; preds = %for.cond1
   br label %for.inc19
@@ -277,7 +333,7 @@ for.inc19:                                        ; preds = %for.end
   %20 = load i32, ptr %j, align 4
   %inc20 = add nsw i32 %20, 1
   store i32 %inc20, ptr %j, align 4
-  br label %for.cond, !llvm.loop !11
+  br label %for.cond, !llvm.loop !12
 
 for.end21:                                        ; preds = %for.cond
   ret void
@@ -319,7 +375,7 @@ for.body:                                         ; preds = %for.cond
   call void @populateNodeOneOld(ptr noundef %3, i32 noundef %4)
   %5 = load ptr, ptr %arrayTwoOld, align 8
   %6 = load i32, ptr %n, align 4
-  call void @populateNodeOneOld(ptr noundef %5, i32 noundef %6)
+  call void @populateNodeTwoOld(ptr noundef %5, i32 noundef %6)
   %7 = load ptr, ptr %arrayOneOld, align 8
   %8 = load i32, ptr %n, align 4
   call void @multNodeOneOld(ptr noundef %7, i32 noundef %8)
@@ -343,31 +399,52 @@ if.then:                                          ; preds = %for.body
   %b = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx9, i32 0, i32 1
   %16 = load double, ptr %b, align 8
   %call10 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %16)
-  %17 = load ptr, ptr %arrayOneOld, align 8
-  %arrayidx11 = getelementptr inbounds %struct.nodeOneOld, ptr %17, i64 5
-  %d = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx11, i32 0, i32 3
-  %18 = load double, ptr %d, align 8
-  %call12 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %18)
-  %19 = load ptr, ptr %arrayOneOld, align 8
-  %arrayidx13 = getelementptr inbounds %struct.nodeOneOld, ptr %19, i64 5
-  %e = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx13, i32 0, i32 4
-  %20 = load i8, ptr %e, align 8
-  %conv14 = sext i8 %20 to i32
-  %call15 = call i32 (ptr, ...) @printf(ptr noundef @.str.3, i32 noundef %conv14)
+  %17 = load ptr, ptr %arrayTwoOld, align 8
+  %arrayidx11 = getelementptr inbounds %struct.nodeTwoOld, ptr %17, i64 5
+  %a12 = getelementptr inbounds %struct.nodeTwoOld, ptr %arrayidx11, i32 0, i32 0
+  %18 = load i32, ptr %a12, align 8
+  %call13 = call i32 (ptr, ...) @printf(ptr noundef @.str.1, i32 noundef %18)
+  %19 = load ptr, ptr %arrayTwoOld, align 8
+  %arrayidx14 = getelementptr inbounds %struct.nodeTwoOld, ptr %19, i64 5
+  %b15 = getelementptr inbounds %struct.nodeTwoOld, ptr %arrayidx14, i32 0, i32 1
+  %20 = load double, ptr %b15, align 8
+  %call16 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %20)
+  %21 = load ptr, ptr %arrayOneOld, align 8
+  %arrayidx17 = getelementptr inbounds %struct.nodeOneOld, ptr %21, i64 5
+  %d = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx17, i32 0, i32 3
+  %22 = load double, ptr %d, align 8
+  %call18 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %22)
+  %23 = load ptr, ptr %arrayOneOld, align 8
+  %arrayidx19 = getelementptr inbounds %struct.nodeOneOld, ptr %23, i64 5
+  %e = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx19, i32 0, i32 4
+  %24 = load i8, ptr %e, align 8
+  %conv20 = sext i8 %24 to i32
+  %call21 = call i32 (ptr, ...) @printf(ptr noundef @.str.3, i32 noundef %conv20)
+  %25 = load ptr, ptr %arrayTwoOld, align 8
+  %arrayidx22 = getelementptr inbounds %struct.nodeTwoOld, ptr %25, i64 5
+  %d23 = getelementptr inbounds %struct.nodeTwoOld, ptr %arrayidx22, i32 0, i32 3
+  %26 = load double, ptr %d23, align 8
+  %call24 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %26)
+  %27 = load ptr, ptr %arrayTwoOld, align 8
+  %arrayidx25 = getelementptr inbounds %struct.nodeTwoOld, ptr %27, i64 5
+  %e26 = getelementptr inbounds %struct.nodeTwoOld, ptr %arrayidx25, i32 0, i32 4
+  %28 = load i8, ptr %e26, align 8
+  %conv27 = sext i8 %28 to i32
+  %call28 = call i32 (ptr, ...) @printf(ptr noundef @.str.3, i32 noundef %conv27)
   br label %if.end
 
 if.end:                                           ; preds = %if.then, %for.body
-  %21 = load ptr, ptr %arrayOneOld, align 8
-  call void @free(ptr noundef %21) #5
-  %22 = load ptr, ptr %arrayTwoOld, align 8
-  call void @free(ptr noundef %22) #5
+  %29 = load ptr, ptr %arrayOneOld, align 8
+  call void @free(ptr noundef %29) #5
+  %30 = load ptr, ptr %arrayTwoOld, align 8
+  call void @free(ptr noundef %30) #5
   br label %for.inc
 
 for.inc:                                          ; preds = %if.end
-  %23 = load i32, ptr %i, align 4
-  %inc = add nsw i32 %23, 1
+  %31 = load i32, ptr %i, align 4
+  %inc = add nsw i32 %31, 1
   store i32 %inc, ptr %i, align 4
-  br label %for.cond, !llvm.loop !12
+  br label %for.cond, !llvm.loop !13
 
 for.end:                                          ; preds = %for.cond
   ret i32 0
@@ -408,3 +485,4 @@ attributes #6 = { nounwind allocsize(0) }
 !10 = distinct !{!10, !7}
 !11 = distinct !{!11, !7}
 !12 = distinct !{!12, !7}
+!13 = distinct !{!13, !7}

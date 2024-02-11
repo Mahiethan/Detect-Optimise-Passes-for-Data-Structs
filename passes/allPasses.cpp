@@ -27,12 +27,12 @@ llvmGetPassPluginInfo() {
             MPM.addPass(detectAoS());
             return true;
           }
-          if(Name == "reorderAoS"){ //struct field reordering of AoS data structures
+          if(Name == "reorderAoS"){ //struct field reordering of AoS data structures - not including any cold structs
             MPM.addPass(detectAoS());
             MPM.addPass(reorderAoS());
             return true;
           }
-          if(Name == "reorderStructs"){ //struct field reordering of all structs
+          if(Name == "reorderStructs"){ //struct field reordering of all structs - including used/unused cold structs
             MPM.addPass(reorderAoS());
             return true;
           }
@@ -41,13 +41,13 @@ llvmGetPassPluginInfo() {
             MPM.addPass(peelAoS());
             return true;
           }
-          if(Name == "peel+reorderAoS"){ //detect, peel and reorder AoS structs 
+          if(Name == "peel+reorderAoS"){ //detect, peel and reorder AoS structs - including cold structs
             MPM.addPass(detectAoS());
             MPM.addPass(peelAoS());
             MPM.addPass(reorderAoS());
             return true;
           }
-          if(Name == "reorder+peelAoS"){ //detect, reorder and peel AoS structs - may need reordering again after struct peel
+          if(Name == "reorder+peelAoS"){ //detect, reorder and peel AoS structs - may need reordering again after struct peel - doesn't optimise used cold structs
             MPM.addPass(detectAoS());
             MPM.addPass(reorderAoS());
             MPM.addPass(peelAoS());
@@ -67,6 +67,20 @@ llvmGetPassPluginInfo() {
             MPM.addPass(detectAoS());
             MPM.addPass(peelAoS());
             MPM.addPass(splitAoS());
+            return true;
+          }
+
+          if(Name == "reorder+splitAoS"){ //detect, reorder and split AoS structs
+            MPM.addPass(detectAoS());
+            MPM.addPass(splitAoS());
+            MPM.addPass(reorderAoS());
+            return true;
+          }
+
+          if(Name == "split+reorderAoS"){ //detect, split and reorder AoS structs - including cold structs
+            MPM.addPass(detectAoS());
+            MPM.addPass(splitAoS());
+            MPM.addPass(reorderAoS());
             return true;
           }
           return false;

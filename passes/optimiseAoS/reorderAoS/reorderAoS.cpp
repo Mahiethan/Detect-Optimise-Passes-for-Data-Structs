@@ -87,6 +87,9 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
           }
         }
 
+        allStructs.insert( allStructs.end(), coldStructs.begin(), coldStructs.end()); //adding cold pointer structs, created from structure splitting optimisation
+
+
         errs()<<"Optimising "<<allStructs.size()<<" struct(s), which are: \n";
 
         for(int i = 0; i < allStructs.size(); i++)

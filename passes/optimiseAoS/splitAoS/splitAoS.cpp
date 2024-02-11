@@ -45,11 +45,24 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         errs()<<"\n-------------------------- STRUCT SPLITTING --------------------------\n\n";
 
         vector<StructType*> allStructs; //stores all structs to be optimised
-        vector<tuple<Value*,StructType*,int,bool>> aosValues; //AoS values to optimise - int is the index of cold struct ptr
+        vector<tuple<Value*,StructType*,int>> aosValues; //AoS values to optimise - int is the index of cold struct ptr
+
+        map<StructType*,bool> functionCreated; //stores bool for each struct to shows that a free function was created for it
+
+        float totalColdFieldAccesses = 0.0;
+
         // vector<pair<GlobalVariable*,StructType*>> globalAoS;
         // vector<tuple<Value*,StructType*,Function*>> localAoS;
 
         DataLayout* TD = new DataLayout(&M); //to get size and layout of structs
+
+        //check for unique "permitStructSplitting" global variable and see if it exists, before proceed to split struct
+        if(permitStructSplitting == false)
+        {
+          errs()<<"Struct splitting is not permitted for this program. The optimisation may be disabled or has already been applied.\n";
+          errs()<<"\n----------------------- END OF STRUCT SPLITTING -----------------------\n";
+          return PreservedAnalyses::all();
+        }
 
         /// ONLY COLLECT STRUCTS OF AoS values that satisfy one or multiple of the following criteria:
         // - are used as function arguments
@@ -83,7 +96,8 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
                 errs()<<"WARNING: nullptr found!\n";
                 continue;
               }
-              aosValues.push_back(make_tuple(aos,structure,0,false));
+              functionCreated.insert(make_pair(structure,false));
+              aosValues.push_back(make_tuple(aos,structure,0));
               bool exist = false;
               for(int j = 0; j < allStructs.size(); j++)
               {
@@ -127,6 +141,8 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
               //     it++;
               //   }
               // }
+
+              functionCreated.erase(structure);
 
               for(auto it = aosValues.begin(); it != aosValues.end(); it)
               {
@@ -321,7 +337,7 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         float mean = 0.0;
         for(int j = 0; j < elems.size(); j++)
         {
-          // errs()<<elems.at(j)<<"\n";
+          errs()<<"Field "<<j<<" accessed "<<elems.at(j)<<" times\n";
           if(elems.at(j) != INT_MAX)
             total += elems.at(j);
         }
@@ -366,7 +382,15 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         if(coldFields.size() == 0) //no cold field required for this struct
         {
           errs()<<"No need to peel this struct - no cold fields found\n";
-          break;
+          for(auto it = aosValues.begin(); it != aosValues.end(); it)
+          {
+            StructType* structToRemove = get<1>(*it);
+            if(structToRemove == currStruct)
+              aosValues.erase(it);
+            else
+              it++;
+          }
+          continue;
         }
 
         //// create new hot and cold structs
@@ -385,6 +409,8 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         coldName = coldName.append("Cold");
         StructType* coldStruct = StructType::create(split_Context, coldName);
         coldStruct->setBody(coldFields);
+
+        coldStructs.push_back(coldStruct);
 
         PointerType* coldStructPtr = PointerType::get(coldStruct, 0); // Initialise the pointer type now
         int coldStructPtrIndex = hotIndex++;
@@ -412,9 +438,27 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         errs()<<"\nCold Struct:\n";
         coldStruct->print(errs());
         errs()<<"\n";
+
         for(int j = 0; j < coldIndices.size(); j++)
         {
           errs()<<"Old index: "<<coldIndices.at(j).first<<" --> New index: "<<coldIndices.at(j).second<<"\n";
+          totalColdFieldAccesses += elems.at(coldIndices.at(j).first);
+        }
+
+        errs()<<"Total cold field accesses: "<<totalColdFieldAccesses<<"\n";
+
+        if(totalColdFieldAccesses == 0.0)
+        {
+          errs()<<"No structure splitting required for this struct: cold fields are not accessed.\n";
+          for(auto it = aosValues.begin(); it != aosValues.end(); it)
+          {
+            StructType* structToRemove = get<1>(*it);
+            if(structToRemove == currStruct)
+              aosValues.erase(it);
+            else
+              it++;
+          }
+          continue;
         }
 
         // //change GEP
@@ -549,8 +593,8 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
                     }
                   }
 
-                  errs()<<"hot:"<<isHotIndex<<" or cold:"<<isColdIndex<<"\n";
-                  errs()<<"old index:"<<in<<" new index:"<<newIndex<<"\n";
+                  // errs()<<"hot:"<<isHotIndex<<" or cold:"<<isColdIndex<<"\n";
+                  // errs()<<"old index:"<<in<<" new index:"<<newIndex<<"\n";
 
                   if(isHotIndex & !isColdIndex) // if the GEP operates on a index that should be in a hot struct
                   {
@@ -575,12 +619,12 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
                       indexVector.push_back(ConstantInt::get(split_Context,APInt(32,coldStructPtrIndex)));
                       ArrayRef<Value*> indexList = ArrayRef(indexVector);
                       coldGEP = GetElementPtrInst::CreateInBounds(currStruct, prec, indexList, "cold", &I);
-                      errs()<<"RET:";
-                      coldGEP->getResultElementType()->print(errs());
-                                            errs()<<"\n";
+                      // errs()<<"RET:";
+                      // coldGEP->getResultElementType()->print(errs());
+                      //                       errs()<<"\n";
 
-                      coldGEP->print(errs());
-                      errs()<<"\n";
+                      // coldGEP->print(errs());
+                      // errs()<<"\n";
 
                       // // create alloca inst for cold struct ptr - doesn't work
                       // if(isMalloced == false)
@@ -601,14 +645,18 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
                       {
                         IRBuilder<> TmpB(&I);
                         int size = TD->getStructLayout(coldStruct)->getSizeInBytes();
-                        Value* structSize = ConstantInt::get(split_Context,APInt(32,size));
+                        Value* structSize = ConstantInt::get(M.getContext(),APInt(64,size));
                         Type* ITy = Type::getInt32Ty(split_Context);
-                        Instruction* mallocInst = TmpB.CreateMalloc(ITy, coldStruct, structSize,ConstantInt::get(split_Context,APInt(32,1)), nullptr, "");
-
+                        // Instruction* mallocInst = TmpB.CreateMalloc(ITy, coldStruct, structSize,ConstantInt::get(split_Context,APInt(32,1)), nullptr, ""); //creates tail call
+                        //above tail call to malloc() should be converted to non-tail call in detectAoS()
+                        //it is converting but still giving seg fault - recreating malloc
+                        CallInst* mallocInst = TmpB.CreateCall(M.getFunction("malloc"),structSize,"",nullptr);
+                        // mallocInst->setAttributes(mallocAttributes);
+                        
 
                         Instruction* storeInst = new StoreInst(mallocInst,coldGEP,&I);
-                        storeInst->print(errs());
-                        errs()<<"\n";
+                        // storeInst->print(errs());
+                        // errs()<<"\n";
                         isMalloced = true;
                       }
 
@@ -651,6 +699,15 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         }
         }
 
+        // create a variable in main() to signify that struct splitting has been applied to this program/IR. 
+        // This is checked for before struct splitting is applied to it again, which is not permitted.
+
+        // Value* structSplittingApplied = ConstantInt::get(split_Context,APInt(1,0), 1); //initialise index to 0
+
+        //Create a unique global variable with these attributes
+        //Similarly a programmer can include a global variable with the same name as "permitStructSplittingFlag" to disable this struct splitting optimisation for any reason.
+        GlobalVariable* permitStructSplitting = new GlobalVariable(M, Type::getInt1Ty(split_Context), true, GlobalValue::LinkageTypes::PrivateLinkage, Constant::getNullValue(Type::getInt1Ty(split_Context)), "permitStructSplittingFlag");
+
         //now for every AoS used as function arguments, create a for/whileloop that frees the allocated cold pointer struct (if it is not NULL)
         //to determine where to create this for/while loop, get the LAST use of the AoS, and add the for/while loop in the next block?
 
@@ -659,7 +716,12 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           Value* currentAoS = get<0>(aosValues.at(i));
           StructType* currentStruct = get<1>(aosValues.at(i));
           int coldStructPtrIndex = get<2>(aosValues.at(i));
-          bool functionCreated = get<3>(aosValues.at(i));
+          bool needToCreateFunc = false;
+          auto findElem = functionCreated.find(currentStruct);
+          if(findElem != functionCreated.end())
+            needToCreateFunc = findElem->second;
+
+          errs()<<"need to create func for"<<currentStruct->getName()<<": "<<needToCreateFunc<<"\n";
 
           BasicBlock* blockToAdd = nullptr;
 
@@ -676,8 +738,8 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           for(auto usr = usersList.begin(); usr != usersList.end(); usr++)
           {
             Value* call = *usr;
-            call->print(errs());
-            errs()<<"\n";
+            // call->print(errs());
+            // errs()<<"\n";
             if(auto *CI = dyn_cast<CallInst>(call))
             {
               Value* operand = CI->getArgOperand(0);
@@ -689,11 +751,11 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
                     // CI->eraseFromParent(); //erase this free() call
                   
                   blockToAdd = CI->getParent();
-                  blockToAdd->print(errs());
-                  terminator = CI;
+                  // blockToAdd->printAsOperand(errs());
+                  terminator = LI->getNextNode();
                   aosLoadInst = LI;
                   freeAoSExists = true;
-                  errs()<<"\n";
+                  // errs()<<"\n";
                 }
               }
             }
@@ -701,36 +763,43 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           
 
           User* lastUsage = *(currentAoS->users().begin()); //last user of the AoS
-          lastUsage->print(errs());
-          errs()<<"\n";
+          // lastUsage->print(errs());
+          // errs()<<"\n";
 
           Instruction* lastInstructionUsage = cast<Instruction>(lastUsage);
-          lastInstructionUsage->print(errs());
-          errs()<<" in function: ";
-          lastInstructionUsage->getFunction()->printAsOperand(errs());
-          errs()<<"\n";
+          // lastInstructionUsage->printAsOperand(errs());
+          // errs()<<" in function: ";
+          // lastInstructionUsage->getFunction()->printAsOperand(errs());
+          // errs()<<"\n";
 
           BasicBlock* currentBlock = lastInstructionUsage->getParent(); 
           currentBlock->printAsOperand(errs());
           errs()<<" in function: ";
           currentBlock->getParent()->printAsOperand(errs());
           errs()<<"\n";
+          
           if(blockToAdd == nullptr)
             blockToAdd = currentBlock->getSingleSuccessor(); //this may break for blocks with return statements - test it out
           if(blockToAdd == nullptr)
           {
             // errs()<<"No successor\n";
             auto inst = currentBlock->getTerminator();
-            inst->print(errs());
+            // inst->print(errs());
             errs()<<"\n";
             if(auto *BR = dyn_cast<BranchInst>(inst))
             {
               blockToAdd = BR->getSuccessor(BR->getNumSuccessors() - 1);
             }
           }
-          blockToAdd->printAsOperand(errs());
-          if(terminator == nullptr)
-            terminator = blockToAdd->getTerminator();
+
+          // if(blockToAdd == nullptr)
+          //   blockToAdd = currentBlock;
+
+          // // blockToAdd->printAsOperand(errs());
+          // if(terminator == nullptr)
+          //   terminator = blockToAdd->getFirstNonPHI();
+
+          // terminator->print(errs());
           errs()<<"\n";
 
           IRBuilder<> FreeBuilder(terminator);
@@ -740,7 +809,7 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
 
           // Function* aosFreeFunction = M.getFunction("freeAoS");
 
-          if(functionCreated == false)
+          if(!needToCreateFunc)
           {
           vector<Type *> ArgTypes;
 
@@ -750,8 +819,7 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           FunctionType *FT = FunctionType::get(Type::getVoidTy(M.getContext()), ArgTypes, false);
 
           Function* freeAoSFunction = Function::Create(FT,Function::ExternalLinkage,funcName,M);
-          get<3>(aosValues.at(i)) = true;
-
+          // freeAoSFunction->setName(funcName);
           // M.getFunctionList().push_back(freeAoSFunction);
 
           BasicBlock *entryBlock = BasicBlock::Create(split_Context, "entry", freeAoSFunction);
@@ -791,20 +859,24 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           // Instruction* numElements = new AllocaInst(Type::getInt32Ty(split_Context),0,ConstantInt::get(split_Context,APInt(32,1)),"",terminator);
 
           //get size of struct used by the AoS
-          int elementSize = TD->getStructLayout(currentStruct)->getSizeInBytes();
+          // int elementSize = TD->getStructLayout(currentStruct)->getSizeInBytes(); //may be incorrect after struct field reordering
+          int elementSize = 0;
+          if(origStructSizes.find(currentStruct) != origStructSizes.end())
+            elementSize = origStructSizes.find(currentStruct)->second; //get the original struct size before any optimisations were applied to it
+
           Value* elementSizeValue = ConstantInt::get(split_Context,APInt(32,elementSize));
 
           ///divide the size of AoS by element size to get the number of elements in AoS, store it in numElements
 
           //divide operation
 
-          mallocSizeCall->getType()->print(errs());
-          errs()<<"\n";
-          elementSizeValue->getType()->print(errs());
-          errs()<<"\n";
+          // mallocSizeCall->getType()->print(errs());
+          // errs()<<"\n";
+          // elementSizeValue->getType()->print(errs());
+          // errs()<<"\n";
 
-          if(mallocSizeCall->getType() == elementSizeValue->getType())
-            errs()<<"yes\n";
+          // if(mallocSizeCall->getType() == elementSizeValue->getType())
+          //   errs()<<"yes\n";
 
           Instruction* trunc = new TruncInst(mallocSizeCall,Type::getInt32Ty(split_Context),"",entryBlock);
 
@@ -924,7 +996,8 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
 
                     // canBeFreed()  <- probably use this somewhere - use this on the currentAoS Value*
 
-          functionCreated = true;
+          functionCreated.find(currentStruct)->second = true;
+          errs()<<"Created function: "<<funcName<<"\n";
           }
 
           FreeBuilder.SetInsertPoint(terminator);
@@ -932,15 +1005,17 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           if(aosLoadInst == nullptr)
             aosLoadInst = new LoadInst(currentAoS->getType(),currentAoS,"",terminator);
 
-          
           CallInst* freeAoSCall = FreeBuilder.CreateCall(M.getFunction(funcName),aosLoadInst,"",nullptr);
 
-          if(freeAoSExists == false)
-          {
-            CallInst* freeAoSCall = FreeBuilder.CreateCall(freeFunc,aosLoadInst,"",nullptr);
-          }
+          // if(freeAoSExists == false)
+          // {
+          //   CallInst* freeAoSCall = FreeBuilder.CreateCall(freeFunc,aosLoadInst,"",nullptr);
+          // }
+          
           
         }
+
+        
 
         errs()<<"\n----------------------- END OF STRUCT SPLITTING -----------------------\n";
 
