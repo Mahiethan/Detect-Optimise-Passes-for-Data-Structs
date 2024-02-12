@@ -1377,7 +1377,9 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
 
         DataLayout* TD = new DataLayout(&M); //to get size and layout of structs
 
-        origStructSizes.insert(make_pair(structure,TD->getStructLayout(structure)->getSizeInBytes()));
+        // origStructSizes.insert(make_pair(structure,TD->getStructLayout(structure)->getSizeInBytes()));
+        origStructSizes.insert(make_pair(structure,make_pair(TD->getTypeAllocSize(structure),TD->getTypeAllocSize(structure))));
+
 
         bool alreadyChecked = false;
 

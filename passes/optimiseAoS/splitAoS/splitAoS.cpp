@@ -44,8 +44,37 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
 
         errs()<<"\n-------------------------- STRUCT SPLITTING --------------------------\n\n";
 
+        bool exit = false;
+
+        if(M.getFunction("malloc") == nullptr)
+        {
+          errs()<<"Function malloc() not found in IR. Unable to perform structure splitting without this function.\n\n";
+          errs()<<"Please add this function to the source file.\n";
+          exit = true;
+        }
+
+         if(M.getFunction("free") == nullptr)
+        {
+          errs()<<"Function free() not found in IR. Unable to perform structure splitting without this function.\n\n";
+          errs()<<"Please add this function to the source file.\n";
+          exit = true;
+        }
+
+        // if(M.getFunction("malloc_usable_size") == nullptr)
+        // {
+        //   errs()<<"Function malloc_usable_size() not found in IR. Unable to perform structure splitting without this function.\n\n";
+        //   errs()<<"Please add this function to the source file.\n";
+        //   exit = true;
+        // }
+
+        if(exit)
+        {
+          errs()<<"\n----------------------- END OF STRUCT SPLITTING -----------------------\n";
+          return PreservedAnalyses::all();
+        }
+
         vector<StructType*> allStructs; //stores all structs to be optimised
-        vector<tuple<Value*,StructType*,int>> aosValues; //AoS values to optimise - int is the index of cold struct ptr
+        vector<tuple<Value*,StructType*,int,Value*>> aosValues; //AoS values to optimise - int is the index of cold struct ptr, last Value* is the size of malloc()
 
         map<StructType*,bool> functionCreated; //stores bool for each struct to shows that a free function was created for it
 
@@ -89,7 +118,7 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
             bool isParam = get<4>(confirmed.at(i));
             bool hasPointerElem = get<5>(confirmed.at(i));
 
-            if((isParam | hasPointerElem | isDynamic) & (TD->getStructLayout(structure)->getSizeInBytes() > 8)) //only optimise structs that have a size greater than a word length (8 bytes)
+            if((isParam | hasPointerElem | isDynamic) & (TD->getTypeAllocSize(structure) > 8)) //only optimise structs that have a size greater than a word length (8 bytes)
             {
               if(structure == nullptr) //should not occur
               {
@@ -97,7 +126,7 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
                 continue;
               }
               functionCreated.insert(make_pair(structure,false));
-              aosValues.push_back(make_tuple(aos,structure,0));
+              aosValues.push_back(make_tuple(aos,structure,0,nullptr));
               bool exist = false;
               for(int j = 0; j < allStructs.size(); j++)
               {
@@ -426,11 +455,57 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         // //// creating hot struct
         hotFields.push_back(coldStructPtr);
         ArrayRef<Type*> newHotFields = ArrayRef(hotFields);
+
+        StructType* temporaryStruct = StructType::create(split_Context, allStructs.at(i)->getName());
+
+        temporaryStruct->setBody(newHotFields); //to calculate size of hot struct
+
+        int originalSize = origStructSizes.find(allStructs.at(i))->second.first;
+
+        int newSize = TD->getTypeAllocSize(temporaryStruct);
+
+        // int size = (TD->getTypeAllocSize(currStruct) + 8) - TD->getTypeAllocSize(coldStruct);
+
+        if(newSize > originalSize) //don't bother splitting if the struct size is the same after splitting
+        {
+          if(newSize == originalSize) //this is done to fix errors when attempting to split dynamicAoS.ll 
+            errs()<<"Hot struct same in size after splitting. Not feasible to split this structure.\n";
+          else
+            errs()<<"Hot struct larger in size after splitting. Not feasible to split this structure.\n";
+
+          for(auto it = aosValues.begin(); it != aosValues.end(); it)
+          {
+            StructType* structToRemove = get<1>(*it);
+            if(structToRemove == currStruct)
+              aosValues.erase(it);
+            else
+              it++;
+          }
+
+          continue;
+        }
+        
         allStructs.at(i)->setBody(newHotFields);
+
+        currStruct->setBody(newHotFields);
+
+        // update map to insert new hot and cold structs
+
+        auto updateMap = origStructSizes.find(currStruct);
+        if(updateMap != origStructSizes.end())  
+        {
+          updateMap->second.first = updateMap->second.second; //update the old size
+          updateMap->second.second = newSize; //update the new size
+        } 
+
+        origStructSizes.insert(make_pair(coldStruct,make_pair(TD->getTypeAllocSize(coldStruct),TD->getTypeAllocSize(coldStruct))));
+
+        // errs()<<TD->getTypeAllocSize(allStructs.at(i))+8<<"\n"; //including 8 bytes for the cold ptr field
 
         errs()<<"Hot Struct:\n";
         currStruct->print(errs());
         errs()<<"\n";
+        errs()<<"Size change: "<<originalSize<<" -> "<<TD->getTypeAllocSize(temporaryStruct)<<"\n";
         for(int j = 0; j < hotIndices.size(); j++)
         {
           errs()<<"Old index: "<<hotIndices.at(j).first<<" --> New index: "<<hotIndices.at(j).second<<"\n";
@@ -438,6 +513,7 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         errs()<<"\nCold Struct:\n";
         coldStruct->print(errs());
         errs()<<"\n";
+        errs()<<"Size: "<<TD->getTypeAllocSize(coldStruct)<<"\n";
 
         for(int j = 0; j < coldIndices.size(); j++)
         {
@@ -644,7 +720,9 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
                       if(isMalloced == false)
                       {
                         IRBuilder<> TmpB(&I);
-                        int size = TD->getStructLayout(coldStruct)->getSizeInBytes();
+                        int size = TD->getTypeAllocSize(coldStruct);
+                        if(size < 8)
+                          size = 8;
                         Value* structSize = ConstantInt::get(M.getContext(),APInt(64,size));
                         Type* ITy = Type::getInt32Ty(split_Context);
                         // Instruction* mallocInst = TmpB.CreateMalloc(ITy, coldStruct, structSize,ConstantInt::get(split_Context,APInt(32,1)), nullptr, ""); //creates tail call
@@ -714,12 +792,95 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         for(int i = 0; i < aosValues.size(); i++)
         {
           Value* currentAoS = get<0>(aosValues.at(i));
+          errs()<<"AOS: "<<i+1;
+          currentAoS->print(errs());
+          errs()<<"\n";
           StructType* currentStruct = get<1>(aosValues.at(i));
           int coldStructPtrIndex = get<2>(aosValues.at(i));
           bool needToCreateFunc = false;
           auto findElem = functionCreated.find(currentStruct);
           if(findElem != functionCreated.end())
             needToCreateFunc = findElem->second;
+
+          
+          bool mallocFound = false;
+
+
+          //update malloc() call for this AoS
+          for(auto u = currentAoS->users().begin(); u != currentAoS->users().end(); u++)
+          {
+            Instruction* inst = cast<Instruction>(*u);
+            if(auto *SI = dyn_cast<StoreInst>(inst))
+            {
+              Instruction* pred = SI->getPrevNode();
+              if(auto *CI = dyn_cast<CallInst>(pred))
+              {
+                if(CI->getCalledFunction()->getName() == "malloc") //replace the malloc with a new one, allocating the reduced size
+                {
+                  mallocFound = true;
+                  // Instruction* finalPred = CI->getPrevNode();
+                  // if(auto *MI = dyn_cast<BinaryOperator>(finalPred))
+                  // {
+                  //   // Value* newSize = ConstantInt::get(M.getContext(),APInt(64,TD->getTypeAllocSize(currentStruct) + 8));
+                  //   int newSize = origStructSizes.find(currentStruct)->second;
+                  //   Value* newSizeOperand = ConstantInt::get(M.getContext(),APInt(64,newSize)); //get the correct size and insert it here
+                  //   MI->setOperand(1,newSizeOperand);
+                  // }
+                  // //can be a constant
+
+                  // //can be a variable
+
+                  Instruction* next = CI->getNextNode();
+                  
+                  int newSize = origStructSizes.find(currentStruct)->second.second;
+                  Value* structSize = ConstantInt::get(M.getContext(),APInt(64,newSize));
+
+                  IRBuilder<> TmpB(next);
+
+                  int origSize = origStructSizes.find(currentStruct)->second.first;
+                  Value* origSizeValue = ConstantInt::get(M.getContext(),APInt(64,origSize));
+
+                  Value* numElements = TmpB.CreateUDiv(CI->getArgOperand(0),origSizeValue,"");
+                  Value* newAllocSize = TmpB.CreateMul(numElements,structSize,"",false,false);
+
+                  CallInst* mallocInst = TmpB.CreateCall(M.getFunction("malloc"),newAllocSize,"",nullptr);
+                  CI->replaceAllUsesWith(mallocInst);
+                  CI->eraseFromParent();
+
+                  //we can use this calculated array size to free the AoS later
+    
+                  get<3>(aosValues.at(i)) = numElements;
+
+                }
+                else if(CI->getCalledFunction()->getName() == "calloc") //replace the malloc with a new one, allocating the reduced size
+                {
+                  mallocFound = true;
+                  Instruction* next = CI->getNextNode();
+                  
+                  int newSize = origStructSizes.find(currentStruct)->second.second;
+                  Value* structSize = ConstantInt::get(M.getContext(),APInt(64,newSize));
+
+                  IRBuilder<> TmpB(next);
+
+                  Value* newAllocSize = TmpB.CreateMul(CI->getArgOperand(0),structSize,"",false,false);
+
+                  CallInst* mallocInst = TmpB.CreateCall(M.getFunction("malloc"),newAllocSize,"",nullptr);
+                  CI->replaceAllUsesWith(mallocInst);
+                  CI->eraseFromParent();
+
+                  get<3>(aosValues.at(i)) = CI->getArgOperand(0);
+                }
+                // do one for realloc() and test it
+              }
+            }
+          }
+
+          if(mallocFound == false)
+          {
+            currentAoS->print(errs());
+            errs()<<"\nNo malloc() found. Possible a global pointer not yet malloced in origin function.\n";
+            continue;
+          }
 
           errs()<<"need to create func for"<<currentStruct->getName()<<": "<<needToCreateFunc<<"\n";
 
@@ -814,7 +975,7 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           vector<Type *> ArgTypes;
 
           ArgTypes.push_back(PointerType::get(M.getContext(),0)); //AoS parameter
-          // ArgTypes.push_back(Type::getInt32Ty(split_Context)); //size parameter
+          ArgTypes.push_back(Type::getInt64Ty(M.getContext())); //size parameter
 
           FunctionType *FT = FunctionType::get(Type::getVoidTy(M.getContext()), ArgTypes, false);
 
@@ -827,7 +988,7 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           // //at entry block, obtain the size of AoS
           FreeBuilder.SetInsertPoint(entryBlock);
 
-          Type* argTy = M.getFunction("malloc_usable_size")->getArg(0)->getType();
+          // Type* argTy = M.getFunction("malloc_usable_size")->getArg(0)->getType();
           // // Function* mallocFunc = M.getFunction("malloc_usable_size");
           // // Value* a = *(mallocFunc->users().begin());
           // // CallInst* c = cast<CallInst>(a);
@@ -844,15 +1005,15 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           AllocaInst* aosStore = FreeBuilder.CreateAlloca(PointerType::get(split_Context,0), 0, "aos"); //stores aos pointer
           FreeBuilder.CreateStore(freeAoSFunction->getArg(0), aosStore);
 
-          AllocaInst* sizeStore = FreeBuilder.CreateAlloca(Type::getInt32Ty(split_Context), 0, "size"); //stores number of AoS elements
-          // FreeBuilder.CreateStore(freeAoSFunction->getArg(1), sizeStore);
+          AllocaInst* sizeStore = FreeBuilder.CreateAlloca(Type::getInt64Ty(split_Context), 0, "size"); //stores number of AoS elements
+          FreeBuilder.CreateStore(freeAoSFunction->getArg(1), sizeStore);
 
           AllocaInst* indexStore = FreeBuilder.CreateAlloca(Type::getInt32Ty(split_Context), 0, "index"); //stores while loop index
           FreeBuilder.CreateStore(ConstantInt::get(split_Context,APInt(32,0)), indexStore); //initialise index to 0
 
-          LoadInst* aosLoad = new LoadInst(argTy,aosStore,"",entryBlock);
+          LoadInst* aosLoad = new LoadInst(PointerType::get(M.getContext(),0),aosStore,"",entryBlock);
 
-          CallInst* mallocSizeCall = FreeBuilder.CreateCall(M.getFunction("malloc_usable_size"),aosLoad,"",nullptr);
+          // CallInst* mallocSizeCall = FreeBuilder.CreateCall(M.getFunction("malloc_usable_size"),aosLoad,"",nullptr);
           // mallocSizeCall->setAttributes(list);
 
           // //create variable to store number of elements in AoS
@@ -860,11 +1021,15 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
 
           //get size of struct used by the AoS
           // int elementSize = TD->getStructLayout(currentStruct)->getSizeInBytes(); //may be incorrect after struct field reordering
-          int elementSize = 0;
-          if(origStructSizes.find(currentStruct) != origStructSizes.end())
-            elementSize = origStructSizes.find(currentStruct)->second; //get the original struct size before any optimisations were applied to it
+          // int elementSize = 0;
+          // if(origStructSizes.find(currentStruct) != origStructSizes.end())
+          //   elementSize = origStructSizes.find(currentStruct)->second; //get the original struct size before any optimisations were applied to it
 
-          Value* elementSizeValue = ConstantInt::get(split_Context,APInt(32,elementSize));
+          // elementSize = TD->getTypeAllocSize(currentStruct) + 8; //get the new size of the split struct
+          // elementSize = origStructSizes.find(currentStruct)->second.second; //get the correct size and insert it here
+
+
+          // Value* elementSizeValue = ConstantInt::get(split_Context,APInt(32,elementSize));
 
           ///divide the size of AoS by element size to get the number of elements in AoS, store it in numElements
 
@@ -878,11 +1043,11 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           // if(mallocSizeCall->getType() == elementSizeValue->getType())
           //   errs()<<"yes\n";
 
-          Instruction* trunc = new TruncInst(mallocSizeCall,Type::getInt32Ty(split_Context),"",entryBlock);
+          // Instruction* trunc = new TruncInst(mallocSizeCall,Type::getInt32Ty(split_Context),"",entryBlock);
 
-          Value* result = FreeBuilder.CreateUDiv(trunc,elementSizeValue,"");
+          // Value* result = FreeBuilder.CreateUDiv(trunc,elementSizeValue,"");
 
-          Instruction* storeSize = new StoreInst(result,sizeStore,entryBlock);
+          // Instruction* storeSize = new StoreInst(result,sizeStore,entryBlock);
           
           //creating while.cond block
 
@@ -923,7 +1088,7 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
 
           FreeBuilder.SetInsertPoint(whileBody);
 
-          aosLoad = FreeBuilder.CreateLoad(argTy,aosStore,"aos"); //load aos to be accessed
+          aosLoad = FreeBuilder.CreateLoad(PointerType::get(M.getContext(),0),aosStore,"aos"); //load aos to be accessed
           indexLoad = FreeBuilder.CreateLoad(Type::getInt32Ty(split_Context),indexStore); //load index
 
           //extend index from i32 to i64
@@ -1005,7 +1170,11 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           if(aosLoadInst == nullptr)
             aosLoadInst = new LoadInst(currentAoS->getType(),currentAoS,"",terminator);
 
-          CallInst* freeAoSCall = FreeBuilder.CreateCall(M.getFunction(funcName),aosLoadInst,"",nullptr);
+          vector<Value*> arguments;
+          arguments.push_back(aosLoadInst);
+          arguments.push_back(get<3>(aosValues.at(i)));
+
+          CallInst* freeAoSCall = FreeBuilder.CreateCall(M.getFunction(funcName),arguments,"",nullptr);
 
           // if(freeAoSExists == false)
           // {

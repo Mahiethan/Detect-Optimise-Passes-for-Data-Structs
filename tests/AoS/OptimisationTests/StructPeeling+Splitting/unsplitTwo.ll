@@ -348,7 +348,6 @@ entry:
   %arrayTwoOld = alloca ptr, align 8
   store i32 0, ptr %retval, align 4
   store i32 999999, ptr %n, align 4
-  %call = call i64 @malloc_usable_size(ptr noundef null) #5
   call void @free(ptr noundef null) #5
   store i32 0, ptr %i, align 4
   br label %for.cond
@@ -362,95 +361,89 @@ for.body:                                         ; preds = %for.cond
   %1 = load i32, ptr %n, align 4
   %conv = sext i32 %1 to i64
   %mul = mul i64 %conv, 88
-  %call1 = call noalias ptr @malloc(i64 noundef %mul) #6
-  store ptr %call1, ptr %arrayOneOld, align 8
-  %2 = load i32, ptr %n, align 4
-  %conv2 = sext i32 %2 to i64
-  %mul3 = mul i64 %conv2, 88
-  %call4 = call noalias ptr @malloc(i64 noundef %mul3) #6
-  store ptr %call4, ptr %arrayTwoOld, align 8
-  %3 = load ptr, ptr %arrayOneOld, align 8
-  %4 = load i32, ptr %n, align 4
-  call void @populateNodeOneOld(ptr noundef %3, i32 noundef %4)
-  %5 = load ptr, ptr %arrayTwoOld, align 8
-  %6 = load i32, ptr %n, align 4
-  call void @populateNodeTwoOld(ptr noundef %5, i32 noundef %6)
-  %7 = load ptr, ptr %arrayOneOld, align 8
-  %8 = load i32, ptr %n, align 4
-  call void @multNodeOneOld(ptr noundef %7, i32 noundef %8)
-  %9 = load ptr, ptr %arrayOneOld, align 8
-  %10 = load ptr, ptr %arrayTwoOld, align 8
-  %11 = load i32, ptr %n, align 4
-  call void @multArrays(ptr noundef %9, ptr noundef %10, i32 noundef %11)
-  %12 = load i32, ptr %i, align 4
-  %cmp5 = icmp eq i32 %12, 77
-  br i1 %cmp5, label %if.then, label %if.end
+  %call = call noalias ptr @malloc(i64 noundef %mul) #6
+  store ptr %call, ptr %arrayOneOld, align 8
+  %call1 = call noalias ptr @malloc(i64 noundef 87999912) #6
+  store ptr %call1, ptr %arrayTwoOld, align 8
+  %2 = load ptr, ptr %arrayOneOld, align 8
+  %3 = load i32, ptr %n, align 4
+  call void @populateNodeOneOld(ptr noundef %2, i32 noundef %3)
+  %4 = load ptr, ptr %arrayTwoOld, align 8
+  %5 = load i32, ptr %n, align 4
+  call void @populateNodeTwoOld(ptr noundef %4, i32 noundef %5)
+  %6 = load ptr, ptr %arrayOneOld, align 8
+  %7 = load i32, ptr %n, align 4
+  call void @multNodeOneOld(ptr noundef %6, i32 noundef %7)
+  %8 = load ptr, ptr %arrayOneOld, align 8
+  %9 = load ptr, ptr %arrayTwoOld, align 8
+  %10 = load i32, ptr %n, align 4
+  call void @multArrays(ptr noundef %8, ptr noundef %9, i32 noundef %10)
+  %11 = load i32, ptr %i, align 4
+  %cmp2 = icmp eq i32 %11, 77
+  br i1 %cmp2, label %if.then, label %if.end
 
 if.then:                                          ; preds = %for.body
-  %call7 = call i32 (ptr, ...) @printf(ptr noundef @.str)
-  %13 = load ptr, ptr %arrayOneOld, align 8
-  %arrayidx = getelementptr inbounds %struct.nodeOneOld, ptr %13, i64 5
+  %call4 = call i32 (ptr, ...) @printf(ptr noundef @.str)
+  %12 = load ptr, ptr %arrayOneOld, align 8
+  %arrayidx = getelementptr inbounds %struct.nodeOneOld, ptr %12, i64 5
   %a = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx, i32 0, i32 0
-  %14 = load i32, ptr %a, align 8
-  %call8 = call i32 (ptr, ...) @printf(ptr noundef @.str.1, i32 noundef %14)
-  %15 = load ptr, ptr %arrayOneOld, align 8
-  %arrayidx9 = getelementptr inbounds %struct.nodeOneOld, ptr %15, i64 5
-  %b = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx9, i32 0, i32 1
-  %16 = load double, ptr %b, align 8
-  %call10 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %16)
-  %17 = load ptr, ptr %arrayTwoOld, align 8
-  %arrayidx11 = getelementptr inbounds %struct.nodeTwoOld, ptr %17, i64 5
-  %a12 = getelementptr inbounds %struct.nodeTwoOld, ptr %arrayidx11, i32 0, i32 0
-  %18 = load i32, ptr %a12, align 8
-  %call13 = call i32 (ptr, ...) @printf(ptr noundef @.str.1, i32 noundef %18)
-  %19 = load ptr, ptr %arrayTwoOld, align 8
-  %arrayidx14 = getelementptr inbounds %struct.nodeTwoOld, ptr %19, i64 5
-  %b15 = getelementptr inbounds %struct.nodeTwoOld, ptr %arrayidx14, i32 0, i32 1
-  %20 = load double, ptr %b15, align 8
-  %call16 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %20)
-  %21 = load ptr, ptr %arrayOneOld, align 8
-  %arrayidx17 = getelementptr inbounds %struct.nodeOneOld, ptr %21, i64 5
-  %d = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx17, i32 0, i32 3
-  %22 = load double, ptr %d, align 8
-  %call18 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %22)
-  %23 = load ptr, ptr %arrayOneOld, align 8
-  %arrayidx19 = getelementptr inbounds %struct.nodeOneOld, ptr %23, i64 5
-  %e = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx19, i32 0, i32 4
-  %24 = load i8, ptr %e, align 8
-  %conv20 = sext i8 %24 to i32
-  %call21 = call i32 (ptr, ...) @printf(ptr noundef @.str.3, i32 noundef %conv20)
-  %25 = load ptr, ptr %arrayTwoOld, align 8
-  %arrayidx22 = getelementptr inbounds %struct.nodeTwoOld, ptr %25, i64 5
-  %d23 = getelementptr inbounds %struct.nodeTwoOld, ptr %arrayidx22, i32 0, i32 3
-  %26 = load double, ptr %d23, align 8
-  %call24 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %26)
-  %27 = load ptr, ptr %arrayTwoOld, align 8
-  %arrayidx25 = getelementptr inbounds %struct.nodeTwoOld, ptr %27, i64 5
-  %e26 = getelementptr inbounds %struct.nodeTwoOld, ptr %arrayidx25, i32 0, i32 4
-  %28 = load i8, ptr %e26, align 8
-  %conv27 = sext i8 %28 to i32
-  %call28 = call i32 (ptr, ...) @printf(ptr noundef @.str.3, i32 noundef %conv27)
+  %13 = load i32, ptr %a, align 8
+  %call5 = call i32 (ptr, ...) @printf(ptr noundef @.str.1, i32 noundef %13)
+  %14 = load ptr, ptr %arrayOneOld, align 8
+  %arrayidx6 = getelementptr inbounds %struct.nodeOneOld, ptr %14, i64 5
+  %b = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx6, i32 0, i32 1
+  %15 = load double, ptr %b, align 8
+  %call7 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %15)
+  %16 = load ptr, ptr %arrayTwoOld, align 8
+  %arrayidx8 = getelementptr inbounds %struct.nodeTwoOld, ptr %16, i64 5
+  %a9 = getelementptr inbounds %struct.nodeTwoOld, ptr %arrayidx8, i32 0, i32 0
+  %17 = load i32, ptr %a9, align 8
+  %call10 = call i32 (ptr, ...) @printf(ptr noundef @.str.1, i32 noundef %17)
+  %18 = load ptr, ptr %arrayTwoOld, align 8
+  %arrayidx11 = getelementptr inbounds %struct.nodeTwoOld, ptr %18, i64 5
+  %b12 = getelementptr inbounds %struct.nodeTwoOld, ptr %arrayidx11, i32 0, i32 1
+  %19 = load double, ptr %b12, align 8
+  %call13 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %19)
+  %20 = load ptr, ptr %arrayOneOld, align 8
+  %arrayidx14 = getelementptr inbounds %struct.nodeOneOld, ptr %20, i64 5
+  %d = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx14, i32 0, i32 3
+  %21 = load double, ptr %d, align 8
+  %call15 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %21)
+  %22 = load ptr, ptr %arrayOneOld, align 8
+  %arrayidx16 = getelementptr inbounds %struct.nodeOneOld, ptr %22, i64 5
+  %e = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx16, i32 0, i32 4
+  %23 = load i8, ptr %e, align 8
+  %conv17 = sext i8 %23 to i32
+  %call18 = call i32 (ptr, ...) @printf(ptr noundef @.str.3, i32 noundef %conv17)
+  %24 = load ptr, ptr %arrayTwoOld, align 8
+  %arrayidx19 = getelementptr inbounds %struct.nodeTwoOld, ptr %24, i64 5
+  %d20 = getelementptr inbounds %struct.nodeTwoOld, ptr %arrayidx19, i32 0, i32 3
+  %25 = load double, ptr %d20, align 8
+  %call21 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %25)
+  %26 = load ptr, ptr %arrayTwoOld, align 8
+  %arrayidx22 = getelementptr inbounds %struct.nodeTwoOld, ptr %26, i64 5
+  %e23 = getelementptr inbounds %struct.nodeTwoOld, ptr %arrayidx22, i32 0, i32 4
+  %27 = load i8, ptr %e23, align 8
+  %conv24 = sext i8 %27 to i32
+  %call25 = call i32 (ptr, ...) @printf(ptr noundef @.str.3, i32 noundef %conv24)
   br label %if.end
 
 if.end:                                           ; preds = %if.then, %for.body
-  %29 = load ptr, ptr %arrayOneOld, align 8
+  %28 = load ptr, ptr %arrayOneOld, align 8
+  call void @free(ptr noundef %28) #5
+  %29 = load ptr, ptr %arrayTwoOld, align 8
   call void @free(ptr noundef %29) #5
-  %30 = load ptr, ptr %arrayTwoOld, align 8
-  call void @free(ptr noundef %30) #5
   br label %for.inc
 
 for.inc:                                          ; preds = %if.end
-  %31 = load i32, ptr %i, align 4
-  %inc = add nsw i32 %31, 1
+  %30 = load i32, ptr %i, align 4
+  %inc = add nsw i32 %30, 1
   store i32 %inc, ptr %i, align 4
   br label %for.cond, !llvm.loop !13
 
 for.end:                                          ; preds = %for.cond
   ret i32 0
 }
-
-; Function Attrs: nounwind
-declare i64 @malloc_usable_size(ptr noundef) #2
 
 ; Function Attrs: nounwind
 declare void @free(ptr noundef) #2

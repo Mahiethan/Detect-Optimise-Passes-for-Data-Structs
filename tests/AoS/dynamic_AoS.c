@@ -175,5 +175,7 @@ int main()
 
     populateGlobal(d,globalSix); //adds %array.addr and @globalSix
 
+    // free(globalThree); //uncomment this to split this - does not work
+
     return 0;
 }

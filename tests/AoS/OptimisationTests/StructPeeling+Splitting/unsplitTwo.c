@@ -1,6 +1,6 @@
 #include <stdio.h>
 #include <stdlib.h>
-#include <malloc.h>
+// #include <malloc.h> //no longer required
 
 // #pragma pack(1)
 
@@ -119,15 +119,15 @@ int main()
 //    int n = 100; //works
    int n = 999999; //now works
    int i;
-   malloc_usable_size(NULL); //required to have its declaration in the IR
-   free(NULL); //required to have its declaration in the IR
+//    malloc_usable_size(NULL); //no longer required to have its declaration in the IR
+   free(NULL); //required to have its declaration in the IR - if it doesn't exist already
    for(i = 0; i < 100; i++)
     {
     ////static
     // struct nodeOneOld arrayOneOld[n];
     ////dynamic
     struct nodeOneOld* arrayOneOld = (struct nodeOneOld*) malloc(n*sizeof(struct nodeOneOld));
-    struct nodeTwoOld* arrayTwoOld = (struct nodeTwoOld*) malloc(n*sizeof(struct nodeTwoOld));
+    struct nodeTwoOld* arrayTwoOld = (struct nodeTwoOld*) malloc(999999*88);
 
     //  struct nodeOneOld* arrayOneOld = aligned_alloc(64,sizeof(struct nodeOneOld) * n); //no difference
     // struct nodeOneOld* arrayTwoOld = aligned_alloc(64,sizeof(struct nodeOneOld) * n); //no difference
