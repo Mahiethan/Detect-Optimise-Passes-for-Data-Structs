@@ -226,16 +226,50 @@ func getAoSArgs(aos,param,F,index) //initially, this is called in main(), param 
 */
 
 vector<tuple<Value*,Function*,string,StructType*>> potential;
-vector<Value*> argStores;
+vector<tuple<Value*,Function*,string,StructType*>> potentialArguments;
+vector<tuple<Value*,StoreInst*,string>> argStores;
 vector<tuple<Value*,Function*,StructType*>> possibleGlobals;
 // vector<tuple<Value*,Function*,string>> confirmed;
-vector<tuple<string,vector<int>,Value*,Function*>> calledFunction; //stores pair of function name and used argument index of pointer (if any)
+vector<tuple<string,vector<int>,Value*,Function*,string>> calledFunction; //stores pair of function name and used argument index of pointer (if any)
 
 Function* originFunction = NULL;
 
 int staticCount = 0;
 int dynamicCount = 0;
 bool mallocFlag = false;
+
+set<CallInst*> searchedCI;
+vector<Function*> searchedFunctionCalls;
+
+pair<Value*,Function*> getOrigin(Function* toSearch, Value* call, Module* M)
+{
+  pair<Value*,Function*> result = make_pair(call,toSearch);
+      for (auto &F : *M)
+      {
+        for (auto &B : F)
+        {
+          for (auto &I : B)
+          {
+            if(auto *CI = dyn_cast<CallInst>(&I))
+            {
+              Function* calledFunction = CI->getCalledFunction();
+              Function* parentFunction = &F;
+              if(calledFunction == toSearch & searchedCI.find(CI) == searchedCI.end())
+              {
+                searchedCI.insert(CI);
+                searchedFunctionCalls.push_back(parentFunction);
+                // errs()<<"FOUND:";
+                // CI->print(errs());
+                // errs()<<"\n";
+                return make_pair(CI,parentFunction);
+              }  
+            }
+           }
+        }
+      }
+    return result;
+  }
+
 
 void detectStaticAoS(AllocaInst* AI)
 {
@@ -288,6 +322,23 @@ void detectStaticAoS(AllocaInst* AI)
   }
 }
 
+bool findInConfirmed(Value* val)
+{
+  for(auto it = confirmed.begin(); it != confirmed.end(); it)
+  {
+    Value* aos = get<0>(*it);
+  
+    if(aos == val)
+    {
+      printf("Found in confirmed\n");
+      return true;
+    }
+    else
+      it++;
+  }
+  return false;
+}
+
 StructType* eraseFromConfirmed(Value* val)
 {
   for(auto it = confirmed.begin(); it != confirmed.end(); it)
@@ -303,10 +354,11 @@ StructType* eraseFromConfirmed(Value* val)
       // errs()<<"ERasing from potential\n";
       //  errs()<<"Adding back to potential: "<<aos_string<<"\n";
       confirmed.erase(it);
-      if(type == "static")
-        staticCount--;
-      else
-        dynamicCount--;
+    if(type == "static")
+          staticCount--;
+    else if(type == "dynamic")
+      dynamicCount--;
+
       return structure;
     }
     else
@@ -391,8 +443,11 @@ void getPotential(Instruction* I) //adding to potential vector
     {
       //errs()<<"Found possible global: "<<aos_string<<"\n";
       StructType* structure = eraseFromPossibleGlobals(operand);
-      confirmed.push_back(make_tuple(aos,func,"dynamic",structure,false,false));
-      dynamicCount++;
+      if(!findInConfirmed(operand))
+      {
+        confirmed.push_back(make_tuple(aos,func,"dynamic",structure,false,false));
+        dynamicCount++;
+      }
 
       
     }
@@ -427,12 +482,13 @@ void getPotential(Instruction* I) //adding to potential vector
   mallocFlag = false; //disable flag - don't search for StoreInst after malloc
 }
 
-StructType* eraseFromPotential(Value* val)
+tuple<llvm::Value *, llvm::Function *, std::string, llvm::StructType *> eraseFromPotential(Value* val)
 {
   for(auto it = potential.begin(); it != potential.end(); it)
   {
     Value* aos = get<0>(*it);
     StructType* structure = get<3>(*it);
+    tuple<Value*,Function*,string,StructType*> elem = *it;
     // std::string aos_string; 
     // raw_string_ostream aos_stream(aos_string);
     // aos->printAsOperand(aos_stream);
@@ -440,21 +496,46 @@ StructType* eraseFromPotential(Value* val)
     {
       // errs()<<"ERasing from potential\n";
       potential.erase(it);
-      return structure;
+      return elem;
     }
     else
     {
     it++;
     }
   }
-  return nullptr;
+  return make_tuple(nullptr,nullptr,"",nullptr);
 }
 
-void eraseFromArgStores(Value* val)
+void eraseFromPotentialArguments(Value* val)
+{
+  for(auto it = potentialArguments.begin(); it != potentialArguments.end(); it)
+  {
+    Value* aos = get<0>(*it);
+    StructType* structure = get<3>(*it);
+    auto elem = *it;
+    // std::string aos_string; 
+    // raw_string_ostream aos_stream(aos_string);
+    // aos->printAsOperand(aos_stream);
+    if(aos == val)
+    {
+      // errs()<<"ERasing from potential\n";
+      potentialArguments.erase(it);
+    }
+    else
+    {
+    it++;
+    }
+  }
+}
+
+
+pair<StoreInst*,string> eraseFromArgStores(Value* val)
 {
   for(auto it = argStores.begin(); it != argStores.end(); it)
   {
-    Value* aos = *it;
+    Value* aos = get<0>(*it);
+    StoreInst* store = get<1>(*it);
+    string type = get<2>(*it);
     std::string aos_string; 
     raw_string_ostream aos_stream(aos_string);
     aos->printAsOperand(aos_stream);
@@ -468,12 +549,14 @@ void eraseFromArgStores(Value* val)
     {
       // errs()<<"ERasing from usedasArgs\n";
       argStores.erase(it);
+      return make_pair(store,type);
     }
     else
     {
     it++;
     }
   }
+  return make_pair(nullptr,"");
 }
 
 Value* gepOperand = NULL;
@@ -520,14 +603,11 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
       {
         if(type == "static")
           staticCount++;
-        else
-        {
-          type = "dynamic";
+        else if(type == "dynamic")
           dynamicCount++;
-        }
 
         // output not needed
-        StructType* structure = eraseFromPotential(aos);
+        StructType* structure = get<3>(eraseFromPotential(aos));
         if(structure == nullptr)
           structure = eraseFromPossibleGlobals(aos);
         confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct,false,false));
@@ -547,19 +627,19 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
         // errs()<<"Dynamic Array of Structs (AoS) found"<<"\n"; //dynamic AoS found
         if(type == "static")
           staticCount++;
-        else
-        {
-          type = "dynamic";
+        else if(type == "dynamic")
           dynamicCount++;
-        }
 
         // output not needed
-        StructType* structure = eraseFromPotential(aos);
+        StructType* structure =  get<3>(eraseFromPotential(aos));
         if(structure == nullptr)
           structure = eraseFromPossibleGlobals(aos);
 
         if(isParam)
-          confirmed.push_back(make_tuple(calledAoS,paramFunction,type,gepStruct,true,false));
+        {
+          Value* storedAoS = eraseFromArgStores(aos).first;
+          confirmed.push_back(make_tuple(storedAoS,originFunction,type,gepStruct,true,false));
+        }
         else
           confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct,false,false));
         // errs()<<"Size of argStores: "<<argStores.size()<<"\n";
@@ -588,21 +668,21 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
       if(op_string == ptr_string) //if loaded operand is one of the malloc-ed arrays detected earlier
       {
         // errs()<<"Dynamic Array of Structs (AoS) found"<<"\n"; //dynamic AoS found
-        if(type == "static")
+       if(type == "static")
           staticCount++;
-        else
-        {
-          type = "dynamic";
+        else if(type == "dynamic")
           dynamicCount++;
-        }
 
         // output not needed
-        StructType* structure = eraseFromPotential(aos);
+        StructType* structure =  get<3>(eraseFromPotential(aos));
         if(structure == nullptr)
           structure = eraseFromPossibleGlobals(aos);
 
         if(isParam)
-          confirmed.push_back(make_tuple(calledAoS,paramFunction,type,gepStruct,true,false));
+        {
+          Value* storedAoS = eraseFromArgStores(aos).first;
+          confirmed.push_back(make_tuple(storedAoS,originFunction,type,gepStruct,true,false));
+        }
         else
           confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct,false,false));
       
@@ -622,6 +702,7 @@ void getCalledFunctions(CallInst* CI, Function* orig)
   vector<int> indices;
   Value* aos;
   Value* paramAoS;
+  string type = "undefined";
   int index = 0;
   // CI->print(errs());
   // errs()<<"\n";
@@ -666,7 +747,10 @@ void getCalledFunctions(CallInst* CI, Function* orig)
         {
           // errs()<<"adding "<<value_string<<" to indices\n";
           indices.push_back(index);
-          eraseFromPotential(aos);
+          //add to new list: potentialArguments
+          tuple<Value*,Function*,string,StructType*> elem = eraseFromPotential(aos);
+          type = get<2>(elem);
+          potentialArguments.push_back(elem);
           detect = true;
           paramAoS = aos;
 
@@ -677,7 +761,7 @@ void getCalledFunctions(CallInst* CI, Function* orig)
       {
         for(int i = 0; i < argStores.size(); i++)
         {
-          aos = argStores.at(i);
+          aos = get<0>(argStores.at(i));
           std::string value_string; 
           raw_string_ostream aos_stream(value_string);
           aos->printAsOperand(aos_stream);
@@ -699,7 +783,9 @@ void getCalledFunctions(CallInst* CI, Function* orig)
       {
         if(auto *GV = dyn_cast<GlobalVariable>(operand)) //if a function call has a global parameter not yet malloced, add it to possibleGlobals
         {
-          possibleGlobals.push_back(make_tuple(operand,f,nullptr)); 
+          bool inConfirmed = findInConfirmed(operand);
+          if(inConfirmed == false)
+            possibleGlobals.push_back(make_tuple(operand,f,nullptr)); //@globalFive in dynamic_AoS.c called in main() function 
           detect = true;
         }
       }
@@ -708,13 +794,13 @@ void getCalledFunctions(CallInst* CI, Function* orig)
   }
   // errs()<<"Size of indices: "<<indices.size()<<"\n";
   // errs()<<"Adding function: "<<funcName<<"with indices size"<<indices.size()<<"that operates on"<<valName<<"\n";
-  calledFunction.push_back(std::make_tuple(funcName,indices,paramAoS,orig));
+  calledFunction.push_back(std::make_tuple(funcName,indices,paramAoS,orig,type));
 }
 
-vector<Value*> getArgumentStores(Function *F, vector<int> indices)
+vector<tuple<Value*,StoreInst*,string>> getArgumentStores(Function *F, vector<int> indices,string type)
 {
   vector<Value*> arguments;
-  vector<Value*> newStores;
+  vector<tuple<Value*,StoreInst*,string>> newStores;
   for(int i = 0; i < indices.size(); i++)
   {
     arguments.push_back(F->getArg(indices.at(i)));
@@ -743,7 +829,7 @@ vector<Value*> getArgumentStores(Function *F, vector<int> indices)
             if(arg_string == op_string)
             {
               Value* arrayStore = SI->getOperand(1); //get second operand of this store instruction
-              newStores.push_back(arrayStore);
+              newStores.push_back(make_tuple(arrayStore,SI,type));
               break;
             }
           }
@@ -829,10 +915,18 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                       getPotential(&I);
                     else if(auto *SI = dyn_cast<StoreInst>(&I)) //find global static AoS used in a GEP operation
                     {
+                      bool found = false;
                       Value* operand = SI->getOperand(1);
                       std::string op_str; 
                       raw_string_ostream to_str(op_str);
                       operand->printAsOperand(to_str);
+
+                      Value* loadedAoS = SI->getOperand(0);
+
+                      if(auto *LI = dyn_cast<LoadInst>(SI->getOperand(0)))
+                      {
+                        loadedAoS = LI->getOperand(0);
+                      }
 
                       // errs()<<op_str<<"\n";
 
@@ -845,13 +939,31 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
 
                         if((op_str.find("getelementptr") != std::string::npos) & (op_str.find(ptr_string) != std::string::npos))
                         {
-                          StructType* structure = eraseFromPotential(aos);
+                          StructType* structure =  get<3>(eraseFromPotential(aos));
                           staticCount++;
                           confirmed.push_back(make_tuple(aos,originFunction,"static",structure,false,false));
+                          found = true;
                           break;
                         }
                       }
 
+                      if(found == false)
+                      {
+                        for(auto it = potential.begin(); it != potential.end(); it++)
+                        {
+                          Value* aos = get<0>(*it);
+                          string type = get<2>(*it);
+                          StructType* structure = get<3>(*it);
+
+                          if(loadedAoS == aos) //an potential AoS could be stored into an empty pointer - add this pointer to 'potential' list
+                          {
+                            eraseFromPossibleGlobals(SI->getOperand(1));
+                            potential.push_back(make_tuple(SI->getOperand(1),originFunction,type,structure));
+                            found = true;
+                            break;
+                          }
+                        }
+                      }
                     }
                     else if(auto *AI = dyn_cast<AllocaInst>(&I))
                       detectStaticAoS(AI);
@@ -905,7 +1017,9 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                             if(auto *GV = dyn_cast<GlobalVariable>(gepOperand))
                             {
                               StructType* structure = cast<StructType>(GEP->getResultElementType());
-                              possibleGlobals.push_back(make_tuple(gepOperand,originFunction,structure)); //@globalFive in dynamic_AoS.c called in main() function 
+                              bool inConfirmed = findInConfirmed(gepOperand);
+                              if(inConfirmed == false)
+                                possibleGlobals.push_back(make_tuple(gepOperand,originFunction,structure)); //@globalFive in dynamic_AoS.c called in main() function 
                             }
                           }
                         }
@@ -933,7 +1047,8 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
 
       for(auto it = calledFunction.begin(); it != calledFunction.end(); it)
       {
-        tuple<string,vector<int>,Value*,Function*> searchFunc = *it;
+        tuple<string,vector<int>,Value*,Function*,string> searchFunc = *it;
+        string type = get<4>(searchFunc);
         calledFunction.erase(it);
         vector<int> argIndices = get<1>(searchFunc);
         calledAoS = get<2>(searchFunc); //get AoS that was used as parameter in function call
@@ -946,7 +1061,7 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
             // errs()<<"Searching "<<get<0>(searchFunc)<<"\n";
             if(argIndices.size() != 0)
             {
-              argStores = getArgumentStores(&F,argIndices);
+              argStores = getArgumentStores(&F,argIndices,type);
               // errs()<<"compare indices "<<argIndices.size()<<" to argStores "<<argStores.size()<<"\n";
             }
 
@@ -974,7 +1089,7 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
 
                     if((op_str.find("getelementptr") != std::string::npos) & (op_str.find(ptr_string) != std::string::npos))
                     {
-                      StructType* structure = eraseFromPotential(aos);
+                      StructType* structure =  get<3>(eraseFromPotential(aos));
                       staticCount++;
                       confirmed.push_back(make_tuple(aos,originFunction,"static",structure,false,false));
                       break;
@@ -1023,11 +1138,11 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                     }
                     for(auto it = argStores.begin(); it != argStores.end(); it++)
                     {
-                      aos = *it;
+                      aos = get<0>(*it);
+                      type = get<2>(*it);
                       if(checkGEP(GEP,aos,true,type) == true)
                       {
                         found = true;
-                        eraseFromArgStores(aos);
                         break;
                       }
                     }
@@ -1038,7 +1153,9 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                         if(auto *GV = dyn_cast<GlobalVariable>(gepOperand))
                         {
                           StructType* structure = cast<StructType>(GEP->getResultElementType());
-                          possibleGlobals.push_back(make_tuple(gepOperand,originFunction,structure));
+                          bool inConfirmed = findInConfirmed(gepOperand);
+                          if(inConfirmed == false)
+                            possibleGlobals.push_back(make_tuple(gepOperand,originFunction,structure)); //@globalFive in dynamic_AoS.c called in main() function 
                         }
                       }
                     }
@@ -1063,6 +1180,188 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
         // }
         }
       }
+
+      //correctly detect AoS used as function arguments
+
+      /*
+
+        pair<value,function> getOrigin(F,aos,M)
+        {
+          result = pair<F,aos>
+          search thru all F,B,I
+            if callInst found
+              if call to F found & not found in searchedCI vector
+                  searchedCIvector.append(call)
+                  return pair<value,function> res = getOrigin(new F)
+          end
+             
+          return result
+        }
+
+        for each aos in confirmed
+          current confirmed value = temp;
+          result;
+          newAoS = current aos;
+          newFunc = nullptr;
+          if aos = a callInsts
+            get the associated function F
+            while(newAoS != callInst & newFunc == nullptr)
+              pair<Value*,Function*> result = look for a function call to this function: getOrigin(F,aos,M)
+              for each operand used in the function call
+                check if the operand exists in potential and if function matches
+                  if yes, delete from potential
+                    newAOS = aos
+              endfor
+              newFunc = origin function
+            endwhile
+
+          update temp with new values from newValues
+        endfor
+      
+      */
+
+     
+
+     for(int a = 0; a < confirmed.size(); a++)
+     {
+      // errs()<<"AOS: "<<a<<"\n";
+       auto currConfirmed = confirmed.at(a);
+       Value* aos = get<0>(currConfirmed);
+       Function* func = get<1>(currConfirmed);
+       pair<Value*,Function*> result;
+       bool found = false;
+       string type = "dynamic";
+       
+
+      if(auto *SI = dyn_cast<StoreInst>(aos))
+      {
+        //  errs()<<"To search call: "<<func->getName()<<"\n";
+        searchedFunctionCalls.push_back(func);
+        while(found == false)
+        {
+          result = getOrigin(func,aos,&M);
+          // errs()<<"------------RESULTS----------------\n";
+          // result.first->print(errs());
+          // errs()<<"\n";
+          // result.second->printAsOperand(errs());
+          // errs()<<"\n";
+          // errs()<<"-----------------------------------\n";
+
+          if(auto *SI = dyn_cast<StoreInst>(result.first)) //no callinst found
+          {
+            searchedFunctionCalls.pop_back();
+            func = searchedFunctionCalls.at(searchedFunctionCalls.size() - 1);
+            // errs()<<"Checking "<<func->getName()<<" again\n";
+          }
+          else if(auto *CI = dyn_cast<CallInst>(result.first))
+          {
+            for(auto a = CI->arg_begin(); a != CI->arg_end(); a++)
+            {
+              Value* toFind = *a;
+              if(auto *LI = dyn_cast<LoadInst>(toFind))
+                toFind = LI->getOperand(0);
+
+              // errs()<<"Call inst operand: ";
+              // toFind->print(errs());
+              // errs()<<"\n";
+
+              for(auto it = potentialArguments.begin(); it != potentialArguments.end(); it)
+              {
+                Value* aos = get<0>(*it);
+                Function* func = get<1>(*it);
+
+                // errs()<<"Is it: ";
+                // aos->print(errs());
+                // errs()<<"\n";
+
+                if(aos == toFind)
+                {
+                  // errs()<<"FOUND AOS\n";
+                  eraseFromPotentialArguments(aos);
+                  result.first = aos;
+                  result.second = func;
+                  type = get<2>(*it);
+                  found = true;
+                  break;
+                }
+                else
+                  it++;
+              }
+
+              if(found == false)
+              {
+                for(auto it = possibleGlobals.begin(); it != possibleGlobals.end(); it)
+                {
+                  Value* aos = get<0>(*it);
+                  Function* func = get<1>(*it);
+
+                  // errs()<<"Is it: ";
+                  // aos->print(errs());
+                  // errs()<<"\n";
+
+                  if(aos == toFind)
+                  {
+                    // errs()<<"FOUND AOS\n";
+                    eraseFromPossibleGlobals(aos);
+                    result.first = aos;
+                    result.second = func;
+                    found = true;
+                    break;
+                  }
+                  else
+                    it++;
+                }
+              }
+          
+              if(found == true)
+              {
+                searchedCI.clear();
+                searchedFunctionCalls.clear();
+                break;
+              }
+              else
+              {
+                // searchedCI.clear();
+                func = result.second;
+              }
+            }
+          }
+        }
+      } 
+
+      if(found == true)
+      {
+        get<0>(confirmed.at(a)) = result.first;
+        get<1>(confirmed.at(a)) = result.second;
+        get<2>(confirmed.at(a)) = type;
+      }
+        
+     }
+
+      for(auto it = possibleGlobals.begin(); it != possibleGlobals.end(); it)
+      {
+        Value* aos = get<0>(*it);
+        if(findInConfirmed(aos))
+          possibleGlobals.erase(it);
+        else
+          it++;
+      }
+
+      int staticCountTemp = 0;
+      int dynamicCountTemp = 0;
+
+      for(auto it = confirmed.begin(); it != confirmed.end(); it++)
+      {
+        string type = get<2>(*it);
+        if(type == "static")
+          staticCountTemp++;
+        else if(type == "dynamic")
+          dynamicCountTemp++;
+
+      }
+
+      staticCount = staticCountTemp;
+      dynamicCount = dynamicCountTemp;
 
       vector<pair<StructType*, bool>> checkedStructs;
 
@@ -1118,17 +1417,20 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
           std::string aos_str; 
           std::string func_str; 
           string struct_str;
+          string type;
           // string type = get<2>(potential.at(i));
           raw_string_ostream aos(aos_str);
           raw_string_ostream func(func_str);
           raw_string_ostream stru(struct_str);
           get<0>(potential.at(i))->printAsOperand(aos);
-          errs()<<i<<": "<<aos_str;
+          type = get<2>(potential.at(i));
+          errs()<<i+1<<": "<<aos_str;
           Function* funcName = get<1>(potential.at(i));
           StructType* structure = get<3>(potential.at(i));
           if(funcName != NULL)
           {
             funcName->printAsOperand(func);
+            errs()<<" - "<<type<<" type";
             if(structure != nullptr)
             {
               structure->print(stru);
@@ -1143,8 +1445,9 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
           }
           else
           {
-            errs()<<" - global variable\n";
+            errs()<<" - "<<type<<" global variable\n";
           }
+          errs()<<"\n";
         }
 
         errs()<<"\nSize of possibleGlobals list: "<<possibleGlobals.size()<<"\n";
@@ -1155,10 +1458,10 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
           raw_string_ostream aos(aos_str);
           raw_string_ostream func(func_str);
           get<0>(possibleGlobals.at(i))->printAsOperand(aos);
-          errs()<<i<<": "<<aos_str;
+          errs()<<i+1<<": "<<aos_str;
           get<1>(possibleGlobals.at(i))->printAsOperand(func);
           errs()<<" used in function: "<<func_str<<"\n";
-
+          errs()<<"\n";
         }
 
         errs()<<"\nNumber of static AoS data structures: " << staticCount <<"\n";
@@ -1212,6 +1515,7 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
           {
             errs()<<" - global "<<type<<" AoS\n";
           }
+          errs()<<"\n";
         }
         errs()<<"\n----------------------- END OF AOS DETECTION -----------------------\n";
         //Set to ::all() if IR is unchanged, otherwise ::none()

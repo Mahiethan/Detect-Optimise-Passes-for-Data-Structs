@@ -173,7 +173,7 @@ int main()
     // populateNodeOne(globalFive,100); //@globalFive at @populateNodeOne
     printf("%d\n",globalFive[1].a); //@globalFive at @main (without any of the lines above, it will print out garbage value)
 
-    populateGlobal(d,globalSix); //adds @globalSix as %array.addr
+    populateGlobal(d,globalSix); //adds %array.addr and @globalSix
 
     return 0;
 }

@@ -138,7 +138,7 @@ int main()
 
     populate(); //adds 4th static AoS: arrayFour (%vla in @populateThree)
 
-    populateParam0(arrayThree,e); //adds three static AoS: globalFive (@globalFive), arrayThree (%array.addr in @populateNodeOne), innerArrayOne (%innerArrayOne) and globalFour (@globalFour)
+    populateParam0(arrayThree,e); //adds four static AoS: globalFive (@globalFive), arrayThree (%vla5 in @main), innerArrayOne (%innerArrayOne) and globalFour (@globalFour)
 
     return 0;
 }
