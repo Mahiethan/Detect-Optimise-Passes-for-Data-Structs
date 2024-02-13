@@ -62,8 +62,11 @@ int main()
     ////static
     // struct nodeOneOld arrayOneOld[n];
     ////dynamic
-     struct nodeOneOld* arrayOneOld = (struct nodeOneOld*) malloc(n*sizeof(struct nodeOneOld));
+     struct nodeOneOld* arrayOneOld = (struct nodeOneOld*) calloc(n,sizeof(struct nodeOneOld));
     struct nodeOneOld* arrayTwoOld = (struct nodeOneOld*) malloc(n*sizeof(struct nodeOneOld));
+
+    // struct nodeOneOld* arrayThreeOld = (struct nodeOneOld*) realloc(arrayTwoOld,n*sizeof(struct nodeOneOld)); //realloc doesn't work
+
 
     //  struct nodeOneOld* arrayOneOld = aligned_alloc(64,sizeof(struct nodeOneOld) * n); //no difference
     // struct nodeOneOld* arrayTwoOld = aligned_alloc(64,sizeof(struct nodeOneOld) * n); //no difference

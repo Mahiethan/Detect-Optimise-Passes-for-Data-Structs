@@ -410,7 +410,7 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
 
         if(coldFields.size() == 0) //no cold field required for this struct
         {
-          errs()<<"No need to peel this struct - no cold fields found\n";
+          errs()<<"No need to split this struct - no cold fields found\n";
           for(auto it = aosValues.begin(); it != aosValues.end(); it)
           {
             StructType* structToRemove = get<1>(*it);
@@ -472,6 +472,9 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
             errs()<<"Hot struct same in size after splitting. Not feasible to split this structure.\n";
           else
             errs()<<"Hot struct larger in size after splitting. Not feasible to split this structure.\n";
+
+          coldStructs.pop_back();
+          origStructSizes.erase(coldStruct);
 
           for(auto it = aosValues.begin(); it != aosValues.end(); it)
           {
@@ -852,24 +855,34 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
                   get<3>(aosValues.at(i)) = numElements;
 
                 }
-                else if(CI->getCalledFunction()->getName() == "calloc") //replace the malloc with a new one, allocating the reduced size
-                {
-                  mallocFound = true;
-                  Instruction* next = CI->getNextNode();
-                  
-                  int newSize = origStructSizes.find(currentStruct)->second.second;
-                  Value* structSize = ConstantInt::get(M.getContext(),APInt(64,newSize));
+                 else if(CI->getCalledFunction()->getName() == "calloc") //update second operand of calloc with new struct size
+                      {
+                        // mallocFound = true;
+                        // Instruction* next = CI->getNextNode();
+                        
+                        int newSize = origStructSizes.find(allStructs.at(i))->second.second;
+                        Value* structSize = ConstantInt::get(M.getContext(),APInt(64,newSize));
 
-                  IRBuilder<> TmpB(next);
+                        CI->setArgOperand(1,structSize);
+                        get<3>(aosValues.at(i)) = CI->getOperand(0);
+                      }
+                      // do one for realloc() and test it
+                    // else if(CI->getCalledFunction()->getName() == "realloc") //update second operand of realloc
+                    // {
+                    //   // mallocFound = true;
+                    //     IRBuilder<> TmpB(CI);
+                        
+                    //     int newSize = origStructSizes.find(allStructs.at(i))->second.second;
+                    //     Value* structSize = ConstantInt::get(M.getContext(),APInt(64,newSize));
 
-                  Value* newAllocSize = TmpB.CreateMul(CI->getArgOperand(0),structSize,"",false,false);
+                    //     int origSize = origStructSizes.find(allStructs.at(i))->second.first;
+                    //     Value* origSizeValue = ConstantInt::get(M.getContext(),APInt(64,origSize));
 
-                  CallInst* mallocInst = TmpB.CreateCall(M.getFunction("malloc"),newAllocSize,"",nullptr);
-                  CI->replaceAllUsesWith(mallocInst);
-                  CI->eraseFromParent();
+                    //     Value* numElements = TmpB.CreateUDiv(CI->getArgOperand(1),origSizeValue,"");
+                    //     Value* newAllocSize = TmpB.CreateMul(numElements,structSize,"",false,false);
 
-                  get<3>(aosValues.at(i)) = CI->getArgOperand(0);
-                }
+                    //     CI->setArgOperand(1,newAllocSize);
+                    // }
                 // do one for realloc() and test it
               }
             }

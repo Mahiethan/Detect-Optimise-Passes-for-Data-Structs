@@ -248,14 +248,13 @@ for.cond:                                         ; preds = %for.inc, %entry
 for.body:                                         ; preds = %for.cond
   %1 = load i32, ptr %n, align 4
   %conv = sext i32 %1 to i64
-  %mul = mul i64 %conv, 24
-  %call = call noalias ptr @malloc(i64 noundef %mul) #4
+  %call = call noalias ptr @calloc(i64 noundef %conv, i64 noundef 24) #5
   store ptr %call, ptr %arrayOneOld, align 8
   %2 = load i32, ptr %n, align 4
   %conv1 = sext i32 %2 to i64
-  %mul2 = mul i64 %conv1, 24
-  %call3 = call noalias ptr @malloc(i64 noundef %mul2) #4
-  store ptr %call3, ptr %arrayTwoOld, align 8
+  %mul = mul i64 %conv1, 24
+  %call2 = call noalias ptr @malloc(i64 noundef %mul) #6
+  store ptr %call2, ptr %arrayTwoOld, align 8
   %3 = load ptr, ptr %arrayOneOld, align 8
   %4 = load i32, ptr %n, align 4
   call void @populateNodeOneOld(ptr noundef %3, i32 noundef %4)
@@ -270,40 +269,40 @@ for.body:                                         ; preds = %for.cond
   %11 = load i32, ptr %n, align 4
   call void @multArrays(ptr noundef %9, ptr noundef %10, i32 noundef %11)
   %12 = load i32, ptr %i, align 4
-  %cmp4 = icmp eq i32 %12, 79
-  br i1 %cmp4, label %if.then, label %if.end
+  %cmp3 = icmp eq i32 %12, 79
+  br i1 %cmp3, label %if.then, label %if.end
 
 if.then:                                          ; preds = %for.body
-  %call6 = call i32 (ptr, ...) @printf(ptr noundef @.str)
+  %call5 = call i32 (ptr, ...) @printf(ptr noundef @.str)
   %13 = load ptr, ptr %arrayOneOld, align 8
   %arrayidx = getelementptr inbounds %struct.nodeOneOld, ptr %13, i64 1
   %a = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx, i32 0, i32 0
   %14 = load i32, ptr %a, align 8
-  %call7 = call i32 (ptr, ...) @printf(ptr noundef @.str.1, i32 noundef %14)
+  %call6 = call i32 (ptr, ...) @printf(ptr noundef @.str.1, i32 noundef %14)
   %15 = load ptr, ptr %arrayOneOld, align 8
-  %arrayidx8 = getelementptr inbounds %struct.nodeOneOld, ptr %15, i64 1
-  %b = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx8, i32 0, i32 1
+  %arrayidx7 = getelementptr inbounds %struct.nodeOneOld, ptr %15, i64 1
+  %b = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx7, i32 0, i32 1
   %16 = load double, ptr %b, align 8
-  %call9 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %16)
+  %call8 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %16)
   %17 = load ptr, ptr %arrayOneOld, align 8
-  %arrayidx10 = getelementptr inbounds %struct.nodeOneOld, ptr %17, i64 1
-  %c = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx10, i32 0, i32 2
+  %arrayidx9 = getelementptr inbounds %struct.nodeOneOld, ptr %17, i64 1
+  %c = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx9, i32 0, i32 2
   %18 = load i8, ptr %c, align 8
-  %conv11 = sext i8 %18 to i32
-  %call12 = call i32 (ptr, ...) @printf(ptr noundef @.str.3, i32 noundef %conv11)
+  %conv10 = sext i8 %18 to i32
+  %call11 = call i32 (ptr, ...) @printf(ptr noundef @.str.3, i32 noundef %conv10)
   %19 = load ptr, ptr %arrayOneOld, align 8
-  %arrayidx13 = getelementptr inbounds %struct.nodeOneOld, ptr %19, i64 1
-  %d = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx13, i32 0, i32 3
+  %arrayidx12 = getelementptr inbounds %struct.nodeOneOld, ptr %19, i64 1
+  %d = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx12, i32 0, i32 3
   %20 = load i8, ptr %d, align 1
-  %conv14 = sext i8 %20 to i32
-  %call15 = call i32 (ptr, ...) @printf(ptr noundef @.str.4, i32 noundef %conv14)
+  %conv13 = sext i8 %20 to i32
+  %call14 = call i32 (ptr, ...) @printf(ptr noundef @.str.4, i32 noundef %conv13)
   br label %if.end
 
 if.end:                                           ; preds = %if.then, %for.body
   %21 = load ptr, ptr %arrayOneOld, align 8
-  call void @free(ptr noundef %21) #5
+  call void @free(ptr noundef %21) #7
   %22 = load ptr, ptr %arrayTwoOld, align 8
-  call void @free(ptr noundef %22) #5
+  call void @free(ptr noundef %22) #7
   br label %for.inc
 
 for.inc:                                          ; preds = %if.end
@@ -316,20 +315,25 @@ for.end:                                          ; preds = %for.cond
   ret i32 0
 }
 
-; Function Attrs: nounwind allocsize(0)
-declare noalias ptr @malloc(i64 noundef) #1
+; Function Attrs: nounwind allocsize(0,1)
+declare noalias ptr @calloc(i64 noundef, i64 noundef) #1
 
-declare i32 @printf(ptr noundef, ...) #2
+; Function Attrs: nounwind allocsize(0)
+declare noalias ptr @malloc(i64 noundef) #2
+
+declare i32 @printf(ptr noundef, ...) #3
 
 ; Function Attrs: nounwind
-declare void @free(ptr noundef) #3
+declare void @free(ptr noundef) #4
 
 attributes #0 = { noinline nounwind optnone uwtable "frame-pointer"="all" "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #1 = { nounwind allocsize(0) "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #2 = { "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #3 = { nounwind "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #4 = { nounwind allocsize(0) }
-attributes #5 = { nounwind }
+attributes #1 = { nounwind allocsize(0,1) "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #2 = { nounwind allocsize(0) "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #3 = { "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #4 = { nounwind "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #5 = { nounwind allocsize(0,1) }
+attributes #6 = { nounwind allocsize(0) }
+attributes #7 = { nounwind }
 
 !llvm.module.flags = !{!0, !1, !2, !3, !4}
 !llvm.ident = !{!5}

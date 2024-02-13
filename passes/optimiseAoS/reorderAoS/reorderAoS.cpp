@@ -38,7 +38,15 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
 
         /// this is to be replaced with structs used in AoS 
 
+        // bool noDynamic = false;
+
+        // if(M.getFunction("malloc") == nullptr)
+        // {
+        //   noDynamic = true;
+        // }
+
         vector<StructType*> allStructs;
+        vector<pair<Value*,StructType*>> dynamicAoSList;
 
         if(detectAoSCalled == false)
         {
@@ -59,6 +67,13 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
             for(int i = 0; i < confirmed.size(); i++)
             {
               StructType* structure = get<3>(confirmed.at(i));
+              string type = get<2>(confirmed.at(i));
+
+              if(type == "dynamic")
+              {
+                dynamicAoSList.push_back(make_pair(get<0>(confirmed.at(i)),structure));
+              }
+
               if(structure == nullptr) //should not occur
               {
                 errs()<<"WARNING: nullptr found!\n";
@@ -89,7 +104,6 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
 
         allStructs.insert( allStructs.end(), coldStructs.begin(), coldStructs.end()); //adding cold pointer structs, created from structure splitting optimisation
 
-
         errs()<<"Optimising "<<allStructs.size()<<" struct(s), which are: \n";
 
         for(int i = 0; i < allStructs.size(); i++)
@@ -104,7 +118,8 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
           DataLayout* TD = new DataLayout(&M);
 
           int o = 0;
-          int oldStructSize = TD->getStructLayout(allStructs.at(i))->getSizeInBytes();
+          // int oldStructSize = TD->getStructLayout(allStructs.at(i))->getSizeInBytes();
+          int oldStructSize = origStructSizes.find(allStructs.at(i))->second.second;
           int wordSize = 0;
           int currWord = 0; 
 
@@ -133,9 +148,13 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
 
               // Type* newTy = Type::getIntNTy(reorder_Context,size); //create a new type equal in bit size to the original field
             }
+            else if(ty->isPointerTy())
+            {
+              newTy = PointerType::get(reorder_Context,0);
+            }
             else
             {
-               newTy = Type::getIntNTy(reorder_Context,size); //create a new type equal in bit size to the original field
+              newTy = Type::getIntNTy(reorder_Context,size); //create a new type equal in bit size to the original field
               newTy = ty;
             }
 
@@ -149,6 +168,14 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
 
             o++;
           }
+
+          //  for(int p = 0; p < elems.size(); p++)
+          // {
+          //   get<0>(elems.at(p))->print(errs());
+          //   errs()<<"\n";
+          //   errs()<<get<3>(elems.at(p));
+          //   errs()<<"\n\n";
+          // }
 
           // errs()<<"---------------------------\n";
 
@@ -187,6 +214,14 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
             }
 
           }
+
+          //  for(int p = 0; p < sortedElems.size(); p++)
+          // {
+          //   get<0>(sortedElems.at(p))->print(errs());
+          //   errs()<<"\n";
+          //   errs()<<get<3>(sortedElems.at(p));
+          //   errs()<<"\n\n";
+          // }
 
           int currIndex = 0;
           for(auto it1 = sortedElems.begin(); it1 != sortedElems.end(); it1)
@@ -269,6 +304,13 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
           //   newElems.push_back(get<0>(newSortedElems.at(i)));
           // }
 
+          // for(int i = 0; i < newElems.size(); i++)
+          // {
+          //   (newElems.at(i))->print(errs());
+          //   errs()<<"\n";
+          //   // newElems.push_back(get<0>(newSortedElems.at(i)));
+          // }
+
           ArrayRef<Type*> elemArr = ArrayRef(newElems);
 
           // StructType* temp = StructType::get(reorder_Context,true);
@@ -277,30 +319,124 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
           StructType* temp = StructType::get(reorder_Context,false);
           temp->setBody(elemArr,false);
 
-          int p = 0;
-          for(auto it = elemArr.begin(); it != elemArr.end(); it++)
-          {
-            Type* ty = const_cast<Type*>(*it);
-            int size = TD->getTypeSizeInBits(ty);
-            int pad = TD->getStructLayout(temp)->getElementOffsetInBits(p);
-            // errs()<<" offset: "<<pad/8<<",  size: ";
-            // errs()<<size/8<<"\n";
-            p++;
-          }
+          // int p = 0;
+          // for(auto it = elemArr.begin(); it != elemArr.end(); it++)
+          // {
+          //   Type* ty = const_cast<Type*>(*it);
+          //   int size = TD->getTypeSizeInBits(ty);
+          //   int pad = TD->getStructLayout(temp)->getElementOffsetInBits(p);
+          //   // errs()<<" offset: "<<pad/8<<",  size: ";
+          //   // errs()<<size/8<<"\n";
+          //   p++;
+          // }
 
-          int newStructSize = TD->getStructLayout(temp)->getSizeInBytes();
+          // int newStructSize = TD->getStructLayout(temp)->getSizeInBytes();
+          int newStructSize = TD->getTypeAllocSize(temp);
 
           /* if new struct size is smaller, perform optimisation, otherwise skip */
           if(newStructSize < oldStructSize)
           {
             errs()<<"Performing optimisation. Saving "<<oldStructSize-newStructSize<<" bytes in struct size from "<<oldStructSize<<" bytes to "<<newStructSize<<" bytes.\n";
             performOpt = true;
+
+            //update old and new size pair for this struct
+            origStructSizes.find(allStructs.at(i))->second.first = origStructSizes.find(allStructs.at(i))->second.second;
+
+            origStructSizes.find(allStructs.at(i))->second.second = newStructSize;
             
             // allStructs.at(i)->setBody(elemArr, true);
             allStructs.at(i)->setBody(elemArr, false);
 
             raw_string_ostream t_str(modifiedStruct);
             allStructs.at(i)->print(t_str);
+
+
+            //if the AoS is dynamic, find its malloc() function call and update the allocation size
+            for(int a = 0; a < dynamicAoSList.size(); a++)
+            {
+              // errs()<<"Dynamic AOS:"<<a<<"\n";
+              if(allStructs.at(i) == dynamicAoSList.at(a).second)
+              {
+                // errs()<<"Updating malloc() operand\n";
+                Value* aos = dynamicAoSList.at(a).first;
+                //update malloc() call for this AoS
+                for(auto u = aos->users().begin(); u != aos->users().end(); u++)
+                {
+                  Instruction* inst = cast<Instruction>(*u);
+                  if(auto *SI = dyn_cast<StoreInst>(inst))
+                  {
+                    Instruction* pred = SI->getPrevNode();
+                    if(auto *CI = dyn_cast<CallInst>(pred))
+                    {
+                      if(CI->getCalledFunction()->getName() == "malloc") //replace the malloc with a new one, allocating the reduced size
+                      {
+                        // mallocFound = true;
+                        // Instruction* finalPred = CI->getPrevNode();
+                        // if(auto *MI = dyn_cast<BinaryOperator>(finalPred))
+                        // {
+                        //   // Value* newSize = ConstantInt::get(M.getContext(),APInt(64,TD->getTypeAllocSize(currentStruct) + 8));
+                        //   int newSize = origStructSizes.find(currentStruct)->second;
+                        //   Value* newSizeOperand = ConstantInt::get(M.getContext(),APInt(64,newSize)); //get the correct size and insert it here
+                        //   MI->setOperand(1,newSizeOperand);
+                        // }
+                        // //can be a constant
+
+                        // //can be a variable
+
+                        Instruction* next = CI->getNextNode();
+                        
+                        int newSize = origStructSizes.find(allStructs.at(i))->second.second;
+                        Value* structSize = ConstantInt::get(M.getContext(),APInt(64,newSize));
+
+                        IRBuilder<> TmpB(next);
+
+                        int origSize = origStructSizes.find(allStructs.at(i))->second.first;
+                        Value* origSizeValue = ConstantInt::get(M.getContext(),APInt(64,origSize));
+
+                        Value* numElements = TmpB.CreateUDiv(CI->getArgOperand(0),origSizeValue,"");
+                        Value* newAllocSize = TmpB.CreateMul(numElements,structSize,"",false,false);
+
+                        CallInst* mallocInst = TmpB.CreateCall(M.getFunction("malloc"),newAllocSize,"",nullptr);
+                        CI->replaceAllUsesWith(mallocInst);
+                        CI->eraseFromParent();
+
+                        //we can use this calculated array size to free the AoS later
+                      }
+                      else if(CI->getCalledFunction()->getName() == "calloc") //update second operand of calloc with new struct size
+                      {
+                        // mallocFound = true;
+                        // Instruction* next = CI->getNextNode();
+                        
+                        int newSize = origStructSizes.find(allStructs.at(i))->second.second;
+                        Value* structSize = ConstantInt::get(M.getContext(),APInt(64,newSize));
+
+                        CI->setArgOperand(1,structSize);
+                      }
+                      // do one for realloc() and test it
+                    }
+                    // else if(CI->getCalledFunction()->getName() == "realloc") //update second operand of realloc
+                    // {
+                    //   // mallocFound = true;
+                    //     IRBuilder<> TmpB(CI);
+                        
+                    //     int newSize = origStructSizes.find(allStructs.at(i))->second.second;
+                    //     Value* structSize = ConstantInt::get(M.getContext(),APInt(64,newSize));
+
+                    //     int origSize = origStructSizes.find(allStructs.at(i))->second.first;
+                    //     Value* origSizeValue = ConstantInt::get(M.getContext(),APInt(64,origSize));
+
+                    //     Value* numElements = TmpB.CreateUDiv(CI->getArgOperand(1),origSizeValue,"");
+                    //     Value* newAllocSize = TmpB.CreateMul(numElements,structSize,"",false,false);
+
+                    //     CI->setArgOperand(1,newAllocSize);
+                    // }
+                  }
+                }
+              }
+              else
+                continue;
+            }
+
           }
           else
           {
@@ -309,6 +445,12 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
               errs()<<"New size is larger than old struct by "<<newStructSize-oldStructSize<<" bytes from "<<oldStructSize<<" bytes to "<<newStructSize<<" bytes.\n";
             else
               errs()<<"New struct has same size as old struct: "<<newStructSize<<" bytes.\n";
+
+            elems.clear();
+            sortedElems.clear();
+            newSortedElems.clear();
+            newElems.clear();
+            continue;
           }
 
           /* Now replace the last index of GEP instructions that use the optimised struct */
@@ -435,6 +577,10 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
           newSortedElems.clear();
           performOpt = false;
           modifiedStruct = "";
+
+          elems.clear();
+          newSortedElems.clear();
+          newElems.clear();
           
         }
 

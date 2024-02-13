@@ -54,6 +54,9 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
         vector<pair<GlobalVariable*,StructType*>> globalAoS;
         vector<tuple<Value*,StructType*,Function*>> localAoS;
 
+        DataLayout* TD = new DataLayout(&M);
+
+
         /// ONLY COLLECT STRUCTS OF AoS values that:
         // - are global
         // - not used as function parameters
@@ -78,8 +81,6 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
               isStatic = true;
             bool isParam = get<4>(confirmed.at(i));
             bool hasPointerElem = get<5>(confirmed.at(i));
-
-            DataLayout* TD = new DataLayout(&M);
 
             if(!isParam & !hasPointerElem & isStatic & (TD->getStructLayout(structure)->getSizeInBytes() > 8)) //only optimise structs that have a size greater than a word length (8 bytes)
             {
@@ -318,7 +319,7 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
             if(coldFields.size() == 0) //no cold field required for this struct
             {
               errs()<<"No need to peel this struct - no cold fields found\n";
-              break;
+              continue;
             }
 
             //// create new hot and cold structs
@@ -327,9 +328,17 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
 
             ArrayRef<Type*> newHotFields = ArrayRef(hotFields);
             ArrayRef<Type*> newColdFields = ArrayRef(coldFields);
-            
+
+            StructType* temporaryStruct = StructType::create(peel_Context, allStructs.at(i)->getName());
+
+            temporaryStruct->setBody(newHotFields); //to calculate size of hot struct
+
+            origStructSizes.find(currStruct)->second.first = origStructSizes.find(currStruct)->second.second;
+            origStructSizes.find(currStruct)->second.second = TD->getTypeAllocSize(temporaryStruct);
+
             //// creating hot struct
             allStructs.at(i)->setBody(newHotFields);
+            currStruct = allStructs.at(i);
             
             //// creating cold struct
             string coldName = currStruct->getName().str();
@@ -339,6 +348,11 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
             coldStruct->setBody(coldFields);
 
             coldStructs.push_back(coldStruct);
+
+            int size = TD->getTypeAllocSize(coldStruct);
+
+            origStructSizes.insert(make_pair(coldStruct,make_pair(size,size)));
+            
 
             //// now for each global AoS, iterate through all GEP instructions that access the global AoS and its struct element and change its:
             //// - indices
