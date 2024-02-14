@@ -49,7 +49,7 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         if(M.getFunction("malloc") == nullptr)
         {
           errs()<<"Function malloc() not found in IR. Unable to perform structure splitting without this function.\n\n";
-          errs()<<"Please add this function to the source file.\n";
+          errs()<<"Please add this function to the source file.\n\n";
           exit = true;
         }
 
@@ -223,6 +223,8 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           
           StructType* currStruct = allStructs.at(i);
 
+          set<vector<int>> fieldAccessPattern;
+
           //Need to identify if the struct contains a recursive ptr to itself
 
           vector<float> elems; //this is used to store the no. of times each field element was used in the current struct
@@ -236,6 +238,8 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
             elems.push_back(0.0);
 
           // for each instruction, look for GEP instructions and count the number of times each field of a struct was used
+          // also obtain the affinity groups - groups of fields accessed together
+
           for (auto &F : M) 
           { 
             for (auto &B : F)  
@@ -246,6 +250,15 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
               // LoopInfo LI = LoopInfo();
               // Loop* l = LI.getLoopFor(&B); 
               // runOnLoop(l); //gives seg fault
+
+              vector<int> accessPattern;
+
+              for(int f = 0; f < currStruct->getStructNumElements(); f++)
+              {
+                accessPattern.push_back(0);
+              }
+
+              // errs()<<"No. of fields: "<<accessPattern.size()<<"\n";
 
               bool searchForStore = false;
 
@@ -338,10 +351,13 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
 
                     int in = std::stoi(indexStr); // index accessed by GEP instruction
 
+                    // errs()<<"index "<<in<<"\n";
+
                     /// increment correct index counter 
                     float count = elems.at(in);
                     count++;
                     elems.at(in) = count;
+                    accessPattern.at(in) = 1;
 
                     if(GEP->getResultElementType()->isPointerTy() & elems.at(in) != INT_MAX)
                     {
@@ -352,6 +368,30 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
                   }
                 }
               }
+
+              bool allZero = true;
+              for(int f = 0; f < accessPattern.size(); f++)
+              {
+                if(accessPattern.at(f) != 0)
+                {
+                  allZero = false;
+                  break;
+                }
+              }
+
+              if(!allZero)
+              {
+                // if(fieldAccessPattern.find(accessPattern) != fieldAccessPattern.end())
+                //   errs()<<"Exists\n";
+                fieldAccessPattern.insert(accessPattern);
+
+              // for(int o = 0; o < accessPattern.size(); o++)
+              // { 
+              //   errs()<<accessPattern.at(o)<<",";
+              // }
+              // errs()<<"\n";
+              }
+             
           }
         }
 
@@ -374,6 +414,9 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         mean = total/(elems.size() - recursivePointerIndices.size());
         errs()<<"Mean: "<<mean<<"\n";
 
+        // errs()<<fieldAccessPattern.size()<<"\n";
+
+
         // split fields based on mean no. of accesses
         // with no. of accesses >= mean, put field in hot struct
         // with no. of accesses < mean, put field in cold struct
@@ -383,16 +426,114 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         /// vectors to store fields and indices for hot and cold structs
         vector<Type*> hotFields;
         vector<pair<int,int>> hotIndices;
+        map<int,int> usedAsHotIndices;
         vector<Type*> coldFields;
         vector<pair<int,int>> coldIndices;
 
+        map<int,int> hotIndicesForInspection;
+
         /// put each struct field into a hot or cold struct, based on whether its been accessed frequently (> mean)
         int index = 0;
-        int coldIndex = 0;
+        // int coldIndex = 0;
         int hotIndex = 0;
         for(auto it = elemTypes.begin(); it != elemTypes.end(); it++)
         {
           if(elems.at(index) >= mean)
+          {
+            hotFields.push_back(*it);
+            hotIndices.push_back(make_pair(index,hotIndex));
+            usedAsHotIndices.insert(make_pair(index,hotIndex));
+            hotIndex++;
+            hotIndicesForInspection.insert(make_pair(index,0));
+          }
+          // else if(elems.at(index) < mean)
+          // {
+          //   coldFields.push_back(*it);
+          //   coldIndices.push_back(make_pair(index,coldIndex));
+          //   coldIndex++;
+          // }
+
+          index++;
+        }
+
+        //iterate through the access patterns
+        //if a group exists where all fields are accessed, this shows good affinity within the struct - NO need to split
+        //
+
+        vector<int> analyse;
+
+        for(int k = 0; k < currStruct->getStructNumElements(); k++)
+        {
+          analyse.push_back(0);
+        }
+
+        bool exitIfAllOnes = false;
+
+        for(auto k = fieldAccessPattern.begin(); k != fieldAccessPattern.end(); k++)
+        {
+          vector<int> pattern = *k;
+          bool shared = false;
+          bool allOnes = true;
+          for(int j = 0; j < pattern.size(); j++)
+          {
+            // errs()<<pattern.at(j);
+            if(pattern.at(j) == 0)
+              allOnes = false;
+            if(hotIndicesForInspection.find(j) != hotIndicesForInspection.end())
+            {
+              if(pattern.at(j) == 1)
+                shared = true;
+            }
+            else
+            {
+              if(pattern.at(j) == 1)
+              {
+                if(shared)
+                  analyse.at(j)++;
+              }
+            }
+
+          }
+          // errs()<<"\n";
+
+          if(allOnes)
+          {
+            exitIfAllOnes = true;
+            break;
+          }
+        }
+
+        if(exitIfAllOnes)
+        {
+          errs()<<"Struct shows good affinity. No need to split it\n"; //if access pattern is all ones, it means that all fields in the struct are accessed together
+          for(auto it = aosValues.begin(); it != aosValues.end(); it)
+          {
+            StructType* structToRemove = get<1>(*it);
+            if(structToRemove == currStruct)
+              aosValues.erase(it);
+            else
+              it++;
+          }
+          continue;
+        }
+
+        map<int,int> toAddToHot;
+
+        for(int k = 0; k < currStruct->getStructNumElements(); k++)
+        {
+          // errs()<<analyse.at(k)<<", \n";
+          if(analyse.at(k) > 1)
+          {
+            toAddToHot.insert(make_pair(k,0));
+            errs()<<"Adding field "<<k<<" to the hot struct\n";
+          }
+        }
+
+        index = 0;
+        int coldIndex = 0;
+        for(auto it = elemTypes.begin(); it != elemTypes.end(); it++)
+        {
+          if(toAddToHot.find(index) != toAddToHot.end())
           {
             hotFields.push_back(*it);
             hotIndices.push_back(make_pair(index,hotIndex));
