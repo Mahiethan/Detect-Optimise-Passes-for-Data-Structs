@@ -14,14 +14,12 @@ target triple = "x86_64-unknown-linux-gnu"
 @.str.5 = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 
 ; Function Attrs: noinline nounwind optnone uwtable
-define dso_local void @populateStructure(ptr noundef %soa, i32 noundef %sizeA, i32 noundef %sizeB, i32 noundef %sizeC) #0 {
+define dso_local void @populateStructure(ptr noalias sret(%struct.StructureOne) align 4 %agg.result, ptr noundef byval(%struct.StructureOne) align 8 %soa, i32 noundef %sizeA, i32 noundef %sizeB, i32 noundef %sizeC) #0 {
 entry:
-  %soa.addr = alloca ptr, align 8
   %sizeA.addr = alloca i32, align 4
   %sizeB.addr = alloca i32, align 4
   %sizeC.addr = alloca i32, align 4
   %i = alloca i32, align 4
-  store ptr %soa, ptr %soa.addr, align 8
   store i32 %sizeA, ptr %sizeA.addr, align 4
   store i32 %sizeB, ptr %sizeB.addr, align 4
   store i32 %sizeC, ptr %sizeC.addr, align 4
@@ -36,17 +34,16 @@ for.cond:                                         ; preds = %for.inc, %entry
 
 for.body:                                         ; preds = %for.cond
   %2 = load i32, ptr %i, align 4
-  %3 = load ptr, ptr %soa.addr, align 8
-  %a = getelementptr inbounds %struct.StructureOne, ptr %3, i32 0, i32 0
-  %4 = load i32, ptr %i, align 4
-  %idxprom = sext i32 %4 to i64
+  %a = getelementptr inbounds %struct.StructureOne, ptr %soa, i32 0, i32 0
+  %3 = load i32, ptr %i, align 4
+  %idxprom = sext i32 %3 to i64
   %arrayidx = getelementptr inbounds [100000 x i32], ptr %a, i64 0, i64 %idxprom
   store i32 %2, ptr %arrayidx, align 4
   br label %for.inc
 
 for.inc:                                          ; preds = %for.body
-  %5 = load i32, ptr %i, align 4
-  %inc = add nsw i32 %5, 1
+  %4 = load i32, ptr %i, align 4
+  %inc = add nsw i32 %4, 1
   store i32 %inc, ptr %i, align 4
   br label %for.cond, !llvm.loop !6
 
@@ -55,24 +52,23 @@ for.end:                                          ; preds = %for.cond
   br label %for.cond1
 
 for.cond1:                                        ; preds = %for.inc6, %for.end
-  %6 = load i32, ptr %i, align 4
-  %7 = load i32, ptr %sizeB.addr, align 4
-  %cmp2 = icmp slt i32 %6, %7
+  %5 = load i32, ptr %i, align 4
+  %6 = load i32, ptr %sizeB.addr, align 4
+  %cmp2 = icmp slt i32 %5, %6
   br i1 %cmp2, label %for.body3, label %for.end8
 
 for.body3:                                        ; preds = %for.cond1
+  %7 = load i32, ptr %i, align 4
+  %b = getelementptr inbounds %struct.StructureOne, ptr %soa, i32 0, i32 1
   %8 = load i32, ptr %i, align 4
-  %9 = load ptr, ptr %soa.addr, align 8
-  %b = getelementptr inbounds %struct.StructureOne, ptr %9, i32 0, i32 1
-  %10 = load i32, ptr %i, align 4
-  %idxprom4 = sext i32 %10 to i64
+  %idxprom4 = sext i32 %8 to i64
   %arrayidx5 = getelementptr inbounds [200000 x i32], ptr %b, i64 0, i64 %idxprom4
-  store i32 %8, ptr %arrayidx5, align 4
+  store i32 %7, ptr %arrayidx5, align 4
   br label %for.inc6
 
 for.inc6:                                         ; preds = %for.body3
-  %11 = load i32, ptr %i, align 4
-  %inc7 = add nsw i32 %11, 1
+  %9 = load i32, ptr %i, align 4
+  %inc7 = add nsw i32 %9, 1
   store i32 %inc7, ptr %i, align 4
   br label %for.cond1, !llvm.loop !8
 
@@ -81,44 +77,47 @@ for.end8:                                         ; preds = %for.cond1
   br label %for.cond9
 
 for.cond9:                                        ; preds = %for.inc14, %for.end8
-  %12 = load i32, ptr %i, align 4
-  %13 = load i32, ptr %sizeC.addr, align 4
-  %cmp10 = icmp slt i32 %12, %13
+  %10 = load i32, ptr %i, align 4
+  %11 = load i32, ptr %sizeC.addr, align 4
+  %cmp10 = icmp slt i32 %10, %11
   br i1 %cmp10, label %for.body11, label %for.end16
 
 for.body11:                                       ; preds = %for.cond9
-  %14 = load i32, ptr %i, align 4
-  %conv = trunc i32 %14 to i8
-  %15 = load ptr, ptr %soa.addr, align 8
-  %c = getelementptr inbounds %struct.StructureOne, ptr %15, i32 0, i32 2
-  %16 = load i32, ptr %i, align 4
-  %idxprom12 = sext i32 %16 to i64
+  %12 = load i32, ptr %i, align 4
+  %conv = trunc i32 %12 to i8
+  %c = getelementptr inbounds %struct.StructureOne, ptr %soa, i32 0, i32 2
+  %13 = load i32, ptr %i, align 4
+  %idxprom12 = sext i32 %13 to i64
   %arrayidx13 = getelementptr inbounds [300000 x i8], ptr %c, i64 0, i64 %idxprom12
   store i8 %conv, ptr %arrayidx13, align 1
   br label %for.inc14
 
 for.inc14:                                        ; preds = %for.body11
-  %17 = load i32, ptr %i, align 4
-  %inc15 = add nsw i32 %17, 1
+  %14 = load i32, ptr %i, align 4
+  %inc15 = add nsw i32 %14, 1
   store i32 %inc15, ptr %i, align 4
   br label %for.cond9, !llvm.loop !9
 
 for.end16:                                        ; preds = %for.cond9
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %agg.result, ptr align 8 %soa, i64 1500000, i1 false)
   ret void
 }
+
+; Function Attrs: nocallback nofree nounwind willreturn memory(argmem: readwrite)
+declare void @llvm.memcpy.p0.p0.i64(ptr noalias nocapture writeonly, ptr noalias nocapture readonly, i64, i1 immarg) #1
 
 ; Function Attrs: noinline nounwind optnone uwtable
 define dso_local ptr @createStructureOne() #0 {
 entry:
   %s1 = alloca ptr, align 8
-  %call = call noalias ptr @malloc(i64 noundef 1500000) #4
+  %call = call noalias ptr @malloc(i64 noundef 1500000) #5
   store ptr %call, ptr %s1, align 8
   %0 = load ptr, ptr %s1, align 8
   ret ptr %0
 }
 
 ; Function Attrs: nounwind allocsize(0)
-declare noalias ptr @malloc(i64 noundef) #1
+declare noalias ptr @malloc(i64 noundef) #2
 
 ; Function Attrs: noinline nounwind optnone uwtable
 define dso_local void @freeStructure(ptr noundef %soa) #0 {
@@ -126,12 +125,12 @@ entry:
   %soa.addr = alloca ptr, align 8
   store ptr %soa, ptr %soa.addr, align 8
   %0 = load ptr, ptr %soa.addr, align 8
-  call void @free(ptr noundef %0) #5
+  call void @free(ptr noundef %0) #6
   ret void
 }
 
 ; Function Attrs: nounwind
-declare void @free(ptr noundef) #2
+declare void @free(ptr noundef) #3
 
 ; Function Attrs: noinline nounwind optnone uwtable
 define dso_local void @printStructure(ptr noundef %soa, i32 noundef %sizeA, i32 noundef %sizeB, i32 noundef %sizeC) #0 {
@@ -233,7 +232,18 @@ for.end21:                                        ; preds = %for.cond13
   ret void
 }
 
-declare i32 @printf(ptr noundef, ...) #3
+declare i32 @printf(ptr noundef, ...) #4
+
+; Function Attrs: noinline nounwind optnone uwtable
+define dso_local void @populateZero(ptr noalias sret(%struct.StructureOne) align 4 %agg.result, ptr noundef byval(%struct.StructureOne) align 8 %s) #0 {
+entry:
+  %s4 = alloca %struct.StructureOne, align 8
+  %tmp = alloca %struct.StructureOne, align 4
+  call void @populateStructure(ptr sret(%struct.StructureOne) align 4 %tmp, ptr noundef byval(%struct.StructureOne) align 8 %s4, i32 noundef 100, i32 noundef 100, i32 noundef 100)
+  call void @llvm.memcpy.p0.p0.i64(ptr align 4 %s4, ptr align 4 %tmp, i64 1500000, i1 false)
+  call void @populateStructure(ptr sret(%struct.StructureOne) align 4 %agg.result, ptr noundef byval(%struct.StructureOne) align 8 %s, i32 noundef 100, i32 noundef 100, i32 noundef 100)
+  ret void
+}
 
 ; Function Attrs: noinline nounwind optnone uwtable
 define dso_local i32 @main() #0 {
@@ -241,29 +251,44 @@ entry:
   %retval = alloca i32, align 4
   %s1 = alloca %struct.StructureOne, align 4
   %s2 = alloca %struct.StructureTwo, align 4
+  %wrong = alloca %struct.StructureTwo, align 4
+  %s3 = alloca %struct.StructureOne, align 4
+  %s4 = alloca [100 x %struct.StructureOne], align 16
   store i32 0, ptr %retval, align 4
-  %a = getelementptr inbounds %struct.StructureOne, ptr %s1, i32 0, i32 0
-  %arrayidx = getelementptr inbounds [100000 x i32], ptr %a, i64 0, i64 0
-  store i32 100, ptr %arrayidx, align 4
+  %a = getelementptr inbounds %struct.StructureTwo, ptr %wrong, i32 0, i32 0
+  %arrayidx = getelementptr inbounds [100000 x i32], ptr %a, i64 0, i64 10
+  store i32 10, ptr %arrayidx, align 4
   %a1 = getelementptr inbounds %struct.StructureOne, ptr %s1, i32 0, i32 0
-  %arrayidx2 = getelementptr inbounds [100000 x i32], ptr %a1, i64 0, i64 21
+  %arrayidx2 = getelementptr inbounds [100000 x i32], ptr %a1, i64 0, i64 0
   store i32 100, ptr %arrayidx2, align 4
+  %a3 = getelementptr inbounds %struct.StructureOne, ptr %s1, i32 0, i32 0
+  %arrayidx4 = getelementptr inbounds [100000 x i32], ptr %a3, i64 0, i64 21
+  store i32 100, ptr %arrayidx4, align 4
   %c = getelementptr inbounds %struct.StructureOne, ptr %s1, i32 0, i32 2
-  %arrayidx3 = getelementptr inbounds [300000 x i8], ptr %c, i64 0, i64 7
-  store i8 98, ptr %arrayidx3, align 1
-  %a4 = getelementptr inbounds %struct.StructureOne, ptr %s1, i32 0, i32 0
-  %arrayidx5 = getelementptr inbounds [100000 x i32], ptr %a4, i64 0, i64 0
-  %0 = load i32, ptr %arrayidx5, align 4
+  %arrayidx5 = getelementptr inbounds [300000 x i8], ptr %c, i64 0, i64 7
+  store i8 98, ptr %arrayidx5, align 1
+  %arrayidx6 = getelementptr inbounds [100 x %struct.StructureOne], ptr %s4, i64 0, i64 9
+  %a7 = getelementptr inbounds %struct.StructureOne, ptr %arrayidx6, i32 0, i32 0
+  %arrayidx8 = getelementptr inbounds [100000 x i32], ptr %a7, i64 0, i64 0
+  store i32 10, ptr %arrayidx8, align 16
+  %a9 = getelementptr inbounds %struct.StructureOne, ptr %s1, i32 0, i32 0
+  %arrayidx10 = getelementptr inbounds [100000 x i32], ptr %a9, i64 0, i64 0
+  %0 = load i32, ptr %arrayidx10, align 4
   %call = call i32 (ptr, ...) @printf(ptr noundef @.str.5, i32 noundef %0)
+  %a11 = getelementptr inbounds %struct.StructureOne, ptr %s3, i32 0, i32 0
+  %arrayidx12 = getelementptr inbounds [100000 x i32], ptr %a11, i64 0, i64 0
+  %1 = load i32, ptr %arrayidx12, align 4
+  %call13 = call i32 (ptr, ...) @printf(ptr noundef @.str.5, i32 noundef %1)
   ret i32 0
 }
 
 attributes #0 = { noinline nounwind optnone uwtable "frame-pointer"="all" "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #1 = { nounwind allocsize(0) "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #2 = { nounwind "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #3 = { "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #4 = { nounwind allocsize(0) }
-attributes #5 = { nounwind }
+attributes #1 = { nocallback nofree nounwind willreturn memory(argmem: readwrite) }
+attributes #2 = { nounwind allocsize(0) "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #3 = { nounwind "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #4 = { "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #5 = { nounwind allocsize(0) }
+attributes #6 = { nounwind }
 
 !llvm.module.flags = !{!0, !1, !2, !3, !4}
 !llvm.ident = !{!5}

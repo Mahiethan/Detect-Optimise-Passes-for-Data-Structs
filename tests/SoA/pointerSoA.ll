@@ -4,6 +4,7 @@ target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16
 target triple = "x86_64-unknown-linux-gnu"
 
 %struct.StructureOne = type { [100000 x i32], [200000 x i32], [300000 x i8] }
+%struct.test = type { i32, i32, [300000 x i8] }
 
 @.str = private unnamed_addr constant [11 x i8] c"Array a: \0A\00", align 1
 @.str.1 = private unnamed_addr constant [14 x i8] c"Index %d: %d\0A\00", align 1
@@ -111,7 +112,7 @@ entry:
   %soa.addr = alloca ptr, align 8
   store ptr %soa, ptr %soa.addr, align 8
   %0 = load ptr, ptr %soa.addr, align 8
-  call void @free(ptr noundef %0) #4
+  call void @free(ptr noundef %0) #5
   ret void
 }
 
@@ -221,29 +222,153 @@ for.end21:                                        ; preds = %for.cond13
 declare i32 @printf(ptr noundef, ...) #2
 
 ; Function Attrs: noinline nounwind optnone uwtable
-define dso_local i32 @main() #0 {
+define dso_local void @populateTwo(ptr noundef %s) #0 {
 entry:
-  %retval = alloca i32, align 4
-  %gs1 = alloca ptr, align 8
-  store i32 0, ptr %retval, align 4
-  %call = call noalias ptr @malloc(i64 noundef 1500000) #5
-  store ptr %call, ptr %gs1, align 8
-  %0 = load ptr, ptr %gs1, align 8
-  call void @populateStructure(ptr noundef %0, i32 noundef 100000, i32 noundef 200000, i32 noundef 300000)
-  %1 = load ptr, ptr %gs1, align 8
-  call void @freeStructure(ptr noundef %1)
-  ret i32 0
+  %s.addr = alloca ptr, align 8
+  %s5 = alloca ptr, align 8
+  store ptr %s, ptr %s.addr, align 8
+  %call = call noalias ptr @malloc(i64 noundef 1500000) #6
+  store ptr %call, ptr %s5, align 8
+  %0 = load ptr, ptr %s.addr, align 8
+  call void @populateStructure(ptr noundef %0, i32 noundef 200, i32 noundef 200, i32 noundef 200)
+  %1 = load ptr, ptr %s5, align 8
+  call void @populateStructure(ptr noundef %1, i32 noundef 200, i32 noundef 200, i32 noundef 200)
+  ret void
 }
 
 ; Function Attrs: nounwind allocsize(0)
 declare noalias ptr @malloc(i64 noundef) #3
 
+; Function Attrs: noinline nounwind optnone uwtable
+define dso_local void @populateOne(ptr noundef %s) #0 {
+entry:
+  %s.addr = alloca ptr, align 8
+  store ptr %s, ptr %s.addr, align 8
+  %0 = load ptr, ptr %s.addr, align 8
+  call void @populateTwo(ptr noundef %0)
+  ret void
+}
+
+; Function Attrs: noinline nounwind optnone uwtable
+define dso_local void @populateZero(ptr noundef %s) #0 {
+entry:
+  %s.addr = alloca ptr, align 8
+  %s4 = alloca ptr, align 8
+  store ptr %s, ptr %s.addr, align 8
+  %call = call noalias ptr @malloc(i64 noundef 1500000) #6
+  store ptr %call, ptr %s4, align 8
+  %0 = load ptr, ptr %s4, align 8
+  call void @populateStructure(ptr noundef %0, i32 noundef 100, i32 noundef 100, i32 noundef 100)
+  %1 = load ptr, ptr %s.addr, align 8
+  call void @populateOne(ptr noundef %1)
+  ret void
+}
+
+; Function Attrs: noinline nounwind optnone uwtable
+define dso_local void @populateAos(ptr noundef %aos, i32 noundef %size) #0 {
+entry:
+  %aos.addr = alloca ptr, align 8
+  %size.addr = alloca i32, align 4
+  %i = alloca i32, align 4
+  store ptr %aos, ptr %aos.addr, align 8
+  store i32 %size, ptr %size.addr, align 4
+  store i32 0, ptr %i, align 4
+  br label %for.cond
+
+for.cond:                                         ; preds = %for.inc, %entry
+  %0 = load i32, ptr %i, align 4
+  %1 = load i32, ptr %size.addr, align 4
+  %cmp = icmp slt i32 %0, %1
+  br i1 %cmp, label %for.body, label %for.end
+
+for.body:                                         ; preds = %for.cond
+  %2 = load ptr, ptr %aos.addr, align 8
+  %3 = load i32, ptr %i, align 4
+  %idxprom = sext i32 %3 to i64
+  %arrayidx = getelementptr inbounds %struct.StructureOne, ptr %2, i64 %idxprom
+  %a = getelementptr inbounds %struct.StructureOne, ptr %arrayidx, i32 0, i32 0
+  %arrayidx1 = getelementptr inbounds [100000 x i32], ptr %a, i64 0, i64 90
+  store i32 100, ptr %arrayidx1, align 4
+  br label %for.inc
+
+for.inc:                                          ; preds = %for.body
+  %4 = load i32, ptr %i, align 4
+  %inc = add nsw i32 %4, 1
+  store i32 %inc, ptr %i, align 4
+  br label %for.cond, !llvm.loop !13
+
+for.end:                                          ; preds = %for.cond
+  ret void
+}
+
+; Function Attrs: noinline nounwind optnone uwtable
+define dso_local i32 @main() #0 {
+entry:
+  %retval = alloca i32, align 4
+  %gs1 = alloca ptr, align 8
+  %gs2 = alloca ptr, align 8
+  %wrong = alloca ptr, align 8
+  %gs3 = alloca ptr, align 8
+  %gs4 = alloca ptr, align 8
+  %not = alloca ptr, align 8
+  %gs5 = alloca ptr, align 8
+  store i32 0, ptr %retval, align 4
+  %call = call noalias ptr @malloc(i64 noundef 1500000) #6
+  store ptr %call, ptr %gs1, align 8
+  %call1 = call noalias ptr @malloc(i64 noundef 150000000) #6
+  store ptr %call1, ptr %gs2, align 8
+  %0 = load ptr, ptr %gs2, align 8
+  call void @populateAos(ptr noundef %0, i32 noundef 100)
+  %1 = load ptr, ptr %gs1, align 8
+  call void @populateStructure(ptr noundef %1, i32 noundef 100000, i32 noundef 200000, i32 noundef 300000)
+  %call2 = call noalias ptr @malloc(i64 noundef 300008) #6
+  store ptr %call2, ptr %wrong, align 8
+  %2 = load ptr, ptr %wrong, align 8
+  %a = getelementptr inbounds %struct.test, ptr %2, i32 0, i32 0
+  store i32 10, ptr %a, align 4
+  %call3 = call noalias ptr @calloc(i64 noundef 1, i64 noundef 1500000) #7
+  store ptr %call3, ptr %gs3, align 8
+  %3 = load ptr, ptr %gs3, align 8
+  %a4 = getelementptr inbounds %struct.StructureOne, ptr %3, i32 0, i32 0
+  %arrayidx = getelementptr inbounds [100000 x i32], ptr %a4, i64 0, i64 100
+  store i32 10, ptr %arrayidx, align 4
+  %call5 = call noalias ptr @calloc(i64 noundef 199, i64 noundef 1500000) #7
+  store ptr %call5, ptr %gs4, align 8
+  %4 = load ptr, ptr %gs4, align 8
+  %arrayidx6 = getelementptr inbounds %struct.StructureOne, ptr %4, i64 0
+  %a7 = getelementptr inbounds %struct.StructureOne, ptr %arrayidx6, i32 0, i32 0
+  %arrayidx8 = getelementptr inbounds [100000 x i32], ptr %a7, i64 0, i64 99
+  store i32 9, ptr %arrayidx8, align 4
+  %call9 = call noalias ptr @malloc(i64 noundef 1500000) #6
+  store ptr %call9, ptr %not, align 8
+  %call10 = call noalias ptr @malloc(i64 noundef 1500000) #6
+  store ptr %call10, ptr %gs5, align 8
+  %5 = load ptr, ptr %gs5, align 8
+  call void @populateZero(ptr noundef %5)
+  %6 = load ptr, ptr %gs1, align 8
+  call void @freeStructure(ptr noundef %6)
+  %7 = load ptr, ptr %gs2, align 8
+  call void @freeStructure(ptr noundef %7)
+  %8 = load ptr, ptr %gs3, align 8
+  call void @freeStructure(ptr noundef %8)
+  %9 = load ptr, ptr %gs4, align 8
+  call void @freeStructure(ptr noundef %9)
+  %10 = load ptr, ptr %gs5, align 8
+  call void @freeStructure(ptr noundef %10)
+  ret i32 0
+}
+
+; Function Attrs: nounwind allocsize(0,1)
+declare noalias ptr @calloc(i64 noundef, i64 noundef) #4
+
 attributes #0 = { noinline nounwind optnone uwtable "frame-pointer"="all" "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
 attributes #1 = { nounwind "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
 attributes #2 = { "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
 attributes #3 = { nounwind allocsize(0) "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #4 = { nounwind }
-attributes #5 = { nounwind allocsize(0) }
+attributes #4 = { nounwind allocsize(0,1) "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #5 = { nounwind }
+attributes #6 = { nounwind allocsize(0) }
+attributes #7 = { nounwind allocsize(0,1) }
 
 !llvm.module.flags = !{!0, !1, !2, !3, !4}
 !llvm.ident = !{!5}
@@ -261,3 +386,4 @@ attributes #5 = { nounwind allocsize(0) }
 !10 = distinct !{!10, !7}
 !11 = distinct !{!11, !7}
 !12 = distinct !{!12, !7}
+!13 = distinct !{!13, !7}

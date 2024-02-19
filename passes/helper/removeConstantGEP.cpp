@@ -106,6 +106,79 @@ struct removeConstantGEP : public PassInfoMixin<removeConstantGEP> {
                         //   errs()<<"no\n";
                         // }
                       }
+                      else if(auto *SI = dyn_cast<StoreInst>(&I))
+                      {
+                        // LI->print(errs());
+                        // errs()<<"\n";
+                        Value* operand = SI->getPointerOperand();
+                        // operand->print(errs());
+                        // errs()<<"\n";
+
+                        if(auto *CGEP = dyn_cast<ConstantExpr>(operand))
+                        {
+                          // CGEP->print(errs());
+                          // errs()<<"\nyes\n";
+                          // Instruction * inst = CGEP->getAsInstruction();
+                          // inst->print(errs());
+                          // llvm::ReplaceInstWithInst(&I,inst);
+                          // CGEP->getAsInstruction();
+
+                          //for StoreInst, we simply replace this operand with a separate GEP inst
+
+                        Instruction* newInst = CGEP->getAsInstruction(SI);
+                        GetElementPtrInst* newGEP = cast<GetElementPtrInst>(newInst);
+
+                        if(auto *CGEP = dyn_cast<ConstantExpr>(newGEP->getPointerOperand()))
+                        {
+                          // CGEP->print(errs());
+                          // errs()<<"\n^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^\n";
+                          Instruction* newPtrInst = CGEP->getAsInstruction(newInst);
+                          GetElementPtrInst* newPtrGEP = cast<GetElementPtrInst>(newPtrInst);
+                          newGEP->setOperand(0,newPtrGEP);
+                        }
+                       
+                        // newInst->print(errs());
+                        // errs()<<"\n";
+
+                        SI->setOperand(SI->getPointerOperandIndex(),newInst);
+                        constantGEPCount++;
+
+
+                          // //save this CGEP in a global variable
+                          // foundConstantGEP = CGEP;
+                          // loadedGEP = SI;
+                          // loadedGEPType = SI->getType();
+
+                          //continue to next instruction, which should be a callInst, ONLY DO THIS is CGEP is NOT nullptr
+                          //get all function arguments
+                          //if a function argument matches this CGEP, replace that function argument with this
+                          
+                          //get the replaced instruction before replacement
+                            //get all of its uses
+                            //if none, remove it using removeParent() - hopefully works
+
+                        }
+
+                        // if(auto *GEP = dyn_cast<GEPOperator>(operand))
+                        // {
+                        //   // if(GEP->getSourceElementType() == allStructs.at(i))
+                        //   // {
+                        //     errs()<<"yhh\n";
+                        //     Value* ptrOperand = GEP->getPointerOperand();
+                            
+                        //     // GEP->setOperand(GEP->getNumIndices(),ConstantInt::get(reorder_Context,APInt(32,7)));
+                        //     // GEP->print(errs());
+
+                        //   // }
+                        //   // GEP->getSourceElementType()->print(errs());
+                        //   // errs()<<"\n";
+
+                        // }
+                        // else
+                        // {
+                        //   errs()<<"no\n";
+                        // }
+                      }
                     }
                     else
                     {
@@ -172,7 +245,23 @@ struct removeConstantGEP : public PassInfoMixin<removeConstantGEP> {
                             break;
                         }
                         else
+                        {
+                          newLoad = new LoadInst(loadedGEPType,newInst,"",&I);
+
+                          (&I)->setOperand(operandIndex,newLoad);
+
+                          if(newInst->getNumUses() == 0)
+                           newInst->eraseFromParent();
+        
+                          //remove the loadInst
+                          if(loadedGEP->getNumUses() == 0)
+                              loadedGEP->eraseFromParent();
+
+                          constantGEPCount++;
+
                           break;
+                        }
+                          
 
                         
                         GetElementPtrInst* sourceGEP = GetElementPtrInst::CreateInBounds(newGEP->getSourceElementType(), newGEP->getOperand(0), indexList, "", &I);

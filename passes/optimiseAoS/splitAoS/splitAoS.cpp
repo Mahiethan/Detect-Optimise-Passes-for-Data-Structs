@@ -549,6 +549,8 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           index++;
         }
 
+        // END OF AFFINITY GROUP CHECK
+
         if(coldFields.size() == 0) //no cold field required for this struct
         {
           errs()<<"No need to split this struct - no cold fields found\n";

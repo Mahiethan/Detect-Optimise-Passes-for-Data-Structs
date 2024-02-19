@@ -29,10 +29,14 @@ Tuple elements of each confirmed AoS:
   - if the struct is recursive - to determine whether struct peeling or splitting should be applied
 */
 
-vector<tuple<Value*,Function*,string,StructType*,bool,bool>> confirmed;
+vector<tuple<Value*,Function*,string,StructType*,bool,bool,string>> confirmed;
 bool detectAoSCalled;
 map<StructType*,pair<int,int>> origStructSizes;
 vector<StructType*> coldStructs; //stores cold structs used within AoS - created in etiher struct peeling struct splitting optimisation. These structs need to be added to the structList in reorderAoS() to have its fields reordered.
+
+map<Type*,int> toFind; //stores all SoAs and its sizes
+
+vector<tuple<Value*,Function*,string,StructType*>> AoSoAList; //stores potential AoSoA
 
 // vector<tuple<string,vector<int>,Value*>> calledFunction; //stores pair of function name and used argument index of pointer (if any)
 

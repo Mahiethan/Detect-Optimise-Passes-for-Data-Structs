@@ -135,7 +135,7 @@ entry:
   %soa.addr = alloca ptr, align 8
   store ptr %soa, ptr %soa.addr, align 8
   %0 = load ptr, ptr %soa.addr, align 8
-  call void @free(ptr noundef %0) #4
+  call void @free(ptr noundef %0) #5
   ret void
 }
 
@@ -269,35 +269,91 @@ for.end28:                                        ; preds = %for.cond
 declare i32 @printf(ptr noundef, ...) #2
 
 ; Function Attrs: noinline nounwind optnone uwtable
+define dso_local void @populateAoSoA(ptr noundef %a, i32 noundef %n) #0 {
+entry:
+  %a.addr = alloca ptr, align 8
+  %n.addr = alloca i32, align 4
+  %i = alloca i32, align 4
+  store ptr %a, ptr %a.addr, align 8
+  store i32 %n, ptr %n.addr, align 4
+  store i32 0, ptr %i, align 4
+  br label %for.cond
+
+for.cond:                                         ; preds = %for.inc, %entry
+  %0 = load i32, ptr %i, align 4
+  %1 = load i32, ptr %n.addr, align 4
+  %cmp = icmp slt i32 %0, %1
+  br i1 %cmp, label %for.body, label %for.end
+
+for.body:                                         ; preds = %for.cond
+  %2 = load ptr, ptr %a.addr, align 8
+  %3 = load i32, ptr %i, align 4
+  %idxprom = sext i32 %3 to i64
+  %arrayidx = getelementptr inbounds %struct.StructureOne, ptr %2, i64 %idxprom
+  %a1 = getelementptr inbounds %struct.StructureOne, ptr %arrayidx, i32 0, i32 0
+  %arrayidx2 = getelementptr inbounds [100000 x i32], ptr %a1, i64 0, i64 90
+  store i32 100, ptr %arrayidx2, align 4
+  br label %for.inc
+
+for.inc:                                          ; preds = %for.body
+  %4 = load i32, ptr %i, align 4
+  %inc = add nsw i32 %4, 1
+  store i32 %inc, ptr %i, align 4
+  br label %for.cond, !llvm.loop !15
+
+for.end:                                          ; preds = %for.cond
+  ret void
+}
+
+; Function Attrs: noinline nounwind optnone uwtable
 define dso_local i32 @main() #0 {
 entry:
   %retval = alloca i32, align 4
+  %n = alloca i32, align 4
   %s1 = alloca ptr, align 8
   store i32 0, ptr %retval, align 4
-  %call = call noalias ptr @malloc(i64 noundef 15000000) #5
+  store i32 1, ptr %n, align 4
+  store i32 90, ptr %n, align 4
+  %0 = load i32, ptr %n, align 4
+  %conv = sitofp i32 %0 to double
+  %div = fdiv double %conv, 9.000000e+01
+  %conv1 = fptosi double %div to i32
+  store i32 %conv1, ptr %n, align 4
+  %call = call noalias ptr @malloc(i64 noundef 15000000) #6
   store ptr %call, ptr %s1, align 8
-  %call1 = call noalias ptr @malloc(i64 noundef 15000000) #5
-  store ptr %call1, ptr @gs2, align 8
-  %0 = load ptr, ptr %s1, align 8
-  call void @populateStructure(ptr noundef %0, i32 noundef 10, i32 noundef 100000, i32 noundef 200000, i32 noundef 300000)
-  %1 = load ptr, ptr @gs2, align 8
-  call void @populateStructure(ptr noundef %1, i32 noundef 10, i32 noundef 100000, i32 noundef 200000, i32 noundef 300000)
+  %1 = load i32, ptr %n, align 4
+  %conv2 = sext i32 %1 to i64
+  %call3 = call noalias ptr @calloc(i64 noundef %conv2, i64 noundef 1500000) #7
+  store ptr %call3, ptr @gs2, align 8
   %2 = load ptr, ptr %s1, align 8
-  call void @freeStructure(ptr noundef %2)
+  %arrayidx = getelementptr inbounds %struct.StructureOne, ptr %2, i64 100
+  %a = getelementptr inbounds %struct.StructureOne, ptr %arrayidx, i32 0, i32 0
+  %arrayidx4 = getelementptr inbounds [100000 x i32], ptr %a, i64 0, i64 2
+  store i32 100, ptr %arrayidx4, align 4
   %3 = load ptr, ptr @gs2, align 8
-  call void @freeStructure(ptr noundef %3)
+  %4 = load i32, ptr %n, align 4
+  call void @populateAoSoA(ptr noundef %3, i32 noundef %4)
+  %5 = load ptr, ptr %s1, align 8
+  call void @freeStructure(ptr noundef %5)
+  %6 = load ptr, ptr @gs2, align 8
+  call void @freeStructure(ptr noundef %6)
   ret i32 0
 }
 
 ; Function Attrs: nounwind allocsize(0)
 declare noalias ptr @malloc(i64 noundef) #3
 
+; Function Attrs: nounwind allocsize(0,1)
+declare noalias ptr @calloc(i64 noundef, i64 noundef) #4
+
 attributes #0 = { noinline nounwind optnone uwtable "frame-pointer"="all" "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
 attributes #1 = { nounwind "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
 attributes #2 = { "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
 attributes #3 = { nounwind allocsize(0) "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #4 = { nounwind }
-attributes #5 = { nounwind allocsize(0) }
+attributes #4 = { nounwind allocsize(0,1) "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #5 = { nounwind }
+attributes #6 = { nounwind allocsize(0) }
+attributes #7 = { nounwind allocsize(0,1) }
 
 !llvm.module.flags = !{!0, !1, !2, !3, !4}
 !llvm.ident = !{!5}
@@ -317,3 +373,4 @@ attributes #5 = { nounwind allocsize(0) }
 !12 = distinct !{!12, !7}
 !13 = distinct !{!13, !7}
 !14 = distinct !{!14, !7}
+!15 = distinct !{!15, !7}

@@ -8,6 +8,8 @@
 #include "./optimiseAoS/reorderAoS/reorderAoS.cpp"
 #include "./optimiseAoS/peelAoS/peelAoS.cpp"
 #include "./optimiseAoS/splitAoS/splitAoS.cpp"
+#include "./detectSoA/detectSoA.cpp"
+
 
 using namespace llvm;
 
@@ -83,6 +85,18 @@ llvmGetPassPluginInfo() {
             MPM.addPass(reorderAoS());
             return true;
           }
+
+          if(Name == "detectSoA"){ //detect SoA data structures
+            MPM.addPass(detectSoA());
+            return true;
+          }
+
+          if(Name == "detectAoSoA"){ //detect SoA, AoS and AoSoA data structures
+            MPM.addPass(detectSoA());
+            MPM.addPass(detectAoS());
+            return true;
+          }
+
           return false;
         }
       );

@@ -19,21 +19,23 @@ struct StructureTwo //NOT a SoA
     char c;
 };
 
-void populateStructure(struct StructureOne* soa, int sizeA, int sizeB, int sizeC)
+struct StructureOne populateStructure(struct StructureOne soa, int sizeA, int sizeB, int sizeC)
 {
     int i;
     for(i  = 0; i < sizeA; i++)
     {
-        soa->a[i] = i;
+        soa.a[i] = i;
     }
     for(i  = 0; i < sizeB; i++)
     {
-        soa->b[i] = i;
+        soa.b[i] = i;
     }
     for(i  = 0; i < sizeC; i++)
     {
-        soa->c[i] = i;
+        soa.c[i] = i;
     }
+
+    return soa;
 }
 
 struct StructureOne* createStructureOne()
@@ -72,17 +74,49 @@ void printStructure(struct StructureOne* soa, int sizeA, int sizeB, int sizeC)
     }
 }
 
+// struct StructureOne populateTwo(struct StructureOne s)
+// {
+//    return populateStructure(s,200,200,200);
+// }
+
+// struct StructureOne populateOne(struct StructureOne s)
+// {
+//    return populateTwo(s);
+// }
+
+struct StructureOne populateZero(struct StructureOne s)
+{
+   struct StructureOne s4; //SoA 3 (%s1 in @main)
+   s4 = populateStructure(s4,100,100,100); 
+   return populateStructure(s,100,100,100); 
+}
+
 int main()
 {
     //structs
-    struct StructureOne s1;
+    struct StructureOne s1; //SoA 1 (%s1 in @main)
     struct StructureTwo s2;
+
+    struct StructureTwo wrong;
+    wrong.a[10] = 10;
+
+    // struct StructureOne* s3 = createStructureOne(); //doesn't work
+
+    // populateStructure(s3,100,100,100);
+
+    struct StructureOne s3; //SoA 2 (%s3 in @main)
+
+    struct StructureOne s4[100]; //AoS
+
+    // s3 = populateStructure(s3,100,100,100); //doesn't work
 
     //if a store instruction is found from accessing a identifed struct, this is an SoA
     s1.a[0] = 100;
     s1.a[21] = 100;
     s1.c[7] = 'b';
+    s4[9].a[0] = 10;
     printf("%d\n", s1.a[0]);
+    printf("%d\n", s3.a[0]);
 
     return 0;
 }

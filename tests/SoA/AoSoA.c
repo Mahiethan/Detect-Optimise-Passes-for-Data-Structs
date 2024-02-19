@@ -68,17 +68,33 @@ void printStructure(struct StructureOne* soa, int size, int sizeA, int sizeB, in
     }
 }
 
+void populateAoSoA(struct StructureOne* a, int n)
+{
+    for(int i = 0; i < n; i++)
+    {
+        a[i].a[90] = 100;
+    }
+}
+
+
+
 int main()
 {
-    struct StructureOne* s1 = (struct StructureOne*) malloc(10 * sizeof(struct StructureOne));
-    gs2 = (struct StructureOne*) malloc(10 * sizeof(struct StructureOne));
+    int n = 1;
+    struct StructureOne* s1 = (struct StructureOne*) malloc(10 * sizeof(struct StructureOne)); //AoSoA 1
+    gs2 = (struct StructureOne*) calloc(n,sizeof(struct StructureOne)); //AoSoA 2
 
     //if a store instruction is found from accessing a identifed struct inside function calls, this is an SoA
-    populateStructure(s1,10,SizeA,SizeB,SizeC);
-    populateStructure(gs2,10,SizeA,SizeB,SizeC);
+    // populateStructure(s1,10,SizeA,SizeB,SizeC); //would be detected as an SoA
+    // populateStructure(gs2,10,SizeA,SizeB,SizeC);
 
     // printStructure(s1,10,SizeA,SizeB,SizeC);
     // printStructure(gs2,10,SizeA,SizeB,SizeC);
+
+    //will be detected
+    s1[100].a[2] = 100;
+
+    populateAoSoA(gs2,n);
 
     freeStructure(s1);
     freeStructure(gs2);

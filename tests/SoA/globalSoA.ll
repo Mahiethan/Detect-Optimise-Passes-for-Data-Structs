@@ -4,14 +4,19 @@ target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16
 target triple = "x86_64-unknown-linux-gnu"
 
 %struct.StructureOne = type { [100000 x i32], [200000 x i32], [300000 x i8] }
+%struct.test = type { i32, i32, [300000 x i8] }
 
 @.str = private unnamed_addr constant [11 x i8] c"Array a: \0A\00", align 1
 @.str.1 = private unnamed_addr constant [14 x i8] c"Index %d: %d\0A\00", align 1
 @.str.2 = private unnamed_addr constant [11 x i8] c"Array b: \0A\00", align 1
 @.str.3 = private unnamed_addr constant [11 x i8] c"Array c: \0A\00", align 1
 @.str.4 = private unnamed_addr constant [14 x i8] c"Index %d: %c\0A\00", align 1
-@g1 = dso_local global %struct.StructureOne zeroinitializer, align 4
-@.str.5 = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+@globalOne = dso_local global %struct.StructureOne zeroinitializer, align 4
+@globalTwo = dso_local global %struct.test zeroinitializer, align 4
+@globalThree = dso_local global [100 x %struct.StructureOne] zeroinitializer, align 16
+@globalFour = dso_local global ptr null, align 8
+@globalFive = dso_local global ptr null, align 8
+@globalSix = dso_local global ptr null, align 8
 
 ; Function Attrs: noinline nounwind optnone uwtable
 define dso_local void @populateStructure(ptr noundef %soa, i32 noundef %sizeA, i32 noundef %sizeB, i32 noundef %sizeC) #0 {
@@ -108,19 +113,6 @@ for.end16:                                        ; preds = %for.cond9
 }
 
 ; Function Attrs: noinline nounwind optnone uwtable
-define dso_local ptr @createStructureOne() #0 {
-entry:
-  %s1 = alloca ptr, align 8
-  %call = call noalias ptr @malloc(i64 noundef 1500000) #4
-  store ptr %call, ptr %s1, align 8
-  %0 = load ptr, ptr %s1, align 8
-  ret ptr %0
-}
-
-; Function Attrs: nounwind allocsize(0)
-declare noalias ptr @malloc(i64 noundef) #1
-
-; Function Attrs: noinline nounwind optnone uwtable
 define dso_local void @freeStructure(ptr noundef %soa) #0 {
 entry:
   %soa.addr = alloca ptr, align 8
@@ -131,7 +123,7 @@ entry:
 }
 
 ; Function Attrs: nounwind
-declare void @free(ptr noundef) #2
+declare void @free(ptr noundef) #1
 
 ; Function Attrs: noinline nounwind optnone uwtable
 define dso_local void @printStructure(ptr noundef %soa, i32 noundef %sizeA, i32 noundef %sizeB, i32 noundef %sizeC) #0 {
@@ -233,27 +225,107 @@ for.end21:                                        ; preds = %for.cond13
   ret void
 }
 
-declare i32 @printf(ptr noundef, ...) #3
+declare i32 @printf(ptr noundef, ...) #2
+
+; Function Attrs: noinline nounwind optnone uwtable
+define dso_local void @populateTwo(ptr noundef %s) #0 {
+entry:
+  %s.addr = alloca ptr, align 8
+  %s5 = alloca ptr, align 8
+  store ptr %s, ptr %s.addr, align 8
+  %call = call noalias ptr @malloc(i64 noundef 1500000) #6
+  store ptr %call, ptr %s5, align 8
+  %0 = load ptr, ptr %s.addr, align 8
+  call void @populateStructure(ptr noundef %0, i32 noundef 200, i32 noundef 200, i32 noundef 200)
+  %1 = load ptr, ptr %s5, align 8
+  call void @populateStructure(ptr noundef %1, i32 noundef 200, i32 noundef 200, i32 noundef 200)
+  ret void
+}
+
+; Function Attrs: nounwind allocsize(0)
+declare noalias ptr @malloc(i64 noundef) #3
+
+; Function Attrs: noinline nounwind optnone uwtable
+define dso_local void @populateOne(ptr noundef %s) #0 {
+entry:
+  %s.addr = alloca ptr, align 8
+  %staticStruct = alloca %struct.StructureOne, align 4
+  store ptr %s, ptr %s.addr, align 8
+  %a = getelementptr inbounds %struct.StructureOne, ptr %staticStruct, i32 0, i32 0
+  %arrayidx = getelementptr inbounds [100000 x i32], ptr %a, i64 0, i64 99
+  store i32 1000, ptr %arrayidx, align 4
+  %0 = load ptr, ptr %s.addr, align 8
+  call void @populateTwo(ptr noundef %0)
+  ret void
+}
+
+; Function Attrs: noinline nounwind optnone uwtable
+define dso_local void @populateZero(ptr noundef %s) #0 {
+entry:
+  %s.addr = alloca ptr, align 8
+  %s4 = alloca ptr, align 8
+  store ptr %s, ptr %s.addr, align 8
+  %call = call noalias ptr @malloc(i64 noundef 1500000) #6
+  store ptr %call, ptr %s4, align 8
+  %0 = load ptr, ptr %s4, align 8
+  call void @populateStructure(ptr noundef %0, i32 noundef 100, i32 noundef 100, i32 noundef 100)
+  %1 = load ptr, ptr %s.addr, align 8
+  call void @populateOne(ptr noundef %1)
+  ret void
+}
+
+; Function Attrs: noinline nounwind optnone uwtable
+define dso_local void @populateAoS(ptr noundef %s) #0 {
+entry:
+  %s.addr = alloca ptr, align 8
+  store ptr %s, ptr %s.addr, align 8
+  %0 = load ptr, ptr %s.addr, align 8
+  %arrayidx = getelementptr inbounds %struct.StructureOne, ptr %0, i64 97
+  %a = getelementptr inbounds %struct.StructureOne, ptr %arrayidx, i32 0, i32 0
+  %arrayidx1 = getelementptr inbounds [100000 x i32], ptr %a, i64 0, i64 45
+  store i32 100, ptr %arrayidx1, align 4
+  %1 = load ptr, ptr %s.addr, align 8
+  %arrayidx2 = getelementptr inbounds %struct.StructureOne, ptr %1, i64 23
+  %a3 = getelementptr inbounds %struct.StructureOne, ptr %arrayidx2, i32 0, i32 0
+  %arrayidx4 = getelementptr inbounds [100000 x i32], ptr %a3, i64 0, i64 45
+  store i32 100, ptr %arrayidx4, align 4
+  ret void
+}
 
 ; Function Attrs: noinline nounwind optnone uwtable
 define dso_local i32 @main() #0 {
 entry:
   %retval = alloca i32, align 4
+  %aos = alloca [987 x %struct.test], align 16
   store i32 0, ptr %retval, align 4
-  store i32 100, ptr @g1, align 4
-  store i32 100, ptr getelementptr inbounds ([100000 x i32], ptr @g1, i64 0, i64 21), align 4
-  store i8 98, ptr getelementptr inbounds (%struct.StructureOne, ptr @g1, i32 0, i32 2, i64 7), align 1
-  %0 = load i32, ptr @g1, align 4
-  %call = call i32 (ptr, ...) @printf(ptr noundef @.str.5, i32 noundef %0)
+  store i8 99, ptr getelementptr inbounds (%struct.StructureOne, ptr @globalOne, i32 0, i32 2, i64 300), align 4
+  store i8 9, ptr getelementptr inbounds (%struct.test, ptr @globalTwo, i32 0, i32 2, i64 300), align 4
+  store i32 9, ptr getelementptr inbounds ([100000 x i32], ptr getelementptr inbounds ([100 x %struct.StructureOne], ptr @globalThree, i64 0, i64 9), i64 0, i64 100), align 16
+  %arrayidx = getelementptr inbounds [987 x %struct.test], ptr %aos, i64 0, i64 67
+  %a = getelementptr inbounds %struct.test, ptr %arrayidx, i32 0, i32 0
+  store i32 10000, ptr %a, align 8
+  %call = call noalias ptr @calloc(i64 noundef 100, i64 noundef 1500000) #7
+  store ptr %call, ptr @globalFour, align 8
+  %0 = load ptr, ptr @globalFour, align 8
+  call void @populateAoS(ptr noundef %0)
+  %call1 = call noalias ptr @calloc(i64 noundef 1, i64 noundef 1500000) #7
+  store ptr %call1, ptr @globalFive, align 8
+  %1 = load ptr, ptr @globalFive, align 8
+  call void @populateZero(ptr noundef %1)
   ret i32 0
 }
 
+; Function Attrs: nounwind allocsize(0,1)
+declare noalias ptr @calloc(i64 noundef, i64 noundef) #4
+
 attributes #0 = { noinline nounwind optnone uwtable "frame-pointer"="all" "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #1 = { nounwind allocsize(0) "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #2 = { nounwind "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #3 = { "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #4 = { nounwind allocsize(0) }
+attributes #1 = { nounwind "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #2 = { "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #3 = { nounwind allocsize(0) "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #4 = { nounwind allocsize(0,1) "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
 attributes #5 = { nounwind }
+attributes #6 = { nounwind allocsize(0) }
+attributes #7 = { nounwind allocsize(0,1) }
 
 !llvm.module.flags = !{!0, !1, !2, !3, !4}
 !llvm.ident = !{!5}

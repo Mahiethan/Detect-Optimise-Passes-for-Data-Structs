@@ -49,7 +49,7 @@ void multNodeOneOld(struct nodeOneOld* array, int size)
         for(int i = 0; i < size; i++)
         {
             array[i].a = (array[i].b * array[i].a) + (100 / 5);
-            array[i].b = (array[i].a / array[i].c) - (99 * 3);
+            array[i].b = (array[i].d / array[i].c) - (99 * 3);
         }
     }
 }

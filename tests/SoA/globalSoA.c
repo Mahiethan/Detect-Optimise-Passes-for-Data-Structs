@@ -5,15 +5,27 @@
 #define SizeB 200000
 #define SizeC 300000
 
-//global struct
-struct StructureOne g1;
-
 struct StructureOne //SoA (with static arrays)
 {
     int a[SizeA]; //sizes predefined for static arrays
     int b[SizeB];
     char c[SizeC];
 };
+
+struct test 
+{
+    int a; 
+    int b;
+    char c[SizeC];
+};
+
+struct StructureOne globalOne;
+struct test globalTwo;
+struct StructureOne globalThree[100];
+struct StructureOne* globalFour;
+struct StructureOne* globalFive;
+struct test* globalSix;
+
 
 void populateStructure(struct StructureOne* soa, int sizeA, int sizeB, int sizeC)
 {
@@ -30,13 +42,6 @@ void populateStructure(struct StructureOne* soa, int sizeA, int sizeB, int sizeC
     {
         soa->c[i] = i;
     }
-}
-
-struct StructureOne* createStructureOne()
-{
-    struct StructureOne* s1  = (struct StructureOne*) malloc(sizeof(struct StructureOne));
-    return s1;
-
 }
 
 void freeStructure(struct StructureOne* soa)
@@ -68,15 +73,60 @@ void printStructure(struct StructureOne* soa, int sizeA, int sizeB, int sizeC)
     }
 }
 
+void populateTwo(struct StructureOne* s)
+{
+   struct StructureOne* s5 = (struct StructureOne*) malloc(sizeof(struct StructureOne)); //SoA 5 (%s5 in @populateTwo)
+   populateStructure(s,200,200,200);
+   populateStructure(s5,200,200,200);
+
+}
+
+void populateOne(struct StructureOne* s)
+{
+   struct StructureOne staticStruct; //SoA 4 (%staticStruct in @populateOne)
+   staticStruct.a[99] = 1000;
+   populateTwo(s);
+}
+
+void populateZero(struct StructureOne* s)
+{
+   struct StructureOne* s4 = (struct StructureOne*) malloc(sizeof(struct StructureOne)); //SoA 3 (%s4 in @populateZero)
+   populateStructure(s4,100,100,100); 
+   populateOne(s);
+
+}
+
+void populateAoS(struct StructureOne* s)
+{
+    s[97].a[45] = 100;
+    s[23].a[45] = 100;
+}
+
 int main()
 {
-    // populating global struct
+    globalOne.c[300] = 99; //SoA 1 (%globalOne)
 
-    //if a store instruction is found from accessing a identifed struct, this is an SoA
-    g1.a[0] = 100;
-    g1.a[21] = 100;
-    g1.c[7] = 'b';
-    printf("%d\n", g1.a[0]);
+    globalTwo.c[300] = 9; //NOT an SoA
+
+    globalThree[9].a[100] = 9; //NOT an SoA (AoSoA)
+
+    struct test aos[987]; //AoS
+
+    aos[67].a = 10000;
+
+    globalFour = (struct StructureOne*) calloc(100,sizeof(globalOne)); //NOT an SoA (AoSoA)
+
+    // populateZero(globalFour); //gives error when uncommented
+
+    // populateStructure(globalFour,100,100,100); //since no struct is being accessed in this func, we cannot determine if this is an AoS, also produces a duplicate (ignore bug)
+
+    populateAoS(globalFour); //now detected as AoS
+
+    globalFive = (struct StructureOne*) calloc(1,sizeof(globalOne));
+
+    populateZero(globalFive); //SoA 2 (%globalFive)
+
+    
 
     return 0;
 }

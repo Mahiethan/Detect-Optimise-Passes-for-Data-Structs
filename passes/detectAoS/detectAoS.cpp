@@ -445,7 +445,7 @@ void getPotential(Instruction* I) //adding to potential vector
       StructType* structure = eraseFromPossibleGlobals(operand);
       if(!findInConfirmed(operand))
       {
-        confirmed.push_back(make_tuple(aos,func,"dynamic",structure,false,false));
+        confirmed.push_back(make_tuple(aos,func,"dynamic",structure,false,false,"AoS"));
         dynamicCount++;
       }
 
@@ -567,6 +567,7 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
 {
     Value* operand = gep->getOperand(0);
     StructType* gepStruct = nullptr;
+    bool isAoSoA = false;
 
     //getting operand as string
     std::string op_string; 
@@ -576,6 +577,17 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
     if(auto *ST = dyn_cast<StructType>(gep->getResultElementType()))
     {
       gepStruct = ST;
+      // //check if struct is in toFind and set bool
+      if(toFind.find(gepStruct) != toFind.end())
+        isAoSoA = true;
+
+    }
+    if(auto *ST = dyn_cast<StructType>(gep->getSourceElementType()))
+    {
+      gepStruct = ST;
+      //check if struct is in toFind and set bool
+      if(toFind.find(gepStruct) != toFind.end())
+        isAoSoA = true;
     }
 
     // errs()<<"Checking operand: "<<op_string<<"\n";
@@ -606,11 +618,15 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
         else if(type == "dynamic")
           dynamicCount++;
 
+        string AoSType = "AoS";
+        if(isAoSoA)
+          AoSType = "AoSoA";
+
         // output not needed
         StructType* structure = get<3>(eraseFromPotential(aos));
         if(structure == nullptr)
           structure = eraseFromPossibleGlobals(aos);
-        confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct,false,false));
+        confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct,false,false,AoSType));
         return true;
       }
     }
@@ -630,6 +646,10 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
         else if(type == "dynamic")
           dynamicCount++;
 
+        string AoSType = "AoS";
+        if(isAoSoA)
+          AoSType = "AoSoA";
+
         // output not needed
         StructType* structure =  get<3>(eraseFromPotential(aos));
         if(structure == nullptr)
@@ -638,10 +658,10 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
         if(isParam)
         {
           Value* storedAoS = eraseFromArgStores(aos).first;
-          confirmed.push_back(make_tuple(storedAoS,originFunction,type,gepStruct,true,false));
+          confirmed.push_back(make_tuple(storedAoS,originFunction,type,gepStruct,true,false,AoSType));
         }
         else
-          confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct,false,false));
+          confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct,false,false,AoSType));
         // errs()<<"Size of argStores: "<<argStores.size()<<"\n";
         // errs()<<"Size of potential: "<<potential.size()<<"\n";
         return true;
@@ -673,6 +693,10 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
         else if(type == "dynamic")
           dynamicCount++;
 
+        string AoSType = "AoS";
+        if(isAoSoA)
+          AoSType = "AoSoA";
+
         // output not needed
         StructType* structure =  get<3>(eraseFromPotential(aos));
         if(structure == nullptr)
@@ -681,10 +705,10 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
         if(isParam)
         {
           Value* storedAoS = eraseFromArgStores(aos).first;
-          confirmed.push_back(make_tuple(storedAoS,originFunction,type,gepStruct,true,false));
+          confirmed.push_back(make_tuple(storedAoS,originFunction,type,gepStruct,true,false,AoSType));
         }
         else
-          confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct,false,false));
+          confirmed.push_back(make_tuple(aos,originFunction,type,gepStruct,false,false,AoSType));
       
         // errs()<<"Size of argStores: "<<argStores.size()<<"\n";
         // errs()<<"Size of potential: "<<potential.size()<<"\n";
@@ -851,6 +875,15 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
 
         detectAoSCalled = true;
 
+        // errs()<<"AoSoA list size: "<<AoSoAList.size()<<"\n";
+
+        // for(auto it = AoSoAList.begin(); it != AoSoAList.end(); it++)
+        // {
+        //   auto elem = *it;
+        //   potential.push_back(make_tuple(get<0>(elem),get<1>(elem),get<2>(elem),get<3>(elem)));
+        //   errs()<<"Adding to potential\n";
+        // }
+
         vector<Value*> possibleAoSList; //vector which stores pointer locations of possible AoS - these need to be inspected and confirmed
         vector<Value*> AoS_Values; //vector which stores pointer locations of possible AoS - these need to be inspected and confirmed
         deque<tuple<string, int, Value*>> functionInspectionList; //vector that stores functions that need to be inspected for GPE instructions in order to fully determine that a dynamic AoS exists
@@ -941,7 +974,7 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                         {
                           StructType* structure =  get<3>(eraseFromPotential(aos));
                           staticCount++;
-                          confirmed.push_back(make_tuple(aos,originFunction,"static",structure,false,false));
+                          confirmed.push_back(make_tuple(aos,originFunction,"static",structure,false,false,"AoS"));
                           found = true;
                           break;
                         }
@@ -1091,7 +1124,7 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                     {
                       StructType* structure =  get<3>(eraseFromPotential(aos));
                       staticCount++;
-                      confirmed.push_back(make_tuple(aos,originFunction,"static",structure,false,false));
+                      confirmed.push_back(make_tuple(aos,originFunction,"static",structure,false,false,"AoS"));
                       break;
                     }
                   }
@@ -1478,6 +1511,8 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
           bool isParam;
           bool hasPointerElem;
 
+          string AoSType = get<6>(confirmed.at(i));
+
           string type = get<2>(confirmed.at(i));
           raw_string_ostream aos(aos_str);
           raw_string_ostream func(func_str);
@@ -1493,7 +1528,7 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
           if(funcName != NULL)
           {
             funcName->printAsOperand(func);
-            errs()<<" - "<<type<<" AoS used in function: "<<func_str;
+            errs()<<" - "<<type<<" "<<AoSType<<" used in function: "<<func_str;
             if(structure != nullptr)
             {
               struct_str = structure->getName();
@@ -1515,7 +1550,7 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
           }
           else
           {
-            errs()<<" - global "<<type<<" AoS\n";
+            errs()<<" - global "<<type<<" "<<AoSType<<"\n";
           }
           errs()<<"\n";
         }
