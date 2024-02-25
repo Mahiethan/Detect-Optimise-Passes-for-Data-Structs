@@ -23,6 +23,8 @@ struct nodeOne globalFive[100];
 
 struct nodeOne invalidGlobal;
 
+int recursiveCount = 0;
+
 void populateNodeOne(struct nodeOne array[], int n)
 {
     for(int i = 0; i < n; i++)
@@ -40,7 +42,7 @@ void populateNodeTwo(struct nodeTwo* array, int n)
 }
 
 
-void populateTwo();
+void populateTwo(struct nodeTwo* ptr);
 
 void populateThree()
 {
@@ -48,13 +50,20 @@ void populateThree()
     struct nodeTwo arrayFour[f]; 
     // struct nodeTwo arrayFour[100]; 
     arrayFour[67].b = 90.23; //dynamic AoS 4 - DETECTED! (%vla)
+    struct nodeTwo* recursive = (struct nodeTwo*) calloc(100,sizeof(struct nodeTwo));
 
-    // populateTwo(); //SHOULD NOT RUN THIS - BEING CURRENTLY CALLED - SKIP!! - AVOID INFINITE RECURSION
+    if(recursiveCount != 5)
+    {
+        recursiveCount++;
+        populateTwo(recursive); //AoS 9 - (%recursive in @populateThree)
+    }
 }
 
-void populateTwo()
+void populateTwo(struct nodeTwo* ptr)
 {
-    
+    if(ptr != NULL)
+        ptr[100].a = 7.0;
+
     populateThree();
 }
 
@@ -63,7 +72,7 @@ void populate()
 {
     int f = 100;
     struct nodeOne arrayFour[f]; //not a static AoS - not used in a GEP instruction
-    populateTwo();
+    populateTwo(NULL);
 }
 
 void populateParam0(struct nodeOne* array, int n);

@@ -230,7 +230,10 @@ vector<tuple<Value*,Function*,string,StructType*>> potentialArguments;
 vector<tuple<Value*,StoreInst*,string>> argStores;
 vector<tuple<Value*,Function*,StructType*>> possibleGlobals;
 // vector<tuple<Value*,Function*,string>> confirmed;
-vector<tuple<string,vector<int>,Value*,Function*,string>> calledFunction; //stores pair of function name and used argument index of pointer (if any)
+set<tuple<int,string,vector<int>,Value*,Function*,string>> calledFunction; //stores pair of function name and used argument index of pointer (if any)
+int calledNum = 0;
+
+map<string,set<string>> functionStream;
 
 Function* originFunction = NULL;
 
@@ -392,6 +395,18 @@ StructType* eraseFromPossibleGlobals(Value* val)
   return nullptr;
 }
 
+// to check whether the next function call will eventually led to the current function, making it recursive
+bool checkIfRecursive(string nextFunction, string currentFunction)
+{
+  if(functionStream.find(nextFunction) != functionStream.end())
+  {
+    set<string> nextList = functionStream.find(nextFunction)->second;
+    if(nextList.find(currentFunction) != nextList.end())
+      return true;
+  }
+  return false;
+}
+
 void getPotential(Instruction* I) //adding to potential vector
 {
   if(auto *SI = dyn_cast<StoreInst>(I))
@@ -405,7 +420,7 @@ void getPotential(Instruction* I) //adding to potential vector
     operand->printAsOperand(aos_stream);
     // errs()<<"Potential "<<aos_string<<"\n";
 
-    // if(find(possibleGlobals.begin(),possibleGlobals.end(),operand) != possibleGlobals.end()) //if a malloc uses a global variable that has had a GPE operation applied to it, its is a dynamic AoS
+    // if(find(possibleGlobals.begin(),possibleGlobals.end(),operand) != possibleGlobals.end()) //if a uses a global variable that has had a GPE operation applied to it, its is a dynamic AoS
     // {
     //   // errs()<<"Found possible global: "<<aos_string<<"\n";
     //   eraseFromPossibleGlobals(operand);
@@ -582,13 +597,18 @@ bool checkGEP(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
         isAoSoA = true;
 
     }
-    if(auto *ST = dyn_cast<StructType>(gep->getSourceElementType()))
+    else if(auto *ST = dyn_cast<StructType>(gep->getSourceElementType()))
     {
       gepStruct = ST;
       //check if struct is in toFind and set bool
       if(toFind.find(gepStruct) != toFind.end())
         isAoSoA = true;
     }
+    else
+      return false;
+
+    // if(toFind.find(gepStruct) != toFind.end() & )
+
 
     // errs()<<"Checking operand: "<<op_string<<"\n";
 
@@ -737,6 +757,12 @@ void getCalledFunctions(CallInst* CI, Function* orig)
   string funcName = f->getName().str();
   // errs()<<funcName<<"\n";
   // errs()<<"Checking func call "<<funcName<<"\n";
+
+  if(funcName == orig->getName() | checkIfRecursive(funcName,orig->getName().str())) //function call may be recursive
+  {
+    return;
+  }
+
   for(auto a = CI->arg_begin(); a != CI->arg_end(); a++) //get all function arguments
   {
     bool detect = false;
@@ -757,11 +783,35 @@ void getCalledFunctions(CallInst* CI, Function* orig)
     raw_string_ostream ops(op_string);
     operand->printAsOperand(ops);
 
-      // bool detect = false;
-      
-      for(int i = 0; i < potential.size(); i++)
+    // bool detect = false;
+    
+    for(int i = 0; i < potential.size(); i++)
+    {
+      aos = get<0>(potential.at(i));
+      std::string value_string; 
+      raw_string_ostream aos_stream(value_string);
+      aos->printAsOperand(aos_stream);
+      // errs()<<"pointer: "<<value_string<<"\n";
+      // errs()<<"operand: "<<op_string<<"\n";
+      if(value_string == op_string)
       {
-        aos = get<0>(potential.at(i));
+        // errs()<<"adding "<<value_string<<" to indices\n";
+        indices.push_back(index);
+        //add to new list: potentialArguments
+        tuple<Value*,Function*,string,StructType*> elem = eraseFromPotential(aos);
+        type = get<2>(elem);
+        potentialArguments.push_back(elem);
+        detect = true;
+        paramAoS = aos;
+
+        break;
+      }
+    }
+    if(detect == false)
+    {
+      for(int i = 0; i < argStores.size(); i++)
+      {
+        aos = get<0>(argStores.at(i));
         std::string value_string; 
         raw_string_ostream aos_stream(value_string);
         aos->printAsOperand(aos_stream);
@@ -769,56 +819,52 @@ void getCalledFunctions(CallInst* CI, Function* orig)
         // errs()<<"operand: "<<op_string<<"\n";
         if(value_string == op_string)
         {
-          // errs()<<"adding "<<value_string<<" to indices\n";
-          indices.push_back(index);
-          //add to new list: potentialArguments
-          tuple<Value*,Function*,string,StructType*> elem = eraseFromPotential(aos);
-          type = get<2>(elem);
-          potentialArguments.push_back(elem);
+          // errs()<<"adding to indices\n";
           detect = true;
+          indices.push_back(index);
+          eraseFromArgStores(aos);
           paramAoS = aos;
 
           break;
         }
       }
-      if(detect == false)
-      {
-        for(int i = 0; i < argStores.size(); i++)
-        {
-          aos = get<0>(argStores.at(i));
-          std::string value_string; 
-          raw_string_ostream aos_stream(value_string);
-          aos->printAsOperand(aos_stream);
-          // errs()<<"pointer: "<<value_string<<"\n";
-          // errs()<<"operand: "<<op_string<<"\n";
-          if(value_string == op_string)
-          {
-            // errs()<<"adding to indices\n";
-            detect = true;
-            indices.push_back(index);
-            eraseFromArgStores(aos);
-            paramAoS = aos;
+    }
 
-            break;
-          }
-        }
-      }
-      if(detect == false) //add to possible globals
+    //dont add this function call if it recursive and it has already created an AoS that is found in 'confirmed' - NOT WORKING
+    // bool exit = true;
+
+    // for(int i = 0; i < confirmed.size(); i++)
+    // {
+    //   aos = get<0>(confirmed.at(i));
+    //   std::string value_string; 
+    //   raw_string_ostream aos_stream(value_string);
+    //   aos->printAsOperand(aos_stream);
+
+    //   if(value_string == op_string)
+    //     exit = false;
+    // }
+
+    // if((!exit | !detect) & (orig->getName() == funcName))
+    //   return;
+
+
+    if(detect == false) //add to possible globals
+    {
+      if(auto *GV = dyn_cast<GlobalVariable>(operand)) //if a function call has a global parameter not yet malloced, add it to possibleGlobals
       {
-        if(auto *GV = dyn_cast<GlobalVariable>(operand)) //if a function call has a global parameter not yet malloced, add it to possibleGlobals
-        {
-          bool inConfirmed = findInConfirmed(operand);
-          if(inConfirmed == false)
-            possibleGlobals.push_back(make_tuple(operand,f,nullptr)); //@globalFive in dynamic_AoS.c called in main() function 
-          detect = true;
-        }
+        bool inConfirmed = findInConfirmed(operand);
+        if(inConfirmed == false)
+          possibleGlobals.push_back(make_tuple(operand,f,nullptr)); //@globalFive in dynamic_AoS.c called in main() function 
+        detect = true;
       }
-    
+    }
+  
     index++;
   }
   // errs()<<"Size of indices: "<<indices.size()<<"\n";
   // errs()<<"Adding function: "<<funcName<<"with indices size"<<indices.size()<<"that operates on"<<valName<<"\n";
-  calledFunction.push_back(std::make_tuple(funcName,indices,paramAoS,orig,type));
+  calledFunction.insert(std::make_tuple(calledNum,funcName,indices,paramAoS,orig,type));
+  calledNum++;
 }
 
 vector<tuple<Value*,StoreInst*,string>> getArgumentStores(Function *F, vector<int> indices,string type)
@@ -875,24 +921,16 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
 
         detectAoSCalled = true;
 
-        // errs()<<"AoSoA list size: "<<AoSoAList.size()<<"\n";
-
-        // for(auto it = AoSoAList.begin(); it != AoSoAList.end(); it++)
-        // {
-        //   auto elem = *it;
-        //   potential.push_back(make_tuple(get<0>(elem),get<1>(elem),get<2>(elem),get<3>(elem)));
-        //   errs()<<"Adding to potential\n";
-        // }
+        DataLayout* TD = new DataLayout(&M); //to get size and layout of structs
 
         vector<Value*> possibleAoSList; //vector which stores pointer locations of possible AoS - these need to be inspected and confirmed
-        vector<Value*> AoS_Values; //vector which stores pointer locations of possible AoS - these need to be inspected and confirmed
-        deque<tuple<string, int, Value*>> functionInspectionList; //vector that stores functions that need to be inspected for GPE instructions in order to fully determine that a dynamic AoS exists
 
-        // errs()<<"Getting globals\n";
+        vector<Value*> AoS_Values; //vector which stores pointer locations of possible AoS - these need to be inspected and confirmed
+
+        // checking all global variables
         for(GlobalVariable& gv : M.globals())
         {
-          // if((gv.getLinkage() == GlobalValue::LinkageTypes::PrivateLinkage) & (gv.getType() == Type::getInt1Ty(split_Context)) & ())
-          if(gv.getName() == "permitStructSplittingFlag")
+          if(gv.getName() == "permitStructSplittingFlag") //if the global variable flag, created in splitAoS, is detected, set this flag to false, else true
             permitStructSplitting = false;
           else
             permitStructSplitting = true;
@@ -901,15 +939,16 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
            raw_string_ostream to_str(type_str);
            gv.print(to_str);
            
-          if(type_str.find("struct") != std::string::npos & type_str.find("[") != std::string::npos & type_str.find("]") != std::string::npos) //identifying AoS with size given as int literal - if type contains word "struct"
+          if(type_str.find("struct") != std::string::npos & type_str.find("[") != std::string::npos & type_str.find("]") != std::string::npos) //identifying AoS with size given as int literal
           {
             if(type_str.find("[0 x") == std::string::npos) //if allocated size is not 0
             {
-              //allocation size can be 1 or more
-              // errs()<<"Static Array of Structs (AoS) found"<<"\n"; //static AoS found
-              // staticCount++;
-              Constant* constValue; 
-              constValue = gv.getInitializer(); //get the initializer
+              Constant* constValue = nullptr;
+
+              if(gv.hasInitializer())
+                constValue = gv.getInitializer(); //get the initializer
+              else
+                continue;
 
               Type* t = constValue->getType(); //get the type of the global
               string type_str;
@@ -924,29 +963,37 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
               if(auto *ST = dyn_cast<StructType>(globalElem))
               {
                 Value* AoS = cast<Value>(&gv); //store as Value in vector
-                // AoS->printAsOperand(errs());
-                potential.push_back(make_tuple(AoS,originFunction,"static",ST));
+
+                potential.push_back(make_tuple(AoS,originFunction,"static",ST)); //add to 'potential' vector
               }
             }
           }
         }
         
+        // flag set to true if main() function has been searched through
         bool checkMain = false;
+
+        // instead of iterating through all functions, get main function using M.getFunction("main");
+
+        // Function* F = M.getFunction("main");
+
         for (auto &F : M) //iterate through all functions in the Module and print their names
         { 
-            if(checkMain == true)
+            if(checkMain == true) //if already searched through main()
               break;
-            // errs()<<"In function: "<<F.getName()<<"\n";
-            if(F.getName().find("main") != std::string::npos)
+            if(F.getName().find("main") != std::string::npos)  
             {
-              originFunction = &F;
-              for (auto &B : F)  //iterate through all blocks in each function
+              originFunction = &F; // keep track of the current function to be used if an AoS is found within it
+
+              for (auto &B : F)  //iterate through all blocks in the 'main' function
               { 
-                  for (auto &I : B) //iterate through all instructions in each block
+                  for (auto &I : B) //iterate through all instructions in the 'main' block
                   { 
-                    if(mallocFlag == true)
-                      getPotential(&I);
-                    else if(auto *SI = dyn_cast<StoreInst>(&I)) //find global static AoS used in a GEP operation
+                    if(mallocFlag == true) //if a MallocInst was found in previous instruction, the current instruction should be a StoreInst.
+                    {
+                      getPotential(&I); //process this StoreInst to be added to the 'potential' vector
+                    }
+                    else if(auto *SI = dyn_cast<StoreInst>(&I)) //finding global static AoS used in a GEP operation
                     {
                       bool found = false;
                       Value* operand = SI->getOperand(1);
@@ -954,15 +1001,18 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                       raw_string_ostream to_str(op_str);
                       operand->printAsOperand(to_str);
 
+                      // get the AoS that is being operated on
+
                       Value* loadedAoS = SI->getOperand(0);
 
-                      if(auto *LI = dyn_cast<LoadInst>(SI->getOperand(0)))
+                      if(auto *LI = dyn_cast<LoadInst>(SI->getOperand(0))) // there might be another LoadInst so obtain AoS from here
                       {
                         loadedAoS = LI->getOperand(0);
                       }
 
-                      // errs()<<op_str<<"\n";
-
+                      /*
+                        if the loadad AoS is found in potential, this static AoS is detected and should be placed in 'confirmed'
+                      */
                       for(auto it = potential.begin(); it != potential.end(); it++)
                       {
                         Value* aos = get<0>(*it);
@@ -980,6 +1030,10 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                         }
                       }
 
+                      /*
+                        if the loadad AoS is found in potential, remove it from 'confirmed' and add it back to 'potential'
+                        this is because the AoS may be reinitialed/emptied out within the same scope so it no longer contains data - this no longer an AoS
+                      */  
                       if(found == false)
                       {
                         for(auto it = potential.begin(); it != potential.end(); it++)
@@ -996,100 +1050,119 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                             break;
                           }
                         }
+                        // similarly a 'confirmed' AoS can be stored to an empty pointer so add it to 'confirmed'
+                        for(auto it = confirmed.begin(); it != confirmed.end(); it++)
+                        {
+                          Value* aos = get<0>(*it);
+                          string type = get<2>(*it);
+                          StructType* structure = get<3>(*it);
+                          string aosType = get<6>(*it);
+
+                          if(loadedAoS == aos) //an potential AoS could be stored into an empty pointer - add this pointer to 'potential' list
+                          {
+                            eraseFromPossibleGlobals(SI->getOperand(1));
+                            confirmed.push_back(make_tuple(SI->getOperand(1),originFunction,type,structure,false,false,aosType));
+                            found = true;
+                            break;
+                          }
+                        }
                       }
                     }
-                    else if(auto *AI = dyn_cast<AllocaInst>(&I))
+                    else if(auto *AI = dyn_cast<AllocaInst>(&I)) //an AllocaInst could be a static AoS
                       detectStaticAoS(AI);
-                    else if(auto *CI = dyn_cast<CallInst>(&I))
+                    else if(auto *CI = dyn_cast<CallInst>(&I)) //a CallInst could be a malloc()/calloc() function creating a dynamic AoS or a function call using an potential AoS
                     {
-                      // CI->print(errs());
-                      // errs()<<"\n";
-                      CI->setTailCall(false);
-                      // CI->print(errs());
-                      // errs()<<"\n";
-                      Function* f = CI->getCalledFunction();
+                      CI->setTailCall(false); //avoid tail calls - to maintain compatibility with other passes
+
+                      Function* f = CI->getCalledFunction(); //get hte called function
                       string funcName = f->getName().str();
-                      // errs()<<funcName<<"\n";
-                      if(funcName == "malloc" | funcName == "calloc")
-                      {
-                        // mallocAttributes = f->getAttributes();
+
+                      if(funcName == "malloc" | funcName == "calloc") //if the function is malloc()/calloc(), a ptr is being allocated data which could be an AoS so set the following flag to true
                         mallocFlag = true;
-                      }
-                      else if(funcName != "free")
+                      else if(funcName != "free") //for any functions other than malloc(), calloc() or free(), store the function to later inspection of any newly created AoS or data accesses/writes to 'potential' AoS
+                      {
+                        if(auto *SI = dyn_cast<StoreInst>(I.getNextNode()))
+                        {
+                          if(f->getReturnType()->isPointerTy() & (SI->getValueOperand() == CI))
+                          {
+                            potential.push_back(make_tuple(SI->getPointerOperand(),originFunction,"dynamic",nullptr));
+                          }
+                        }
                         getCalledFunctions(CI,&F);
+                      }
                     }
-                    else if(auto *GEP = dyn_cast<GetElementPtrInst>(&I))
+                    else if(auto *GEP = dyn_cast<GetElementPtrInst>(&I)) //a GEPInst may be working on a AoS found in potential/static global AoS
                     {
                       bool found = false;
                       Value* aos;
                       string type;
-                      if(GEP->getResultElementType()->isStructTy())
+
+                      for(auto it = potential.begin(); it != potential.end(); it++)
                       {
-                        for(auto it = potential.begin(); it != potential.end(); it++)
+                        aos = get<0>(*it);
+                        type = get<2>(*it);
+                        std::string ptr_string; 
+                        raw_string_ostream ptr(ptr_string);
+                        aos->printAsOperand(ptr);
+
+                        if(checkGEP(GEP,aos,false,type) == true) //call this function to check if GEP is accessing a 'potential' AoS
                         {
-                          aos = get<0>(*it);
-                          type = get<2>(*it);
-                          std::string ptr_string; 
-                          raw_string_ostream ptr(ptr_string);
-                          aos->printAsOperand(ptr);
-                          // errs()<<"Searching for "<<ptr_string<<"\n";
-                          if(checkGEP(GEP,aos,false,type) == true)
-                          {
-                            // errs()<<"Found "<<ptr_string<<"\n";
-                            found = true;
-                            eraseFromPotential(aos);
-                            break;
-                          }
+                          found = true;
+                          eraseFromPotential(aos);
+                          break;
                         }
-                        // errs()<<found<<"\n";
-                        if(found == false)
+                      }
+                      if(found == false) //if the AoS is not in 'potential', it may already be found and present in 'confirmed' OR it is operating on a global AoS ptr declared elsewhere (in another function)
+                      {
+                        if(gepOperand != NULL) //stores recent AoS that has been accessed in a GEPInst.
                         {
-                          // errs()<<"adding to possibleGlobals\n";
-                          if(gepOperand != NULL)
+                          if(auto *GV = dyn_cast<GlobalVariable>(gepOperand))
                           {
-                            if(auto *GV = dyn_cast<GlobalVariable>(gepOperand))
-                            {
-                              StructType* structure = cast<StructType>(GEP->getResultElementType());
-                              bool inConfirmed = findInConfirmed(gepOperand);
-                              if(inConfirmed == false)
-                                possibleGlobals.push_back(make_tuple(gepOperand,originFunction,structure)); //@globalFive in dynamic_AoS.c called in main() function 
-                            }
+                            StructType* structure;
+                            if(GEP->getResultElementType()->isStructTy())
+                              structure = cast<StructType>(GEP->getResultElementType());
+                            else if(GEP->getSourceElementType()->isStructTy())
+                              structure = cast<StructType>(GEP->getSourceElementType());
+                            else
+                              structure = nullptr;
+                            bool inConfirmed = findInConfirmed(gepOperand);
+                            if(inConfirmed == false) //if the AoS is not found in 'confirmed', add it to 'possibleGlobals' vector instead - stores global AoS pointers that may be populated later
+                              possibleGlobals.push_back(make_tuple(gepOperand,originFunction,structure));
                           }
                         }
                       }
+
                     }
                   }
-              checkMain = true;
+              checkMain = true; // main() function has been searched through completely
               }
             }
         }
 
-        // errs()<<"Size of calledFunctions vector: "<<calledFunction.size()<<"\n";
-        // for(int i = 0; i < calledFunction.size(); i++)
-        // {
-        //   vector<int> indices = get<1>(calledFunction.at(i));
-        //   // errs()<<get<0>(calledFunction.at(i))<<" uses ";
-        //   for(int j = 0; j < indices.size(); j++)
-        //   {
-        //     // errs()<<"index "<<indices.at(j)<<"\n";
-        //   }
-        // }
-
-        // errs()<<potential.size()<<"\n";
-        // errs()<<confirmed.size()<<"\n";
-
-      for(auto it = calledFunction.begin(); it != calledFunction.end(); it)
+      // Now go through all called functions and search for any newly declared AoS values or search for any 'potential' AoS values that are being populated
+      for(auto it : calledFunction)
       {
-        tuple<string,vector<int>,Value*,Function*,string> searchFunc = *it;
-        string type = get<4>(searchFunc);
-        calledFunction.erase(it);
-        vector<int> argIndices = get<1>(searchFunc);
-        calledAoS = get<2>(searchFunc); //get AoS that was used as parameter in function call
-        paramFunction = get<3>(searchFunc);
+        tuple<int,string,vector<int>,Value*,Function*,string> searchFunc = it;
+
+        string type = get<5>(searchFunc);
+
+        vector<int> argIndices = get<2>(searchFunc);
+
+        calledAoS = get<3>(searchFunc);  //get AoS that was used as parameter in function call
+
+        paramFunction = get<4>(searchFunc);  //get the whole block of called function
+
+        string currentFuncName = get<1>(searchFunc);
+
+        //Don't iterate through all functions, just search through the found function 'paramFunction'
+
         for (auto &F : M) //iterate through all functions in the Module and print their names
         { 
-          if(F.getName() == get<0>(searchFunc))
+          if(F.getName() == currentFuncName)
           {
+            set<string> next;
+            functionStream.insert(make_pair(F.getName().str(),next));
+
             originFunction = &F;
             // errs()<<"Searching "<<get<0>(searchFunc)<<"\n";
             if(argIndices.size() != 0)
@@ -1098,12 +1171,14 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
               // errs()<<"compare indices "<<argIndices.size()<<" to argStores "<<argStores.size()<<"\n";
             }
 
-            for(auto &B : F)
+            for(auto &B : F) //iterate through all BasicBlocks and Instructions of the called function
             {
-              for(auto &I : B)
+              for(auto &I : B) //perform same inspection for AoS detection as done previously in the main() function
               {
                 if(mallocFlag == true)
+                {
                   getPotential(&I);
+                }
                 else if(auto *SI = dyn_cast<StoreInst>(&I)) //find global static AoS used in a GEP operation
                 {
                   Value* operand = SI->getOperand(1);
@@ -1111,7 +1186,13 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                   raw_string_ostream to_str(op_str);
                   operand->printAsOperand(to_str);
 
-                  // errs()<<op_str<<"\n";
+                  Value* loadedAoS = SI->getValueOperand();
+                  if(auto *LI = dyn_cast<LoadInst>(loadedAoS))
+                  {
+                    loadedAoS = LI->getPointerOperand();
+                  }
+
+                  bool found = false;
 
                   for(auto it = potential.begin(); it != potential.end(); it++)
                   {
@@ -1125,71 +1206,122 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                       StructType* structure =  get<3>(eraseFromPotential(aos));
                       staticCount++;
                       confirmed.push_back(make_tuple(aos,originFunction,"static",structure,false,false,"AoS"));
+                      found = true;
                       break;
                     }
                   }
+                  // similarly a 'confirmed' AoS can be stored to an empty pointer so add it to 'confirmed'
+                  if(!found)
+                  {
+                    for(auto it = confirmed.begin(); it != confirmed.end(); it++)
+                    {
+                      Value* aos = get<0>(*it);
+                      string type = get<2>(*it);
+                      StructType* structure = get<3>(*it);
+                      string aosType = get<6>(*it);
 
+                      if(loadedAoS == aos)
+                      {
+                        eraseFromPossibleGlobals(SI->getOperand(1));
+                        confirmed.push_back(make_tuple(SI->getOperand(1),originFunction,type,structure,false,false,aosType));
+                        found = true;
+                        break;
+                      }
+                    }
+                  }
                 }
                 else if(auto *AI = dyn_cast<AllocaInst>(&I))
                   detectStaticAoS(AI);
                 else if(auto *CI = dyn_cast<CallInst>(&I))
                 {
-                  // CI->print(errs());
-                  // errs()<<"\n";
                   CI->setTailCall(false);
-                  // CI->print(errs());
-                  // errs()<<"\n";
+
                   Function* f = CI->getCalledFunction();
                   string funcName = f->getName().str();
-                  // errs()<<funcName<<"\n";
+
                   if(funcName == "malloc" | funcName == "calloc")
+                  {
                     mallocFlag = true;
+                  }
                   else if(funcName != "free")
                   {
+                    //if next inst is a store that using this call AND
+                    //return type of called function is a ptr
+                      //add the callisnt ptr operand to potential
+
+                    if(auto *SI = dyn_cast<StoreInst>(I.getNextNode()))
+                    {
+                      if(f->getReturnType()->isPointerTy() & (SI->getValueOperand() == CI))
+                      {
+                        potential.push_back(make_tuple(SI->getPointerOperand(),originFunction,"dynamic",nullptr));
+                      }
+                    }
+
+                    //also add new features to detectSoA:
+                      // checks for recursive 
+                      // check if initializer exists for globals
+                    
+                  
+                    if(functionStream.find(funcName) != functionStream.end()) //store all of the next functions
+                    {
+                      if(functionStream.find(currentFuncName) != functionStream.end()) //store all of the next functions
+                      {
+                        functionStream.find(currentFuncName)->second.insert(funcName);
+                        set<string> toAdd = functionStream.find(funcName)->second;
+                        for(auto it : toAdd)
+                        {
+                          functionStream.find(currentFuncName)->second.insert(it);
+                        }
+                      }
+                    }
                     getCalledFunctions(CI,&F);
                   }
                 }
                 else if(auto *GEP = dyn_cast<GetElementPtrInst>(&I))
                 {
-                  // GEP->print(errs());
-                  // errs()<<"\n";
-                  if(GEP->getResultElementType()->isStructTy())
+                  bool found = false;
+                  Value* aos;
+                  string type;
+                  for(auto it = potential.begin(); it != potential.end(); it++)
                   {
-                    bool found = false;
-                    Value* aos;
-                    string type;
-                    for(auto it = potential.begin(); it != potential.end(); it++)
+                    aos = get<0>(*it);
+                    type = get<2>(*it);
+                    if(checkGEP(GEP,aos,false,type) == true)
                     {
-                      aos = get<0>(*it);
-                      type = get<2>(*it);
-                      if(checkGEP(GEP,aos,false,type) == true)
-                      {
-                        found = true;
-                        eraseFromPotential(aos);
-                        break;
-                      }
+                      found = true;
+                      eraseFromPotential(aos);
+                      break;
                     }
-                    for(auto it = argStores.begin(); it != argStores.end(); it++)
+                  }
+
+                  // within called functions, search whether a potential AoS arguemet in 'argStores' is being accessed/written to in a GEPInst
+                  for(auto it = argStores.begin(); it != argStores.end(); it++)
+                  {
+                    aos = get<0>(*it);
+                    type = get<2>(*it);
+                    if(checkGEP(GEP,aos,true,type) == true)
                     {
-                      aos = get<0>(*it);
-                      type = get<2>(*it);
-                      if(checkGEP(GEP,aos,true,type) == true)
-                      {
-                        found = true;
-                        break;
-                      }
+                      found = true;
+                      break;
                     }
-                    if(found == false)
+                  }
+
+                  if(found == false)
+                  {
+                    if(gepOperand != NULL)
                     {
-                      if(gepOperand != NULL)
+                      if(auto *GV = dyn_cast<GlobalVariable>(gepOperand))
                       {
-                        if(auto *GV = dyn_cast<GlobalVariable>(gepOperand))
-                        {
-                          StructType* structure = cast<StructType>(GEP->getResultElementType());
-                          bool inConfirmed = findInConfirmed(gepOperand);
-                          if(inConfirmed == false)
-                            possibleGlobals.push_back(make_tuple(gepOperand,originFunction,structure)); //@globalFive in dynamic_AoS.c called in main() function 
-                        }
+                        StructType* structure;
+                        if(GEP->getResultElementType()->isStructTy())
+                          structure = cast<StructType>(GEP->getResultElementType());
+                        else if(GEP->getSourceElementType()->isStructTy())
+                          structure = cast<StructType>(GEP->getSourceElementType());
+                        else
+                          structure = nullptr;
+                        bool inConfirmed = findInConfirmed(gepOperand);
+                        if(inConfirmed == false)
+                          possibleGlobals.push_back(make_tuple(gepOperand,originFunction,structure)); //@globalFive in dynamic_AoS.c called in main() function 
                       }
                     }
                   }
@@ -1197,67 +1329,13 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
               }
             }
           }
-        //remove duplicate function calls - store value as well
-        // for(auto it = calledFunction.begin(); it != calledFunction.end(); it)
-        // {
-        //   tuple<string,vector<int>,string> val = *it;
-        //   if((get<0>(val) == get<0>(searchFunc)) & (get<1>(val) == get<1>(searchFunc)) & (get<2>(val) == get<2>(searchFunc)))
-        //   {
-        //     errs()<<"Removing function: "<<get<0>(val)<<" with val:"<<get<2>(val)<<" and"<<get<2>(searchFunc)<<"\n";
-        //     calledFunction.erase(it);
-        //   }
-        //   else
-        //   {
-        //     it++;
-        //   }
-        // }
         }
+
       }
 
-      //correctly detect AoS used as function arguments
-
-      /*
-
-        pair<value,function> getOrigin(F,aos,M)
-        {
-          result = pair<F,aos>
-          search thru all F,B,I
-            if callInst found
-              if call to F found & not found in searchedCI vector
-                  searchedCIvector.append(call)
-                  return pair<value,function> res = getOrigin(new F)
-          end
-             
-          return result
-        }
-
-        for each aos in confirmed
-          current confirmed value = temp;
-          result;
-          newAoS = current aos;
-          newFunc = nullptr;
-          if aos = a callInsts
-            get the associated function F
-            while(newAoS != callInst & newFunc == nullptr)
-              pair<Value*,Function*> result = look for a function call to this function: getOrigin(F,aos,M)
-              for each operand used in the function call
-                check if the operand exists in potential and if function matches
-                  if yes, delete from potential
-                    newAOS = aos
-              endfor
-              newFunc = origin function
-            endwhile
-
-          update temp with new values from newValues
-        endfor
-      
-      */
-
-     
 
      for(int a = 0; a < confirmed.size(); a++)
      {
-      // errs()<<"AOS: "<<a<<"\n";
        auto currConfirmed = confirmed.at(a);
        Value* aos = get<0>(currConfirmed);
        Function* func = get<1>(currConfirmed);
@@ -1268,23 +1346,15 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
 
       if(auto *SI = dyn_cast<StoreInst>(aos))
       {
-        //  errs()<<"To search call: "<<func->getName()<<"\n";
         searchedFunctionCalls.push_back(func);
         while(found == false)
         {
-          result = getOrigin(func,aos,&M);
-          // errs()<<"------------RESULTS----------------\n";
-          // result.first->print(errs());
-          // errs()<<"\n";
-          // result.second->printAsOperand(errs());
-          // errs()<<"\n";
-          // errs()<<"-----------------------------------\n";
+           result = getOrigin(func,aos,&M);
 
           if(auto *SI = dyn_cast<StoreInst>(result.first)) //no callinst found
           {
             searchedFunctionCalls.pop_back();
             func = searchedFunctionCalls.at(searchedFunctionCalls.size() - 1);
-            // errs()<<"Checking "<<func->getName()<<" again\n";
           }
           else if(auto *CI = dyn_cast<CallInst>(result.first))
           {
@@ -1294,22 +1364,13 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
               if(auto *LI = dyn_cast<LoadInst>(toFind))
                 toFind = LI->getOperand(0);
 
-              // errs()<<"Call inst operand: ";
-              // toFind->print(errs());
-              // errs()<<"\n";
-
               for(auto it = potentialArguments.begin(); it != potentialArguments.end(); it)
               {
                 Value* aos = get<0>(*it);
                 Function* func = get<1>(*it);
 
-                // errs()<<"Is it: ";
-                // aos->print(errs());
-                // errs()<<"\n";
-
                 if(aos == toFind)
                 {
-                  // errs()<<"FOUND AOS\n";
                   eraseFromPotentialArguments(aos);
                   result.first = aos;
                   result.second = func;
@@ -1328,13 +1389,8 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
                   Value* aos = get<0>(*it);
                   Function* func = get<1>(*it);
 
-                  // errs()<<"Is it: ";
-                  // aos->print(errs());
-                  // errs()<<"\n";
-
                   if(aos == toFind)
                   {
-                    // errs()<<"FOUND AOS\n";
                     eraseFromPossibleGlobals(aos);
                     result.first = aos;
                     result.second = func;
@@ -1354,7 +1410,6 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
               }
               else
               {
-                // searchedCI.clear();
                 func = result.second;
               }
             }
@@ -1380,6 +1435,78 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
           it++;
       }
 
+      for(auto it = confirmed.begin(); it != confirmed.end(); it)
+      {
+          Value* confirmedAoS = get<0>(*it);
+          bool found = false;
+          for(auto itr : confirmedSoA)
+          {
+            Value* confirmedSoA = get<0>(itr);
+            if(confirmedAoS == confirmedSoA)
+            {
+              confirmed.erase(it);
+              found = true;
+              break;
+            }
+          }
+          if(!found)
+            it++;
+      }
+
+     //remove malloc-ed() ptr with only a single struct size which is not an AoS
+     for(auto it = confirmed.begin(); it != confirmed.end(); it)
+     {
+        Value* aos = get<0>(*it);
+        string type = get<2>(*it);
+        StructType* structure = get<3>(*it);
+
+        int structSize = TD->getTypeAllocSize(structure);
+
+        if(type == "static")
+        {
+          it++;
+        }
+        else
+        {
+            bool isRemoved = false;
+            
+            for(auto uses : aos->users())
+            {
+              Instruction* use = nullptr;
+              if(isa<Instruction>(uses))
+                use = cast<Instruction>(uses);
+              else
+                continue;
+
+              if(auto *SI = dyn_cast<StoreInst>(use))
+              {
+                if(auto *CI = dyn_cast<CallInst>(SI->getPrevNode()))
+                {
+                  if(CI->getCalledFunction()->getName().str() == "malloc")
+                  {
+                    Value* size = CI->getOperand(0); //only one function argument for malloc()
+
+                    if(auto *CO = dyn_cast<ConstantInt>(size))
+                    {
+                      int constIntValue = CO->getSExtValue();
+
+                      if(constIntValue == structSize)
+                      {
+                        confirmed.erase(it); //not erasing for somereason
+                        isRemoved = true;
+                        break;
+                      }
+                    }
+                  }
+                }
+              
+            }
+          }
+          if(!isRemoved)
+            it++;
+        }
+     }
+
       int staticCountTemp = 0;
       int dynamicCountTemp = 0;
 
@@ -1401,14 +1528,10 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
       //iterate through all structs in the confirmed list, and determine whether it contains a ptr field - which could make it recursive
       for(int i = 0; i < confirmed.size(); i++)
       {
-        // if(get<5>(confirmed.at(i)) == true)
-        //   continue;
 
         StructType* structure = get<3>(confirmed.at(i));
 
         /// for each used structure, store the size of each struct
-
-        DataLayout* TD = new DataLayout(&M); //to get size and layout of structs
 
         // origStructSizes.insert(make_pair(structure,TD->getStructLayout(structure)->getSizeInBytes()));
         origStructSizes.insert(make_pair(structure,make_pair(TD->getTypeAllocSize(structure),TD->getTypeAllocSize(structure))));
@@ -1560,24 +1683,3 @@ struct detectAoS : public PassInfoMixin<detectAoS> {
     };
 };
 }
-
-
-// //Creates plugin for pass - required
-// extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
-// llvmGetPassPluginInfo() {
-//   return {
-//     LLVM_PLUGIN_API_VERSION, "detectAoS", "v0.1",
-//     [](PassBuilder &PB) {
-//       PB.registerPipelineParsingCallback(
-//         [](StringRef Name, ModulePassManager &MPM, //Module pass
-//         ArrayRef<PassBuilder::PipelineElement>) {
-//           if(Name == "detectAoS"){ //name of pass
-//             MPM.addPass(detectAoS());
-//             return true;
-//           }
-//           return false;
-//         }
-//       );
-//     }
-//   };
-// }

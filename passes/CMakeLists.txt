@@ -3,6 +3,8 @@ cmake_minimum_required(VERSION 3.6)
 # LLVM uses C++17.
 set(CMAKE_CXX_STANDARD 17)
 
+# set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} -Wall")
+
 # Load LLVMConfig.cmake. If this fails, consider setting `LLVM_DIR` to point
 # to your LLVM installation's `lib/cmake/llvm` directory.
 find_package(LLVM REQUIRED CONFIG)

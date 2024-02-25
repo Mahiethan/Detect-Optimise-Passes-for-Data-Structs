@@ -108,6 +108,8 @@ int main()
 
     struct StructureOne s4[100]; //AoS
 
+    // struct StructureOne returnedSoA = populateZero(returnedSoA); //gives seg fault
+
     // s3 = populateStructure(s3,100,100,100); //doesn't work
 
     //if a store instruction is found from accessing a identifed struct, this is an SoA

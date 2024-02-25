@@ -117,7 +117,27 @@ void populateParam4(struct nodeOne* array, int n)
 void populateGlobal(int n, struct nodeOne* array)
 {
     array = (struct nodeOne*) malloc(n*sizeof(struct nodeOne));
-    populateNodeOne(array,n); //dynamic AoS 9 - DETECTED! (%array.addr at @populateNodeOne)
+    populateNodeOne(array,n); //dynamic AoS 14 - DETECTED! (@globalSix at @populateNodeOne)
+}
+
+struct nodeOne* returnAoS(int size)
+{
+    struct nodeOne* temp = (struct nodeOne*) malloc(size*sizeof(struct nodeOne)); //AoS 8 (%temp at @returnAoS)
+    temp[100].a = 90;
+    return temp;
+}
+
+struct nodeOne* returnAoSTwo(int size)
+{
+    struct nodeOne* temp = (struct nodeOne*) malloc(size*sizeof(struct nodeOne)); //AoS 11 (%temp at @returnAoSTwo)
+    temp[76].a = 54;
+    struct nodeOne* tempTwo = temp; //AoS 12 (%tempTwo at @returnAoSTwo)
+    return tempTwo;
+}
+
+struct nodeOne* returnAoSOne(int size)
+{
+    return returnAoSTwo(size);
 }
 
 int main()
@@ -166,7 +186,29 @@ int main()
 
     populateParam0(arrayThree,e); //adds two dynamic AoS: innerArrayOne and arrayThree
 
-    //dynamic AoS 8 - DETECTED
+    struct nodeOne* returnedOne = returnAoS(100); //create AoS 8 
+
+    returnedOne[10].a = 100; //AoS 9 (%returnedOne at @main)
+
+    printf("%d\n",returnedOne[10].a);
+
+    struct nodeOne* returnedTwo;
+
+    returnedTwo = returnedOne; //AoS 10 (%returnedTwo at @main)
+
+    returnedOne[10].a = 77; 
+
+    printf("%d\n",returnedTwo[10].a); //also updated to 77
+
+    returnedTwo[6].b = 'c';
+
+    printf("%c\n",returnedOne[6].b); //also updated to 'c'
+
+    struct nodeOne* returnThree = returnAoSOne(99); //create AoS 11 and 12
+
+    //returnThree is not an AoS since it is not accessed from/written to
+
+    //dynamic AoS 13 - DETECTED
     //uncommenting any one of the below will enable detection of this AoS
 
     globalFive[1].a = 100; //@globalFive at @main

@@ -119,7 +119,11 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
 
           int o = 0;
           // int oldStructSize = TD->getStructLayout(allStructs.at(i))->getSizeInBytes();
-          int oldStructSize = origStructSizes.find(allStructs.at(i))->second.second;
+          int oldStructSize = 0;
+          if(detectAoSCalled)
+            oldStructSize = origStructSizes.find(allStructs.at(i))->second.second;
+          else
+            oldStructSize = TD->getTypeAllocSize(allStructs.at(i));
           int wordSize = 0;
           int currWord = 0; 
 

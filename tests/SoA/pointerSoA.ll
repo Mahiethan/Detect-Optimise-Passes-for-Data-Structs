@@ -11,6 +11,9 @@ target triple = "x86_64-unknown-linux-gnu"
 @.str.2 = private unnamed_addr constant [11 x i8] c"Array b: \0A\00", align 1
 @.str.3 = private unnamed_addr constant [11 x i8] c"Array c: \0A\00", align 1
 @.str.4 = private unnamed_addr constant [14 x i8] c"Index %d: %c\0A\00", align 1
+@recCountOne = dso_local global i32 0, align 4
+@recCountTwo = dso_local global i32 0, align 4
+@.str.5 = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 
 ; Function Attrs: noinline nounwind optnone uwtable
 define dso_local void @populateStructure(ptr noundef %soa, i32 noundef %sizeA, i32 noundef %sizeB, i32 noundef %sizeC) #0 {
@@ -302,6 +305,84 @@ for.end:                                          ; preds = %for.cond
 }
 
 ; Function Attrs: noinline nounwind optnone uwtable
+define dso_local ptr @returnSoATwo() #0 {
+entry:
+  %temp = alloca ptr, align 8
+  %tempTwo = alloca ptr, align 8
+  %call = call noalias ptr @malloc(i64 noundef 1500000) #6
+  store ptr %call, ptr %temp, align 8
+  %0 = load ptr, ptr %temp, align 8
+  %a = getelementptr inbounds %struct.StructureOne, ptr %0, i32 0, i32 0
+  %arrayidx = getelementptr inbounds [100000 x i32], ptr %a, i64 0, i64 9
+  store i32 100, ptr %arrayidx, align 4
+  %1 = load ptr, ptr %temp, align 8
+  store ptr %1, ptr %tempTwo, align 8
+  %2 = load ptr, ptr %temp, align 8
+  ret ptr %2
+}
+
+; Function Attrs: noinline nounwind optnone uwtable
+define dso_local ptr @returnSoAOne() #0 {
+entry:
+  %call = call ptr @returnSoATwo()
+  ret ptr %call
+}
+
+; Function Attrs: noinline nounwind optnone uwtable
+define dso_local void @recursiveOne() #0 {
+entry:
+  %recAoSoA = alloca ptr, align 8
+  %call = call noalias ptr @calloc(i64 noundef 100, i64 noundef 1500000) #7
+  store ptr %call, ptr %recAoSoA, align 8
+  %0 = load ptr, ptr %recAoSoA, align 8
+  %c = getelementptr inbounds %struct.StructureOne, ptr %0, i32 0, i32 2
+  %arrayidx = getelementptr inbounds [300000 x i8], ptr %c, i64 0, i64 9
+  store i8 114, ptr %arrayidx, align 1
+  call void @recursiveTwo()
+  ret void
+}
+
+; Function Attrs: nounwind allocsize(0,1)
+declare noalias ptr @calloc(i64 noundef, i64 noundef) #4
+
+; Function Attrs: noinline nounwind optnone uwtable
+define dso_local void @recursiveTwo() #0 {
+entry:
+  %recSoA = alloca ptr, align 8
+  %0 = load i32, ptr @recCountOne, align 4
+  %cmp = icmp slt i32 %0, 5
+  br i1 %cmp, label %if.then, label %if.end
+
+if.then:                                          ; preds = %entry
+  %1 = load i32, ptr @recCountOne, align 4
+  %inc = add nsw i32 %1, 1
+  store i32 %inc, ptr @recCountOne, align 4
+  call void @recursiveOne()
+  br label %if.end
+
+if.end:                                           ; preds = %if.then, %entry
+  %2 = load i32, ptr @recCountTwo, align 4
+  %cmp1 = icmp slt i32 %2, 5
+  br i1 %cmp1, label %if.then2, label %if.end4
+
+if.then2:                                         ; preds = %if.end
+  %call = call noalias ptr @calloc(i64 noundef 1, i64 noundef 1500000) #7
+  store ptr %call, ptr %recSoA, align 8
+  %3 = load ptr, ptr %recSoA, align 8
+  %b = getelementptr inbounds %struct.StructureOne, ptr %3, i32 0, i32 1
+  %arrayidx = getelementptr inbounds [200000 x i32], ptr %b, i64 0, i64 54
+  store i32 199, ptr %arrayidx, align 4
+  %4 = load i32, ptr @recCountTwo, align 4
+  %inc3 = add nsw i32 %4, 1
+  store i32 %inc3, ptr @recCountTwo, align 4
+  call void @recursiveTwo()
+  br label %if.end4
+
+if.end4:                                          ; preds = %if.then2, %if.end
+  ret void
+}
+
+; Function Attrs: noinline nounwind optnone uwtable
 define dso_local i32 @main() #0 {
 entry:
   %retval = alloca i32, align 4
@@ -312,6 +393,8 @@ entry:
   %gs4 = alloca ptr, align 8
   %not = alloca ptr, align 8
   %gs5 = alloca ptr, align 8
+  %aos = alloca ptr, align 8
+  %rs1 = alloca ptr, align 8
   store i32 0, ptr %retval, align 4
   %call = call noalias ptr @malloc(i64 noundef 1500000) #6
   store ptr %call, ptr %gs1, align 8
@@ -345,21 +428,32 @@ entry:
   store ptr %call10, ptr %gs5, align 8
   %5 = load ptr, ptr %gs5, align 8
   call void @populateZero(ptr noundef %5)
-  %6 = load ptr, ptr %gs1, align 8
-  call void @freeStructure(ptr noundef %6)
-  %7 = load ptr, ptr %gs2, align 8
-  call void @freeStructure(ptr noundef %7)
-  %8 = load ptr, ptr %gs3, align 8
-  call void @freeStructure(ptr noundef %8)
-  %9 = load ptr, ptr %gs4, align 8
+  %call11 = call noalias ptr @malloc(i64 noundef 3000080) #6
+  store ptr %call11, ptr %aos, align 8
+  %6 = load ptr, ptr %aos, align 8
+  %arrayidx12 = getelementptr inbounds %struct.test, ptr %6, i64 7
+  %a13 = getelementptr inbounds %struct.test, ptr %arrayidx12, i32 0, i32 0
+  store i32 0, ptr %a13, align 4
+  %call14 = call ptr @returnSoAOne()
+  store ptr %call14, ptr %rs1, align 8
+  %7 = load ptr, ptr %rs1, align 8
+  %a15 = getelementptr inbounds %struct.StructureOne, ptr %7, i32 0, i32 0
+  %arrayidx16 = getelementptr inbounds [100000 x i32], ptr %a15, i64 0, i64 9
+  %8 = load i32, ptr %arrayidx16, align 4
+  %call17 = call i32 (ptr, ...) @printf(ptr noundef @.str.5, i32 noundef %8)
+  call void @recursiveOne()
+  %9 = load ptr, ptr %gs1, align 8
   call void @freeStructure(ptr noundef %9)
-  %10 = load ptr, ptr %gs5, align 8
+  %10 = load ptr, ptr %gs2, align 8
   call void @freeStructure(ptr noundef %10)
+  %11 = load ptr, ptr %gs3, align 8
+  call void @freeStructure(ptr noundef %11)
+  %12 = load ptr, ptr %gs4, align 8
+  call void @freeStructure(ptr noundef %12)
+  %13 = load ptr, ptr %gs5, align 8
+  call void @freeStructure(ptr noundef %13)
   ret i32 0
 }
-
-; Function Attrs: nounwind allocsize(0,1)
-declare noalias ptr @calloc(i64 noundef, i64 noundef) #4
 
 attributes #0 = { noinline nounwind optnone uwtable "frame-pointer"="all" "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
 attributes #1 = { nounwind "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }

@@ -6,6 +6,7 @@ target triple = "x86_64-unknown-linux-gnu"
 %struct.nodeTwo = type { float, double }
 %struct.nodeOne = type { i32, i8, double }
 
+@recursiveCount = dso_local global i32 0, align 4
 @globalFour = dso_local global [100 x %struct.nodeTwo] zeroinitializer, align 16
 @globalFive = dso_local global [100 x %struct.nodeOne] zeroinitializer, align 16
 @globalThree = dso_local global [100 x %struct.nodeOne] zeroinitializer, align 16
@@ -91,6 +92,7 @@ entry:
   %f = alloca i32, align 4
   %saved_stack = alloca ptr, align 8
   %__vla_expr0 = alloca i64, align 8
+  %recursive = alloca ptr, align 8
   store i32 100, ptr %f, align 4
   %0 = load i32, ptr %f, align 4
   %1 = zext i32 %0 to i64
@@ -101,23 +103,55 @@ entry:
   %arrayidx = getelementptr inbounds %struct.nodeTwo, ptr %vla, i64 67
   %b = getelementptr inbounds %struct.nodeTwo, ptr %arrayidx, i32 0, i32 1
   store double 9.023000e+01, ptr %b, align 8
-  %3 = load ptr, ptr %saved_stack, align 8
-  call void @llvm.stackrestore.p0(ptr %3)
+  %call = call noalias ptr @calloc(i64 noundef 100, i64 noundef 16) #3
+  store ptr %call, ptr %recursive, align 8
+  %3 = load i32, ptr @recursiveCount, align 4
+  %cmp = icmp ne i32 %3, 5
+  br i1 %cmp, label %if.then, label %if.end
+
+if.then:                                          ; preds = %entry
+  %4 = load i32, ptr @recursiveCount, align 4
+  %inc = add nsw i32 %4, 1
+  store i32 %inc, ptr @recursiveCount, align 4
+  %5 = load ptr, ptr %recursive, align 8
+  call void @populateTwo(ptr noundef %5)
+  br label %if.end
+
+if.end:                                           ; preds = %if.then, %entry
+  %6 = load ptr, ptr %saved_stack, align 8
+  call void @llvm.stackrestore.p0(ptr %6)
   ret void
 }
 
 ; Function Attrs: nocallback nofree nosync nounwind willreturn
 declare ptr @llvm.stacksave.p0() #1
 
-; Function Attrs: nocallback nofree nosync nounwind willreturn
-declare void @llvm.stackrestore.p0(ptr) #1
+; Function Attrs: nounwind allocsize(0,1)
+declare noalias ptr @calloc(i64 noundef, i64 noundef) #2
 
 ; Function Attrs: noinline nounwind optnone uwtable
-define dso_local void @populateTwo() #0 {
+define dso_local void @populateTwo(ptr noundef %ptr) #0 {
 entry:
+  %ptr.addr = alloca ptr, align 8
+  store ptr %ptr, ptr %ptr.addr, align 8
+  %0 = load ptr, ptr %ptr.addr, align 8
+  %cmp = icmp ne ptr %0, null
+  br i1 %cmp, label %if.then, label %if.end
+
+if.then:                                          ; preds = %entry
+  %1 = load ptr, ptr %ptr.addr, align 8
+  %arrayidx = getelementptr inbounds %struct.nodeTwo, ptr %1, i64 100
+  %a = getelementptr inbounds %struct.nodeTwo, ptr %arrayidx, i32 0, i32 0
+  store float 7.000000e+00, ptr %a, align 8
+  br label %if.end
+
+if.end:                                           ; preds = %if.then, %entry
   call void @populateThree()
   ret void
 }
+
+; Function Attrs: nocallback nofree nosync nounwind willreturn
+declare void @llvm.stackrestore.p0(ptr) #1
 
 ; Function Attrs: noinline nounwind optnone uwtable
 define dso_local void @populate() #0 {
@@ -132,7 +166,7 @@ entry:
   store ptr %2, ptr %saved_stack, align 8
   %vla = alloca %struct.nodeOne, i64 %1, align 16
   store i64 %1, ptr %__vla_expr0, align 8
-  call void @populateTwo()
+  call void @populateTwo(ptr noundef null)
   %3 = load ptr, ptr %saved_stack, align 8
   call void @llvm.stackrestore.p0(ptr %3)
   ret void
@@ -279,6 +313,8 @@ entry:
 
 attributes #0 = { noinline nounwind optnone uwtable "frame-pointer"="all" "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
 attributes #1 = { nocallback nofree nosync nounwind willreturn }
+attributes #2 = { nounwind allocsize(0,1) "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #3 = { nounwind allocsize(0,1) }
 
 !llvm.module.flags = !{!0, !1, !2, !3, !4}
 !llvm.ident = !{!5}

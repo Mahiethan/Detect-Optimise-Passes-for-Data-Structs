@@ -13,7 +13,7 @@ struct StructureOne //SoA (with static arrays)
     char c[SizeC];
 };
 
-struct test //SoA (with static arrays)
+struct test
 {
     int a; 
     int b;
@@ -95,6 +95,49 @@ void populateAos(struct StructureOne* aos, int size)
     }
 }
 
+struct StructureOne* returnSoATwo()
+{
+    struct StructureOne* temp = (struct StructureOne*) malloc(sizeof(struct StructureOne)); //SoA 6
+    temp->a[9] = 100;
+    struct StructureOne* tempTwo = temp; //SoA 7
+    return temp;
+}
+
+struct StructureOne* returnSoAOne()
+{
+    return returnSoATwo();
+}
+
+int recCountOne = 0;
+int recCountTwo = 0;
+
+void recursiveTwo();
+
+void recursiveOne()
+{
+    struct StructureOne* recAoSoA = (struct StructureOne*) calloc(100,sizeof(struct StructureOne)); //AoSoA
+    recAoSoA->c[9] = 'r';
+    recursiveTwo();
+}
+
+void recursiveTwo()
+{   
+    if(recCountOne < 5)
+    {
+        recCountOne++;
+        recursiveOne();
+    }
+
+    if(recCountTwo < 5)
+    {
+        struct StructureOne* recSoA = (struct StructureOne*) calloc(1,sizeof(struct StructureOne)); //SoA 9 (%recSoA at @recursiveTwo)
+        recSoA->b[54] = 199;
+        recCountTwo++;
+        recursiveTwo();
+    }
+
+}
+
 int main()
 {
     //global struct pointer
@@ -127,6 +170,16 @@ int main()
 
     struct StructureOne* gs5 = (struct StructureOne*) malloc(sizeof(struct StructureOne)); //SOA 3 (%gs5)
     populateZero(gs5);
+
+    struct test* aos = (struct test*) malloc(10*sizeof(struct test)); //AoS
+    aos[7].a = 0;
+
+    struct StructureOne* rs1;
+    rs1 = returnSoAOne(); //creates two SoAs (%temp and %temp2 in @returnSoATwo)
+
+    printf("%d\n",rs1->a[9]); //SoA 8 (%rs1 at @main)
+
+    recursiveOne(); //creates AoSoA
 
     // printStructure(s1,SizeA,SizeB,SizeC);
 

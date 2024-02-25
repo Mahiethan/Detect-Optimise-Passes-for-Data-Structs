@@ -25,10 +25,10 @@ llvmGetPassPluginInfo() {
 
           MPM.addPass(removeConstantGEP()); //converts any constant GEP to standalone GEP instructions
 
-          if(Name == "detectAoS"){ //detectAoS
-            MPM.addPass(detectAoS());
-            return true;
-          }
+          // if(Name == "detectAoS"){ //detectAoS - DEPRECATED - run detectAoSoA instead - it will detect both SoA and AoS separately
+          //   MPM.addPass(detectAoS());
+          //   return true;
+          // }
           if(Name == "reorderAoS"){ //struct field reordering of AoS data structures - not including any cold structs
             MPM.addPass(detectAoS());
             MPM.addPass(reorderAoS());

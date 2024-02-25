@@ -25,8 +25,8 @@ void populateNodeOneNew(struct nodeOneNew* array, int size)
     {
         array->a[i] = 17.0;
         array->b[i] = 10;
-        array->c[i] = 'c';
-        array->d[i] = 'd';
+        // array->c[i] = 'c';
+        // array->d[i] = 'd';
         //array[i].b = array[i].a + array[i].b;
     }
 }
@@ -147,14 +147,14 @@ int main()
         // {
             printf("a: %d\n---\n",arrayOneNew->a[1]);
             printf("b: %f\n---\n",arrayOneNew->b[1]);
-            printf("c: %c\n---\n",arrayOneNew->c[1]);
-            printf("d: %c\n---\n",arrayOneNew->d[1]);
+            // printf("c: %c\n---\n",arrayOneNew->c[1]);
+            // printf("d: %c\n---\n",arrayOneNew->d[1]);
         //}
 
         printf("a: %d\n---\n",globalOne->a[1]);
         printf("b: %f\n---\n",globalOne->b[1]);
-        printf("c: %c\n---\n",globalOne->c[1]);
-        printf("d: %c\n---\n",globalOne->d[1]);
+        // printf("c: %c\n---\n",globalOne->c[1]);
+        // printf("d: %c\n---\n",globalOne->d[1]);
     }
 
     free(arrayOneNew);

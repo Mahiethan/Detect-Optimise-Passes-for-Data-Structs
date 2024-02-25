@@ -1158,13 +1158,13 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
 
           //loading the function argument: aos ptr
 
-          AllocaInst* aosStore = FreeBuilder.CreateAlloca(PointerType::get(split_Context,0), 0, "aos"); //stores aos pointer
+          AllocaInst* aosStore = FreeBuilder.CreateAlloca(PointerType::get(split_Context,0), nullptr, "aos"); //stores aos pointer
           FreeBuilder.CreateStore(freeAoSFunction->getArg(0), aosStore);
 
-          AllocaInst* sizeStore = FreeBuilder.CreateAlloca(Type::getInt64Ty(split_Context), 0, "size"); //stores number of AoS elements
+          AllocaInst* sizeStore = FreeBuilder.CreateAlloca(Type::getInt64Ty(split_Context), nullptr, "size"); //stores number of AoS elements
           FreeBuilder.CreateStore(freeAoSFunction->getArg(1), sizeStore);
 
-          AllocaInst* indexStore = FreeBuilder.CreateAlloca(Type::getInt32Ty(split_Context), 0, "index"); //stores while loop index
+          AllocaInst* indexStore = FreeBuilder.CreateAlloca(Type::getInt32Ty(split_Context), nullptr, "index"); //stores while loop index
           FreeBuilder.CreateStore(ConstantInt::get(split_Context,APInt(32,0)), indexStore); //initialise index to 0
 
           LoadInst* aosLoad = new LoadInst(PointerType::get(M.getContext(),0),aosStore,"",entryBlock);

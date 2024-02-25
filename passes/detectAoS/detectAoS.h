@@ -1,4 +1,6 @@
-//Header file of detectAoS pass - for use in other passes???
+/*
+Header file used for AoS detection and optimisation
+*/
 #ifndef DETECTAOS_H
 #define DETECTAOS_H
 #include "llvm/Pass.h"
@@ -6,17 +8,8 @@
 #include "llvm/Passes/PassPlugin.h"
 #include "llvm/Support/raw_ostream.h"
 
-// #include <algorithm>
-// #include <string>
-// #include <deque>
-
 using namespace llvm;
 using namespace std;
-
-
-// vector<tuple<Value*,Function*,string>> potential;
-// vector<Value*> argStores;
-// vector<pair<Value*,Function*>> possibleGlobals;
 
 /* 
 
@@ -27,40 +20,31 @@ Tuple elements of each confirmed AoS:
   - struct used
   - if it used as a function argument - to determine whether struct peeling or splitting should be applied
   - if the struct is recursive - to determine whether struct peeling or splitting should be applied
+  - AoS type - "static" or "dynamic"
 */
 
+
 vector<tuple<Value*,Function*,string,StructType*,bool,bool,string>> confirmed;
+vector<tuple<Value*,Function*,string,StructType*,bool,bool>> confirmedSoA;
+
+// used by 'reorderAoS' pass to check whether 
 bool detectAoSCalled;
+
+// used in 'detectAoS' pass to store the original sizes of the structures belonging to AoS values. 
+// Pair of values: original size and new size. These values will be updated whenever the size of the struct changes during optimisation.
 map<StructType*,pair<int,int>> origStructSizes;
-vector<StructType*> coldStructs; //stores cold structs used within AoS - created in etiher struct peeling struct splitting optimisation. These structs need to be added to the structList in reorderAoS() to have its fields reordered.
 
-map<Type*,int> toFind; //stores all SoAs and its sizes
+// used in 'splitAoS' and 'peelAoS' pass where any created cold structs are stored here. This is present to make sure 'reorderAoS' pass does not skip these structs for optimisation.
+vector<StructType*> coldStructs; 
 
-vector<tuple<Value*,Function*,string,StructType*>> AoSoAList; //stores potential AoSoA
+// used by 'detectSoA' to store all SoAs and its sizes, so it can then be used by 'detectAoS' to determine whether an AoSoA is found.
+map<Type*,int> toFind;
 
-// vector<tuple<string,vector<int>,Value*>> calledFunction; //stores pair of function name and used argument index of pointer (if any)
+// used by 'detectAoS' to store any AoSoA values that have been detected
+vector<tuple<Value*,Function*,string,StructType*>> AoSoAList;
 
-// AttributeList mallocAttributes;
-
-bool permitStructSplitting; //bool is set in detectAoS()
-
-// Function* originFunction = NULL;
-
-// int staticCount = 0;
-// int dynamicCount = 0;
-// bool mallocFlag = false;
-
-// void detectStaticAoS(AllocaInst* AI);
-
-// void eraseFromConfirmed(Value* val);
-
-// namespace llvm {
-
-// struct detectAoS : public PassInfoMixin<detectAoS>{
-//     public:
-//     PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM);
-// };
-// }
-
+// this boolean is set to false in 'detectAoS' if the source file contains a flag (global variable) that indicates whether struct splitting has already been applied.
+// this is then used in 'splitAoS' pass to ensure that struct splitting is not applied twice over an optimised struct.
+bool permitStructSplitting;
 
 #endif

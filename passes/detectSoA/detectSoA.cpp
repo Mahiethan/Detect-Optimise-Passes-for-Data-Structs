@@ -224,13 +224,16 @@ func getAoSArgs(aos,param,F,index) //initially, this is called in main(), param 
       endif
   endfor
 */
-vector<tuple<Value*,Function*,string,StructType*,bool,bool>> confirmedSoA;
 vector<tuple<Value*,Function*,string,StructType*>> potentialSoA;
 vector<tuple<Value*,Function*,string,StructType*>> potentialArgumentsSoA;
 vector<tuple<Value*,StoreInst*,string>> argStoresSoA;
 vector<tuple<Value*,Function*,StructType*>> possibleGlobalsSoA;
 // vector<tuple<Value*,Function*,string>> confirmedSoA;
-vector<tuple<string,vector<int>,Value*,Function*,string>> calledFunctionSoA; //stores pair of function name and used argument index of pointer (if any)
+set<tuple<int,string,vector<int>,Value*,Function*,string>> calledFunctionSoA; //stores pair of function name and used argument index of pointer (if any)
+int calledNumSoA = 0;
+
+map<string,set<string>> functionStreamSoA;
+
  
 Function* originFunctionSoA = NULL;
 
@@ -406,7 +409,17 @@ StructType* eraseFromPossibleGlobalsSoA(Value* val)
   }
   return nullptr;
 }
-
+// to check whether the next function call will eventually led to the current function, making it recursive
+bool checkIfRecursiveSoA(string nextFunction, string currentFunction)
+{
+  if(functionStreamSoA.find(nextFunction) != functionStreamSoA.end())
+  {
+    set<string> nextList = functionStreamSoA.find(nextFunction)->second;
+    if(nextList.find(currentFunction) != nextList.end())
+      return true;
+  }
+  return false;
+}
 void getPotentialSoA(Instruction* I) //adding to potentialSoA vector
 {
   if(auto *SI = dyn_cast<StoreInst>(I))
@@ -739,6 +752,10 @@ void getCalledFunctionsSoA(CallInst* CI, Function* orig)
   string funcName = f->getName().str();
   // errs()<<funcName<<"\n";
   // errs()<<"Checking func call "<<funcName<<"\n";
+  if(funcName == orig->getName() | checkIfRecursiveSoA(funcName,orig->getName().str())) //function call may be recursive
+  {
+    return;
+  }
   for(auto a = CI->arg_begin(); a != CI->arg_end(); a++) //get all function arguments
   {
     bool detect = false;
@@ -822,7 +839,8 @@ void getCalledFunctionsSoA(CallInst* CI, Function* orig)
   }
   // errs()<<"Size of indices: "<<indices.size()<<"\n";
   // errs()<<"Adding function: "<<funcName<<"with indices size"<<indices.size()<<"that operates on"<<valName<<"\n";
-  calledFunctionSoA.push_back(std::make_tuple(funcName,indices,paramAoS,orig,type));
+  calledFunctionSoA.insert(std::make_tuple(calledNumSoA,funcName,indices,paramAoS,orig,type));
+  calledNumSoA++;
 }
 
 vector<tuple<Value*,StoreInst*,string>> getArgumentStoresSoA(Function *F, vector<int> indices,string type)
@@ -954,8 +972,11 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
         // errs()<<"Getting globals\n";
         for(auto Global = M.global_begin(); Global != M.global_end(); ++Global)
         {
-          Constant* constValue; 
-          constValue = Global->getInitializer(); //get the initializer
+          Constant* constValue = nullptr; 
+          if(Global->hasInitializer())
+            constValue = Global->getInitializer(); //get the initializer
+          else
+            continue;
 
           Type* t = constValue->getType(); //get the type of the global
           string type_str;
@@ -1056,6 +1077,21 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                             break;
                           }
                         }
+
+                        for(auto it = confirmedSoA.begin(); it != confirmedSoA.end(); it++)
+                        {
+                          Value* aos = get<0>(*it);
+                          string type = get<2>(*it);
+                          StructType* structure = get<3>(*it);
+
+                          if(loadedAoS == aos) //an potential AoS could be stored into an empty pointer - add this pointer to 'potential' list
+                          {
+                            eraseFromPossibleGlobalsSoA(SI->getOperand(1));
+                            confirmedSoA.push_back(make_tuple(SI->getOperand(1),originFunctionSoA,type,structure,false,false));
+                            found = true;
+                            break;
+                          }
+                        }
                       }
                     }
                     else if(auto *AI = dyn_cast<AllocaInst>(&I))
@@ -1088,13 +1124,14 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
 
                               for(auto it = toFind.begin(); it != toFind.end(); it++)
                               {
+                                errs()<<it->second<<" dviide by "<<constIntValue<<"\n";
                                 if(it->second == constIntValue) //if size is exactly equal to a struct in toFind, this malloc-ed ptr could potentially be an SoA
                                 {
                                   findSoA = true;
                                   foundStruct = it->first;
                                   break;
                                 }
-                                else if((it->second % constIntValue == 0) & (it->second != constIntValue)) //if size is a multiple of an SoA size, it could be an AoSoA
+                                else if((constIntValue % it->second == 0) & (it->second != constIntValue)) //if size is a multiple of an SoA size, it could be an AoSoA
                                 {
                                   findAoSoA = true;
                                   foundStruct = it->first;
@@ -1172,7 +1209,7 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                                   findSoA = true;
                                   break;
                                 }
-                                else if((it->second % constIntValue == 0) & (it->second != constIntValue)) //if size is a multiple of an SoA size, it could be an AoSoA
+                                else if((constIntValue % it->second == 0) & (it->second != constIntValue)) //if size is a multiple of an SoA size, it could be an AoSoA
                                 {
                                   findAoSoA = true;
                                   break;
@@ -1207,7 +1244,16 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                         // mallocAttributes = f->getAttributes();
                       }
                       else if(funcName != "free")
+                      {
+                        if(auto *SI = dyn_cast<StoreInst>(I.getNextNode()))
+                        {
+                          if(f->getReturnType()->isPointerTy() & (SI->getValueOperand() == CI))
+                          {
+                            potentialSoA.push_back(make_tuple(SI->getPointerOperand(),originFunctionSoA,"dynamic",nullptr));
+                          }
+                        }
                         getCalledFunctionsSoA(CI,&F);
+                      }
                     }
                     else if(auto *GEP = dyn_cast<GetElementPtrInst>(&I))
                     {
@@ -1269,18 +1315,22 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
         // errs()<<potentialSoA.size()<<"\n";
         // errs()<<confirmedSoA.size()<<"\n";
 
-      for(auto it = calledFunctionSoA.begin(); it != calledFunctionSoA.end(); it)
+      for(auto it = calledFunctionSoA.begin(); it != calledFunctionSoA.end(); it++)
       {
-        tuple<string,vector<int>,Value*,Function*,string> searchFunc = *it;
-        string type = get<4>(searchFunc);
-        calledFunctionSoA.erase(it);
-        vector<int> argIndices = get<1>(searchFunc);
-        calledAoSSoA = get<2>(searchFunc); //get SoA that was used as parameter in function call
-        paramFunctionSoA = get<3>(searchFunc);
+        tuple<int,string,vector<int>,Value*,Function*,string> searchFunc = *it;
+        string type = get<5>(searchFunc);
+        vector<int> argIndices = get<2>(searchFunc);
+        calledAoSSoA = get<3>(searchFunc); //get SoA that was used as parameter in function call
+        paramFunctionSoA = get<4>(searchFunc);
+        string currentFuncName = get<1>(searchFunc);
+
         for (auto &F : M) //iterate through all functions in the Module and print their names
         { 
-          if(F.getName() == get<0>(searchFunc))
+          if(F.getName() == get<1>(searchFunc))
           {
+            set<string> next;
+            functionStreamSoA.insert(make_pair(F.getName().str(),next));
+
             originFunctionSoA = &F;
             // errs()<<"Searching "<<get<0>(searchFunc)<<"\n";
             if(argIndices.size() != 0)
@@ -1302,6 +1352,14 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                   raw_string_ostream to_str(op_str);
                   operand->printAsOperand(to_str);
 
+                  Value* loadedAoS = SI->getValueOperand();
+                  if(auto *LI = dyn_cast<LoadInst>(loadedAoS))
+                  {
+                    loadedAoS = LI->getPointerOperand();
+                  }
+
+                  bool found = false;
+                
                   // errs()<<op_str<<"\n";
 
                   for(auto it = potentialSoA.begin(); it != potentialSoA.end(); it++)
@@ -1316,7 +1374,41 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                       StructType* structure =  get<3>(eraseFromPotentialSoA(aos));
                       nonPointerCount++;
                       confirmedSoA.push_back(make_tuple(aos,originFunctionSoA,"static",structure,false,false));
+                      found = true;
                       break;
+                    }
+                  }
+
+                  if(found == false)
+                  {
+                    for(auto it = potentialSoA.begin(); it != potentialSoA.end(); it++)
+                    {
+                      Value* aos = get<0>(*it);
+                      string type = get<2>(*it);
+                      StructType* structure = get<3>(*it);
+
+                      if(loadedAoS == aos) //an potential AoS could be stored into an empty pointer - add this pointer to 'potential' list
+                      {
+                        eraseFromPossibleGlobalsSoA(SI->getOperand(1));
+                        potentialSoA.push_back(make_tuple(SI->getOperand(1),originFunctionSoA,type,structure));
+                        found = true;
+                        break;
+                      }
+                    }
+
+                    for(auto it = confirmedSoA.begin(); it != confirmedSoA.end(); it++)
+                    {
+                      Value* aos = get<0>(*it);
+                      string type = get<2>(*it);
+                      StructType* structure = get<3>(*it);
+
+                      if(loadedAoS == aos) //an potential AoS could be stored into an empty pointer - add this pointer to 'potential' list
+                      {
+                        eraseFromPossibleGlobalsSoA(SI->getOperand(1));
+                        confirmedSoA.push_back(make_tuple(SI->getOperand(1),originFunctionSoA,type,structure,false,false));
+                        found = true;
+                        break;
+                      }
                     }
                   }
 
@@ -1357,7 +1449,7 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                             foundStruct = it->first;
                             break;
                           }
-                          else if((it->second % constIntValue == 0) & (it->second != constIntValue)) //if size is a multiple of an SoA size, it could be an AoSoA
+                          else if((constIntValue % it->second == 0) & (it->second != constIntValue)) //if size is a multiple of an SoA size, it could be an AoSoA
                           {
                             findAoSoA = true;
                             foundStruct = it->first;
@@ -1419,7 +1511,7 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                             findSoA = true;
                             break;
                           }
-                          else if((it->second % constIntValue == 0) & (it->second != constIntValue)) //if size is a multiple of an SoA size, it could be an AoSoA
+                          else if((constIntValue % it->second == 0) & (it->second != constIntValue)) //if size is a multiple of an SoA size, it could be an AoSoA
                           {
                             findAoSoA = true;
                             break;
@@ -1455,6 +1547,27 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                   }
                   else if(funcName != "free")
                   {
+                    if(auto *SI = dyn_cast<StoreInst>(I.getNextNode()))
+                    {
+                      if(f->getReturnType()->isPointerTy() & (SI->getValueOperand() == CI))
+                      {
+                        potentialSoA.push_back(make_tuple(SI->getPointerOperand(),originFunctionSoA,"dynamic",nullptr));
+                      }
+                    }
+
+                    if(functionStreamSoA.find(funcName) != functionStreamSoA.end()) //store all of the next functions
+                    {
+                      if(functionStreamSoA.find(currentFuncName) != functionStreamSoA.end()) //store all of the next functions
+                      {
+                        functionStreamSoA.find(currentFuncName)->second.insert(funcName);
+                        set<string> toAdd = functionStreamSoA.find(funcName)->second;
+                        for(auto it : toAdd)
+                        {
+                          functionStreamSoA.find(currentFuncName)->second.insert(it);
+                        }
+                      }
+                    }
+
                     getCalledFunctionsSoA(CI,&F);
                     // errs()<<"yh\n";
                   }

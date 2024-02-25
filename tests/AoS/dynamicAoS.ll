@@ -12,6 +12,7 @@ target triple = "x86_64-unknown-linux-gnu"
 @globalOne = dso_local global ptr null, align 8
 @globalTwo = dso_local global ptr null, align 8
 @.str = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+@.str.1 = private unnamed_addr constant [4 x i8] c"%c\0A\00", align 1
 @globalSix = dso_local global ptr null, align 8
 @invalidGlobal = dso_local global %struct.nodeOne zeroinitializer, align 8
 
@@ -241,6 +242,57 @@ entry:
 }
 
 ; Function Attrs: noinline nounwind optnone uwtable
+define dso_local ptr @returnAoS(i32 noundef %size) #0 {
+entry:
+  %size.addr = alloca i32, align 4
+  %temp = alloca ptr, align 8
+  store i32 %size, ptr %size.addr, align 4
+  %0 = load i32, ptr %size.addr, align 4
+  %conv = sext i32 %0 to i64
+  %mul = mul i64 %conv, 16
+  %call = call noalias ptr @malloc(i64 noundef %mul) #5
+  store ptr %call, ptr %temp, align 8
+  %1 = load ptr, ptr %temp, align 8
+  %arrayidx = getelementptr inbounds %struct.nodeOne, ptr %1, i64 100
+  %a = getelementptr inbounds %struct.nodeOne, ptr %arrayidx, i32 0, i32 0
+  store i32 90, ptr %a, align 8
+  %2 = load ptr, ptr %temp, align 8
+  ret ptr %2
+}
+
+; Function Attrs: noinline nounwind optnone uwtable
+define dso_local ptr @returnAoSTwo(i32 noundef %size) #0 {
+entry:
+  %size.addr = alloca i32, align 4
+  %temp = alloca ptr, align 8
+  %tempTwo = alloca ptr, align 8
+  store i32 %size, ptr %size.addr, align 4
+  %0 = load i32, ptr %size.addr, align 4
+  %conv = sext i32 %0 to i64
+  %mul = mul i64 %conv, 16
+  %call = call noalias ptr @malloc(i64 noundef %mul) #5
+  store ptr %call, ptr %temp, align 8
+  %1 = load ptr, ptr %temp, align 8
+  %arrayidx = getelementptr inbounds %struct.nodeOne, ptr %1, i64 76
+  %a = getelementptr inbounds %struct.nodeOne, ptr %arrayidx, i32 0, i32 0
+  store i32 54, ptr %a, align 8
+  %2 = load ptr, ptr %temp, align 8
+  store ptr %2, ptr %tempTwo, align 8
+  %3 = load ptr, ptr %tempTwo, align 8
+  ret ptr %3
+}
+
+; Function Attrs: noinline nounwind optnone uwtable
+define dso_local ptr @returnAoSOne(i32 noundef %size) #0 {
+entry:
+  %size.addr = alloca i32, align 4
+  store i32 %size, ptr %size.addr, align 4
+  %0 = load i32, ptr %size.addr, align 4
+  %call = call ptr @returnAoSTwo(i32 noundef %0)
+  ret ptr %call
+}
+
+; Function Attrs: noinline nounwind optnone uwtable
 define dso_local i32 @main() #0 {
 entry:
   %retval = alloca i32, align 4
@@ -254,6 +306,9 @@ entry:
   %e = alloca i32, align 4
   %arrayThree = alloca ptr, align 8
   %f = alloca i32, align 4
+  %returnedOne = alloca ptr, align 8
+  %returnedTwo = alloca ptr, align 8
+  %returnThree = alloca ptr, align 8
   store i32 0, ptr %retval, align 4
   store i32 100, ptr %a, align 4
   %0 = load i32, ptr %a, align 4
@@ -319,18 +374,52 @@ entry:
   %15 = load ptr, ptr %arrayThree, align 8
   %16 = load i32, ptr %e, align 4
   call void @populateParam0(ptr noundef %15, i32 noundef %16)
-  %17 = load ptr, ptr @globalFive, align 8
-  %arrayidx23 = getelementptr inbounds %struct.nodeOne, ptr %17, i64 1
-  %a24 = getelementptr inbounds %struct.nodeOne, ptr %arrayidx23, i32 0, i32 0
-  store i32 100, ptr %a24, align 8
-  %18 = load ptr, ptr @globalFive, align 8
-  %arrayidx25 = getelementptr inbounds %struct.nodeOne, ptr %18, i64 1
-  %a26 = getelementptr inbounds %struct.nodeOne, ptr %arrayidx25, i32 0, i32 0
-  %19 = load i32, ptr %a26, align 8
-  %call27 = call i32 (ptr, ...) @printf(ptr noundef @.str, i32 noundef %19)
-  %20 = load i32, ptr %d, align 4
-  %21 = load ptr, ptr @globalSix, align 8
-  call void @populateGlobal(i32 noundef %20, ptr noundef %21)
+  %call23 = call ptr @returnAoS(i32 noundef 100)
+  store ptr %call23, ptr %returnedOne, align 8
+  %17 = load ptr, ptr %returnedOne, align 8
+  %arrayidx24 = getelementptr inbounds %struct.nodeOne, ptr %17, i64 10
+  %a25 = getelementptr inbounds %struct.nodeOne, ptr %arrayidx24, i32 0, i32 0
+  store i32 100, ptr %a25, align 8
+  %18 = load ptr, ptr %returnedOne, align 8
+  %arrayidx26 = getelementptr inbounds %struct.nodeOne, ptr %18, i64 10
+  %a27 = getelementptr inbounds %struct.nodeOne, ptr %arrayidx26, i32 0, i32 0
+  %19 = load i32, ptr %a27, align 8
+  %call28 = call i32 (ptr, ...) @printf(ptr noundef @.str, i32 noundef %19)
+  %20 = load ptr, ptr %returnedOne, align 8
+  store ptr %20, ptr %returnedTwo, align 8
+  %21 = load ptr, ptr %returnedOne, align 8
+  %arrayidx29 = getelementptr inbounds %struct.nodeOne, ptr %21, i64 10
+  %a30 = getelementptr inbounds %struct.nodeOne, ptr %arrayidx29, i32 0, i32 0
+  store i32 77, ptr %a30, align 8
+  %22 = load ptr, ptr %returnedTwo, align 8
+  %arrayidx31 = getelementptr inbounds %struct.nodeOne, ptr %22, i64 10
+  %a32 = getelementptr inbounds %struct.nodeOne, ptr %arrayidx31, i32 0, i32 0
+  %23 = load i32, ptr %a32, align 8
+  %call33 = call i32 (ptr, ...) @printf(ptr noundef @.str, i32 noundef %23)
+  %24 = load ptr, ptr %returnedTwo, align 8
+  %arrayidx34 = getelementptr inbounds %struct.nodeOne, ptr %24, i64 6
+  %b35 = getelementptr inbounds %struct.nodeOne, ptr %arrayidx34, i32 0, i32 1
+  store i8 99, ptr %b35, align 4
+  %25 = load ptr, ptr %returnedOne, align 8
+  %arrayidx36 = getelementptr inbounds %struct.nodeOne, ptr %25, i64 6
+  %b37 = getelementptr inbounds %struct.nodeOne, ptr %arrayidx36, i32 0, i32 1
+  %26 = load i8, ptr %b37, align 4
+  %conv38 = sext i8 %26 to i32
+  %call39 = call i32 (ptr, ...) @printf(ptr noundef @.str.1, i32 noundef %conv38)
+  %call40 = call ptr @returnAoSOne(i32 noundef 99)
+  store ptr %call40, ptr %returnThree, align 8
+  %27 = load ptr, ptr @globalFive, align 8
+  %arrayidx41 = getelementptr inbounds %struct.nodeOne, ptr %27, i64 1
+  %a42 = getelementptr inbounds %struct.nodeOne, ptr %arrayidx41, i32 0, i32 0
+  store i32 100, ptr %a42, align 8
+  %28 = load ptr, ptr @globalFive, align 8
+  %arrayidx43 = getelementptr inbounds %struct.nodeOne, ptr %28, i64 1
+  %a44 = getelementptr inbounds %struct.nodeOne, ptr %arrayidx43, i32 0, i32 0
+  %29 = load i32, ptr %a44, align 8
+  %call45 = call i32 (ptr, ...) @printf(ptr noundef @.str, i32 noundef %29)
+  %30 = load i32, ptr %d, align 4
+  %31 = load ptr, ptr @globalSix, align 8
+  call void @populateGlobal(i32 noundef %30, ptr noundef %31)
   ret i32 0
 }
 
