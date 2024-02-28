@@ -69,16 +69,17 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
               StructType* structure = get<3>(confirmed.at(i));
               string type = get<2>(confirmed.at(i));
 
-              if(type == "dynamic")
-              {
-                dynamicAoSList.push_back(make_pair(get<0>(confirmed.at(i)),structure));
-              }
-
               if(structure == nullptr) //should not occur
               {
                 errs()<<"WARNING: nullptr found!\n";
                 continue;
               }
+
+              if(type == "dynamic")
+              {
+                dynamicAoSList.push_back(make_pair(get<0>(confirmed.at(i)),structure));
+              }
+
               bool exist = false;
               for(int j = 0; j < allStructs.size(); j++)
               {
@@ -113,6 +114,25 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
           //get element type array
           elemArr = allStructs.at(i)->elements();
 
+
+          ////////////// TEMPORARY /////////////////////////
+
+          //don't reorder fields of structs that contain an array
+          // bool containsArray = false;
+          // for(auto e : elemArr)
+          // {
+          //   if(auto *AR = dyn_cast<ArrayType>(e))
+          //   {
+          //     containsArray = true;
+          //     break;
+          //   }
+          // }
+
+          // if(containsArray)
+          //   continue;
+
+          /////////////////////////////////////////////////
+
           vector<tuple<Type*,int,int,int,bool>> elems; //the type, original index, final index and size of each field will be kept track. the bool shows whether it is a bitfield.
         
           DataLayout* TD = new DataLayout(&M);
@@ -142,7 +162,11 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
             Type* newTy;
             bool isBitfield = false;
 
-            if((size != 8) & (size != 32) & (size != 64))
+            if(auto *AR = dyn_cast<ArrayType>(ty))
+            {
+                newTy = ty;
+            }
+            else if((size != 8) & (size != 32) & (size != 64) & (size < 64)) //for bitfields 
             {
               // Create an aggregate type (somehow) so offsets are created properly - check trello
               Type* I = IntegerType::getInt8Ty(reorder_Context);
@@ -231,7 +255,12 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
           for(auto it1 = sortedElems.begin(); it1 != sortedElems.end(); it1)
           {
             int size = get<3>(*it1);
-            int padding = 8 - size;
+            int padding = 0;
+            if(size > 8)
+              padding = 8 - (size % 8);
+            else
+              padding = 8 - size;
+            // errs()<<padding<<"\n";
             newSortedElems.push_back(make_tuple(get<0>(*it1),get<1>(*it1),currIndex,get<3>(*it1),get<4>(*it1)));
             sortedElems.erase(it1);
             currIndex++;
@@ -260,8 +289,8 @@ struct reorderAoS : public PassInfoMixin<reorderAoS> {
                     it2++;
                 }
             }
-            else
-              it1++;
+            // else
+            //   it1++;
           }
 
           vector<Type*> newElems;

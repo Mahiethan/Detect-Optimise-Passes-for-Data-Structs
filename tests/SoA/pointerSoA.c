@@ -16,8 +16,9 @@ struct StructureOne //SoA (with static arrays)
 struct test
 {
     int a; 
-    int b;
-    char c[SizeC];
+    double b;
+    // char c[2];
+    char c[98];
 };
 
 void populateStructure(struct StructureOne* soa, int sizeA, int sizeB, int sizeC)
@@ -173,6 +174,8 @@ int main()
 
     struct test* aos = (struct test*) malloc(10*sizeof(struct test)); //AoS
     aos[7].a = 0;
+    aos[7].c[1] = 'f';
+    printf("%c\n",aos[7].c[1]);
 
     struct StructureOne* rs1;
     rs1 = returnSoAOne(); //creates two SoAs (%temp and %temp2 in @returnSoATwo)

@@ -4,7 +4,7 @@ target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16
 target triple = "x86_64-unknown-linux-gnu"
 
 %struct.StructureOne = type { [100000 x i32], [200000 x i32], [300000 x i8] }
-%struct.test = type { i32, i32, [300000 x i8] }
+%struct.test = type { i32, double, [98 x i8] }
 
 @.str = private unnamed_addr constant [11 x i8] c"Array a: \0A\00", align 1
 @.str.1 = private unnamed_addr constant [14 x i8] c"Index %d: %d\0A\00", align 1
@@ -13,7 +13,8 @@ target triple = "x86_64-unknown-linux-gnu"
 @.str.4 = private unnamed_addr constant [14 x i8] c"Index %d: %c\0A\00", align 1
 @recCountOne = dso_local global i32 0, align 4
 @recCountTwo = dso_local global i32 0, align 4
-@.str.5 = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
+@.str.5 = private unnamed_addr constant [4 x i8] c"%c\0A\00", align 1
+@.str.6 = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 
 ; Function Attrs: noinline nounwind optnone uwtable
 define dso_local void @populateStructure(ptr noundef %soa, i32 noundef %sizeA, i32 noundef %sizeB, i32 noundef %sizeC) #0 {
@@ -404,11 +405,11 @@ entry:
   call void @populateAos(ptr noundef %0, i32 noundef 100)
   %1 = load ptr, ptr %gs1, align 8
   call void @populateStructure(ptr noundef %1, i32 noundef 100000, i32 noundef 200000, i32 noundef 300000)
-  %call2 = call noalias ptr @malloc(i64 noundef 300008) #6
+  %call2 = call noalias ptr @malloc(i64 noundef 120) #6
   store ptr %call2, ptr %wrong, align 8
   %2 = load ptr, ptr %wrong, align 8
   %a = getelementptr inbounds %struct.test, ptr %2, i32 0, i32 0
-  store i32 10, ptr %a, align 4
+  store i32 10, ptr %a, align 8
   %call3 = call noalias ptr @calloc(i64 noundef 1, i64 noundef 1500000) #7
   store ptr %call3, ptr %gs3, align 8
   %3 = load ptr, ptr %gs3, align 8
@@ -428,30 +429,42 @@ entry:
   store ptr %call10, ptr %gs5, align 8
   %5 = load ptr, ptr %gs5, align 8
   call void @populateZero(ptr noundef %5)
-  %call11 = call noalias ptr @malloc(i64 noundef 3000080) #6
+  %call11 = call noalias ptr @malloc(i64 noundef 1200) #6
   store ptr %call11, ptr %aos, align 8
   %6 = load ptr, ptr %aos, align 8
   %arrayidx12 = getelementptr inbounds %struct.test, ptr %6, i64 7
   %a13 = getelementptr inbounds %struct.test, ptr %arrayidx12, i32 0, i32 0
-  store i32 0, ptr %a13, align 4
-  %call14 = call ptr @returnSoAOne()
-  store ptr %call14, ptr %rs1, align 8
-  %7 = load ptr, ptr %rs1, align 8
-  %a15 = getelementptr inbounds %struct.StructureOne, ptr %7, i32 0, i32 0
-  %arrayidx16 = getelementptr inbounds [100000 x i32], ptr %a15, i64 0, i64 9
-  %8 = load i32, ptr %arrayidx16, align 4
-  %call17 = call i32 (ptr, ...) @printf(ptr noundef @.str.5, i32 noundef %8)
+  store i32 0, ptr %a13, align 8
+  %7 = load ptr, ptr %aos, align 8
+  %arrayidx14 = getelementptr inbounds %struct.test, ptr %7, i64 7
+  %c = getelementptr inbounds %struct.test, ptr %arrayidx14, i32 0, i32 2
+  %arrayidx15 = getelementptr inbounds [98 x i8], ptr %c, i64 0, i64 1
+  store i8 102, ptr %arrayidx15, align 1
+  %8 = load ptr, ptr %aos, align 8
+  %arrayidx16 = getelementptr inbounds %struct.test, ptr %8, i64 7
+  %c17 = getelementptr inbounds %struct.test, ptr %arrayidx16, i32 0, i32 2
+  %arrayidx18 = getelementptr inbounds [98 x i8], ptr %c17, i64 0, i64 1
+  %9 = load i8, ptr %arrayidx18, align 1
+  %conv = sext i8 %9 to i32
+  %call19 = call i32 (ptr, ...) @printf(ptr noundef @.str.5, i32 noundef %conv)
+  %call20 = call ptr @returnSoAOne()
+  store ptr %call20, ptr %rs1, align 8
+  %10 = load ptr, ptr %rs1, align 8
+  %a21 = getelementptr inbounds %struct.StructureOne, ptr %10, i32 0, i32 0
+  %arrayidx22 = getelementptr inbounds [100000 x i32], ptr %a21, i64 0, i64 9
+  %11 = load i32, ptr %arrayidx22, align 4
+  %call23 = call i32 (ptr, ...) @printf(ptr noundef @.str.6, i32 noundef %11)
   call void @recursiveOne()
-  %9 = load ptr, ptr %gs1, align 8
-  call void @freeStructure(ptr noundef %9)
-  %10 = load ptr, ptr %gs2, align 8
-  call void @freeStructure(ptr noundef %10)
-  %11 = load ptr, ptr %gs3, align 8
-  call void @freeStructure(ptr noundef %11)
-  %12 = load ptr, ptr %gs4, align 8
+  %12 = load ptr, ptr %gs1, align 8
   call void @freeStructure(ptr noundef %12)
-  %13 = load ptr, ptr %gs5, align 8
+  %13 = load ptr, ptr %gs2, align 8
   call void @freeStructure(ptr noundef %13)
+  %14 = load ptr, ptr %gs3, align 8
+  call void @freeStructure(ptr noundef %14)
+  %15 = load ptr, ptr %gs4, align 8
+  call void @freeStructure(ptr noundef %15)
+  %16 = load ptr, ptr %gs5, align 8
+  call void @freeStructure(ptr noundef %16)
   ret i32 0
 }
 

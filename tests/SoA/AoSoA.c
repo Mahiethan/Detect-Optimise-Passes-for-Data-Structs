@@ -1,9 +1,9 @@
 #include <stdlib.h> //used for malloc()
 #include <stdio.h> //for printf statements
 
-#define SizeA 100000
-#define SizeB 200000
-#define SizeC 300000
+#define SizeA 100345
+#define SizeB 203459
+#define SizeC 315243
 
 //global AoSoA
 struct StructureOne* gs2;
@@ -92,7 +92,8 @@ int main()
     // printStructure(gs2,10,SizeA,SizeB,SizeC);
 
     //will be detected
-    s1[100].a[2] = 100;
+    s1[0].a[2] = 100;
+    printf("%d\n",s1[0].a[2]);
 
     populateAoSoA(gs2,n);
 

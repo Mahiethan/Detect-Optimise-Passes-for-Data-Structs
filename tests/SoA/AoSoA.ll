@@ -3,7 +3,7 @@ source_filename = "AoSoA.c"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
 target triple = "x86_64-unknown-linux-gnu"
 
-%struct.StructureOne = type { [100000 x i32], [200000 x i32], [300000 x i8] }
+%struct.StructureOne = type { [100345 x i32], [203459 x i32], [315243 x i8] }
 
 @.str = private unnamed_addr constant [21 x i8] c"Accessing struct %d\0A\00", align 1
 @.str.1 = private unnamed_addr constant [11 x i8] c"Array a: \0A\00", align 1
@@ -12,6 +12,7 @@ target triple = "x86_64-unknown-linux-gnu"
 @.str.4 = private unnamed_addr constant [11 x i8] c"Array c: \0A\00", align 1
 @.str.5 = private unnamed_addr constant [14 x i8] c"Index %d: %c\0A\00", align 1
 @gs2 = dso_local global ptr null, align 8
+@.str.6 = private unnamed_addr constant [4 x i8] c"%d\0A\00", align 1
 
 ; Function Attrs: noinline nounwind optnone uwtable
 define dso_local void @populateStructure(ptr noundef %soa, i32 noundef %size, i32 noundef %sizeA, i32 noundef %sizeB, i32 noundef %sizeC) #0 {
@@ -53,7 +54,7 @@ for.body3:                                        ; preds = %for.cond1
   %a = getelementptr inbounds %struct.StructureOne, ptr %5, i32 0, i32 0
   %6 = load i32, ptr %i, align 4
   %idxprom = sext i32 %6 to i64
-  %arrayidx = getelementptr inbounds [100000 x i32], ptr %a, i64 0, i64 %idxprom
+  %arrayidx = getelementptr inbounds [100345 x i32], ptr %a, i64 0, i64 %idxprom
   store i32 %4, ptr %arrayidx, align 4
   br label %for.inc
 
@@ -79,7 +80,7 @@ for.body6:                                        ; preds = %for.cond4
   %b = getelementptr inbounds %struct.StructureOne, ptr %11, i32 0, i32 1
   %12 = load i32, ptr %i, align 4
   %idxprom7 = sext i32 %12 to i64
-  %arrayidx8 = getelementptr inbounds [200000 x i32], ptr %b, i64 0, i64 %idxprom7
+  %arrayidx8 = getelementptr inbounds [203459 x i32], ptr %b, i64 0, i64 %idxprom7
   store i32 %10, ptr %arrayidx8, align 4
   br label %for.inc9
 
@@ -106,7 +107,7 @@ for.body14:                                       ; preds = %for.cond12
   %c = getelementptr inbounds %struct.StructureOne, ptr %17, i32 0, i32 2
   %18 = load i32, ptr %i, align 4
   %idxprom15 = sext i32 %18 to i64
-  %arrayidx16 = getelementptr inbounds [300000 x i8], ptr %c, i64 0, i64 %idxprom15
+  %arrayidx16 = getelementptr inbounds [315243 x i8], ptr %c, i64 0, i64 %idxprom15
   store i8 %conv, ptr %arrayidx16, align 1
   br label %for.inc17
 
@@ -185,7 +186,7 @@ for.body4:                                        ; preds = %for.cond2
   %a = getelementptr inbounds %struct.StructureOne, ptr %6, i32 0, i32 0
   %7 = load i32, ptr %i, align 4
   %idxprom = sext i32 %7 to i64
-  %arrayidx = getelementptr inbounds [100000 x i32], ptr %a, i64 0, i64 %idxprom
+  %arrayidx = getelementptr inbounds [100345 x i32], ptr %a, i64 0, i64 %idxprom
   %8 = load i32, ptr %arrayidx, align 4
   %call5 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, i32 noundef %5, i32 noundef %8)
   br label %for.inc
@@ -213,7 +214,7 @@ for.body9:                                        ; preds = %for.cond7
   %b = getelementptr inbounds %struct.StructureOne, ptr %13, i32 0, i32 1
   %14 = load i32, ptr %i, align 4
   %idxprom10 = sext i32 %14 to i64
-  %arrayidx11 = getelementptr inbounds [200000 x i32], ptr %b, i64 0, i64 %idxprom10
+  %arrayidx11 = getelementptr inbounds [203459 x i32], ptr %b, i64 0, i64 %idxprom10
   %15 = load i32, ptr %arrayidx11, align 4
   %call12 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, i32 noundef %12, i32 noundef %15)
   br label %for.inc13
@@ -241,7 +242,7 @@ for.body19:                                       ; preds = %for.cond17
   %c = getelementptr inbounds %struct.StructureOne, ptr %20, i32 0, i32 2
   %21 = load i32, ptr %i, align 4
   %idxprom20 = sext i32 %21 to i64
-  %arrayidx21 = getelementptr inbounds [300000 x i8], ptr %c, i64 0, i64 %idxprom20
+  %arrayidx21 = getelementptr inbounds [315243 x i8], ptr %c, i64 0, i64 %idxprom20
   %22 = load i8, ptr %arrayidx21, align 1
   %conv = sext i8 %22 to i32
   %call22 = call i32 (ptr, ...) @printf(ptr noundef @.str.5, i32 noundef %19, i32 noundef %conv)
@@ -291,7 +292,7 @@ for.body:                                         ; preds = %for.cond
   %idxprom = sext i32 %3 to i64
   %arrayidx = getelementptr inbounds %struct.StructureOne, ptr %2, i64 %idxprom
   %a1 = getelementptr inbounds %struct.StructureOne, ptr %arrayidx, i32 0, i32 0
-  %arrayidx2 = getelementptr inbounds [100000 x i32], ptr %a1, i64 0, i64 90
+  %arrayidx2 = getelementptr inbounds [100345 x i32], ptr %a1, i64 0, i64 90
   store i32 100, ptr %arrayidx2, align 4
   br label %for.inc
 
@@ -313,30 +314,30 @@ entry:
   %s1 = alloca ptr, align 8
   store i32 0, ptr %retval, align 4
   store i32 1, ptr %n, align 4
-  store i32 90, ptr %n, align 4
-  %0 = load i32, ptr %n, align 4
-  %conv = sitofp i32 %0 to double
-  %div = fdiv double %conv, 9.000000e+01
-  %conv1 = fptosi double %div to i32
-  store i32 %conv1, ptr %n, align 4
-  %call = call noalias ptr @malloc(i64 noundef 15000000) #6
+  %call = call noalias ptr @malloc(i64 noundef 15304600) #6
   store ptr %call, ptr %s1, align 8
-  %1 = load i32, ptr %n, align 4
-  %conv2 = sext i32 %1 to i64
-  %call3 = call noalias ptr @calloc(i64 noundef %conv2, i64 noundef 1500000) #7
-  store ptr %call3, ptr @gs2, align 8
-  %2 = load ptr, ptr %s1, align 8
-  %arrayidx = getelementptr inbounds %struct.StructureOne, ptr %2, i64 100
+  %0 = load i32, ptr %n, align 4
+  %conv = sext i32 %0 to i64
+  %call1 = call noalias ptr @calloc(i64 noundef %conv, i64 noundef 1530460) #7
+  store ptr %call1, ptr @gs2, align 8
+  %1 = load ptr, ptr %s1, align 8
+  %arrayidx = getelementptr inbounds %struct.StructureOne, ptr %1, i64 0
   %a = getelementptr inbounds %struct.StructureOne, ptr %arrayidx, i32 0, i32 0
-  %arrayidx4 = getelementptr inbounds [100000 x i32], ptr %a, i64 0, i64 2
-  store i32 100, ptr %arrayidx4, align 4
-  %3 = load ptr, ptr @gs2, align 8
-  %4 = load i32, ptr %n, align 4
-  call void @populateAoSoA(ptr noundef %3, i32 noundef %4)
-  %5 = load ptr, ptr %s1, align 8
-  call void @freeStructure(ptr noundef %5)
-  %6 = load ptr, ptr @gs2, align 8
+  %arrayidx2 = getelementptr inbounds [100345 x i32], ptr %a, i64 0, i64 2
+  store i32 100, ptr %arrayidx2, align 4
+  %2 = load ptr, ptr %s1, align 8
+  %arrayidx3 = getelementptr inbounds %struct.StructureOne, ptr %2, i64 0
+  %a4 = getelementptr inbounds %struct.StructureOne, ptr %arrayidx3, i32 0, i32 0
+  %arrayidx5 = getelementptr inbounds [100345 x i32], ptr %a4, i64 0, i64 2
+  %3 = load i32, ptr %arrayidx5, align 4
+  %call6 = call i32 (ptr, ...) @printf(ptr noundef @.str.6, i32 noundef %3)
+  %4 = load ptr, ptr @gs2, align 8
+  %5 = load i32, ptr %n, align 4
+  call void @populateAoSoA(ptr noundef %4, i32 noundef %5)
+  %6 = load ptr, ptr %s1, align 8
   call void @freeStructure(ptr noundef %6)
+  %7 = load ptr, ptr @gs2, align 8
+  call void @freeStructure(ptr noundef %7)
   ret i32 0
 }
 
