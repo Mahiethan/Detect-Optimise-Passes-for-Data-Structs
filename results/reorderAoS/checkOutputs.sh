@@ -1,7 +1,7 @@
 #!/bin/bash 
 
-head -n -24 $1 >> fileOne.txt
-head -n -24 $2 >> fileTwo.txt
+tail -n -38 $1 >> fileOne.txt
+tail -n -38 $2 >> fileTwo.txt
 
 cmp --silent fileOne.txt fileTwo.txt && echo "Outputs are identical. Optimisation is valid." || echo "Outputs are different. Optimisation is NOT valid."
 rm fileOne.txt

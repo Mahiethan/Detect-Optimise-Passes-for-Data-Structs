@@ -26,10 +26,11 @@ fi
 echo "#!/bin/sh
 
 #SBATCH --job-name=$( whoami )-$1
-#SBATCH --cpus-per-task=40
-#SBATCH --time=10:00
-#SBATCH --output=./reorderAoS_output_%j.out
-#SBATCH --error=./TYP_error_%j.err
+#SBATCH --cpus-per-task=1
+#SBATCH --mem=16G
+#SBATCH --time=60:00
+#SBATCH --output=./orderedResults/Size50000/output_%j.out
+#SBATCH --error=./orderedResults/Size50000/error_%j.err
 echo ===== ENVIRONMENT =====
 
 lscpu
@@ -58,7 +59,7 @@ BATCHNO=$( echo $BATCH | sed 's/[^0-9]//g' )
 
 rm tmp
 
-mkdir $BATCHNO
+# mkdir $BATCHNO
 
 echo "===== Job $BATCHNO has been submitted! ====="
 

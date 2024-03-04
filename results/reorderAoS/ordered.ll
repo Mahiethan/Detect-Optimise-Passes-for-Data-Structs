@@ -1,7 +1,7 @@
 ; ModuleID = 'ordered.c'
 source_filename = "ordered.c"
 target datalayout = "e-m:e-p270:32:32-p271:32:32-p272:64:64-i64:64-f80:128-n8:16:32:64-S128"
-target triple = "x86_64-unknown-linux-gnu"
+target triple = "x86_64-redhat-linux-gnu"
 
 %struct.nodeOne = type { double, i32, i8, i8 }
 %struct.nodeTwo = type { double, [6 x i8], i8, i32, i32 }
@@ -69,7 +69,7 @@ for.inc:                                          ; preds = %for.body
   %10 = load i32, ptr %i, align 4
   %inc = add nsw i32 %10, 1
   store i32 %inc, ptr %i, align 4
-  br label %for.cond, !llvm.loop !6
+  br label %for.cond, !llvm.loop !4
 
 for.end:                                          ; preds = %for.cond
   ret void
@@ -90,11 +90,11 @@ entry:
 
 for.cond:                                         ; preds = %for.inc19, %entry
   %0 = load i32, ptr %j, align 4
-  %cmp = icmp slt i32 %0, 1000000
+  %cmp = icmp slt i32 %0, 100000
   br i1 %cmp, label %for.body, label %for.end21
 
 for.body:                                         ; preds = %for.cond
-  %call = call i32 @rand() #6
+  %call = call i32 @rand() #7
   %conv = sitofp i32 %call to float
   %div = fdiv float %conv, 0x41B99999A0000000
   store float %div, ptr %random, align 4
@@ -148,7 +148,7 @@ for.inc:                                          ; preds = %for.body4
   %16 = load i32, ptr %i, align 4
   %inc = add nsw i32 %16, 1
   store i32 %inc, ptr %i, align 4
-  br label %for.cond1, !llvm.loop !8
+  br label %for.cond1, !llvm.loop !6
 
 for.end:                                          ; preds = %for.cond1
   br label %for.inc19
@@ -157,14 +157,14 @@ for.inc19:                                        ; preds = %for.end
   %17 = load i32, ptr %j, align 4
   %inc20 = add nsw i32 %17, 1
   store i32 %inc20, ptr %j, align 4
-  br label %for.cond, !llvm.loop !9
+  br label %for.cond, !llvm.loop !7
 
 for.end21:                                        ; preds = %for.cond
   ret void
 }
 
 ; Function Attrs: nounwind
-declare i32 @rand() #1
+declare dso_local i32 @rand() #1
 
 ; Function Attrs: nocallback nofree nosync nounwind speculatable willreturn memory(none)
 declare double @llvm.fmuladd.f64(double, double, double) #2
@@ -185,7 +185,7 @@ entry:
 
 for.cond:                                         ; preds = %for.inc22, %entry
   %0 = load i32, ptr %j, align 4
-  %cmp = icmp slt i32 %0, 1000000
+  %cmp = icmp slt i32 %0, 100000
   br i1 %cmp, label %for.body, label %for.end24
 
 for.body:                                         ; preds = %for.cond
@@ -247,7 +247,7 @@ for.inc:                                          ; preds = %for.body3
   %19 = load i32, ptr %i, align 4
   %inc = add nsw i32 %19, 1
   store i32 %inc, ptr %i, align 4
-  br label %for.cond1, !llvm.loop !10
+  br label %for.cond1, !llvm.loop !8
 
 for.end:                                          ; preds = %for.cond1
   br label %for.inc22
@@ -256,7 +256,7 @@ for.inc22:                                        ; preds = %for.end
   %20 = load i32, ptr %j, align 4
   %inc23 = add nsw i32 %20, 1
   store i32 %inc23, ptr %j, align 4
-  br label %for.cond, !llvm.loop !11
+  br label %for.cond, !llvm.loop !9
 
 for.end24:                                        ; preds = %for.cond
   ret void
@@ -316,7 +316,7 @@ for.inc:                                          ; preds = %for.body
   %12 = load i32, ptr %i, align 4
   %inc = add nsw i32 %12, 1
   store i32 %inc, ptr %i, align 4
-  br label %for.cond, !llvm.loop !12
+  br label %for.cond, !llvm.loop !10
 
 for.end:                                          ; preds = %for.cond
   ret void
@@ -337,11 +337,11 @@ entry:
 
 for.cond:                                         ; preds = %for.inc19, %entry
   %0 = load i32, ptr %j, align 4
-  %cmp = icmp slt i32 %0, 1000000
+  %cmp = icmp slt i32 %0, 100000
   br i1 %cmp, label %for.body, label %for.end21
 
 for.body:                                         ; preds = %for.cond
-  %call = call i32 @rand() #6
+  %call = call i32 @rand() #7
   %conv = sitofp i32 %call to float
   %div = fdiv float %conv, 0x41B99999A0000000
   store float %div, ptr %random, align 4
@@ -398,7 +398,7 @@ for.inc:                                          ; preds = %for.body4
   %16 = load i32, ptr %i, align 4
   %inc = add nsw i32 %16, 1
   store i32 %inc, ptr %i, align 4
-  br label %for.cond1, !llvm.loop !13
+  br label %for.cond1, !llvm.loop !11
 
 for.end:                                          ; preds = %for.cond1
   br label %for.inc19
@@ -407,7 +407,7 @@ for.inc19:                                        ; preds = %for.end
   %17 = load i32, ptr %j, align 4
   %inc20 = add nsw i32 %17, 1
   store i32 %inc20, ptr %j, align 4
-  br label %for.cond, !llvm.loop !14
+  br label %for.cond, !llvm.loop !12
 
 for.end21:                                        ; preds = %for.cond
   ret void
@@ -430,11 +430,11 @@ entry:
 
 for.cond:                                         ; preds = %for.inc15, %entry
   %0 = load i32, ptr %j, align 4
-  %cmp = icmp slt i32 %0, 1000000
+  %cmp = icmp slt i32 %0, 100000
   br i1 %cmp, label %for.body, label %for.end17
 
 for.body:                                         ; preds = %for.cond
-  %call = call i64 @random() #6
+  %call = call i64 @random() #7
   %rem = srem i64 %call, 26
   %add = add nsw i64 65, %rem
   %conv = trunc i64 %add to i8
@@ -485,7 +485,7 @@ for.inc:                                          ; preds = %for.body4
   %13 = load i32, ptr %i, align 4
   %inc = add nsw i32 %13, 1
   store i32 %inc, ptr %i, align 4
-  br label %for.cond1, !llvm.loop !15
+  br label %for.cond1, !llvm.loop !13
 
 for.end:                                          ; preds = %for.cond1
   br label %for.inc15
@@ -494,14 +494,14 @@ for.inc15:                                        ; preds = %for.end
   %14 = load i32, ptr %j, align 4
   %inc16 = add nsw i32 %14, 1
   store i32 %inc16, ptr %j, align 4
-  br label %for.cond, !llvm.loop !16
+  br label %for.cond, !llvm.loop !14
 
 for.end17:                                        ; preds = %for.cond
   ret void
 }
 
 ; Function Attrs: nounwind
-declare i64 @random() #1
+declare dso_local i64 @random() #1
 
 ; Function Attrs: noinline nounwind optnone uwtable
 define dso_local void @populateNodeThree(ptr noundef %array, i32 noundef %size) #0 {
@@ -541,7 +541,7 @@ for.body:                                         ; preds = %for.cond
   %arrayidx4 = getelementptr inbounds %struct.nodeThree, ptr %6, i64 %idxprom3
   %c = getelementptr inbounds %struct.nodeThree, ptr %arrayidx4, i32 0, i32 3
   store i32 77, ptr %c, align 4
-  %call = call i32 @rand() #6
+  %call = call i32 @rand() #7
   %conv = sitofp i32 %call to float
   %div = fdiv float %conv, 0x41B99999A0000000
   store float %div, ptr %random, align 4
@@ -570,7 +570,7 @@ for.inc:                                          ; preds = %for.body8
   %13 = load i32, ptr %j, align 4
   %inc = add nsw i32 %13, 1
   store i32 %inc, ptr %j, align 4
-  br label %for.cond5, !llvm.loop !17
+  br label %for.cond5, !llvm.loop !15
 
 for.end:                                          ; preds = %for.cond5
   br label %for.inc13
@@ -579,7 +579,7 @@ for.inc13:                                        ; preds = %for.end
   %14 = load i32, ptr %i, align 4
   %inc14 = add nsw i32 %14, 1
   store i32 %inc14, ptr %i, align 4
-  br label %for.cond, !llvm.loop !18
+  br label %for.cond, !llvm.loop !16
 
 for.end15:                                        ; preds = %for.cond
   ret void
@@ -600,11 +600,11 @@ entry:
 
 for.cond:                                         ; preds = %for.inc18, %entry
   %0 = load i32, ptr %j, align 4
-  %cmp = icmp slt i32 %0, 1000000
+  %cmp = icmp slt i32 %0, 100000
   br i1 %cmp, label %for.body, label %for.end20
 
 for.body:                                         ; preds = %for.cond
-  %call = call i32 @rand() #6
+  %call = call i32 @rand() #7
   %conv = sitofp i32 %call to float
   %div = fdiv float %conv, 0x41B99999A0000000
   store float %div, ptr %random, align 4
@@ -657,7 +657,7 @@ for.inc:                                          ; preds = %for.body4
   %16 = load i32, ptr %i, align 4
   %inc = add nsw i32 %16, 1
   store i32 %inc, ptr %i, align 4
-  br label %for.cond1, !llvm.loop !19
+  br label %for.cond1, !llvm.loop !17
 
 for.end:                                          ; preds = %for.cond1
   br label %for.inc18
@@ -666,7 +666,7 @@ for.inc18:                                        ; preds = %for.end
   %17 = load i32, ptr %j, align 4
   %inc19 = add nsw i32 %17, 1
   store i32 %inc19, ptr %j, align 4
-  br label %for.cond, !llvm.loop !20
+  br label %for.cond, !llvm.loop !18
 
 for.end20:                                        ; preds = %for.cond
   ret void
@@ -698,7 +698,7 @@ for.body:                                         ; preds = %for.cond
 
 for.cond1:                                        ; preds = %for.inc, %for.body
   %2 = load i32, ptr %k, align 4
-  %cmp2 = icmp slt i32 %2, 97
+  %cmp2 = icmp slt i32 %2, 96
   br i1 %cmp2, label %for.body3, label %for.end
 
 for.body3:                                        ; preds = %for.cond1
@@ -728,7 +728,7 @@ for.inc:                                          ; preds = %for.body3
   %11 = load i32, ptr %k, align 4
   %inc = add nsw i32 %11, 1
   store i32 %inc, ptr %k, align 4
-  br label %for.cond1, !llvm.loop !21
+  br label %for.cond1, !llvm.loop !19
 
 for.end:                                          ; preds = %for.cond1
   br label %for.inc11
@@ -737,7 +737,7 @@ for.inc11:                                        ; preds = %for.end
   %12 = load i32, ptr %i, align 4
   %inc12 = add nsw i32 %12, 1
   store i32 %inc12, ptr %i, align 4
-  br label %for.cond, !llvm.loop !22
+  br label %for.cond, !llvm.loop !20
 
 for.end13:                                        ; preds = %for.cond
   ret void
@@ -787,7 +787,7 @@ for.inc:                                          ; preds = %for.body3
   %7 = load i32, ptr %i, align 4
   %inc = add nsw i32 %7, 1
   store i32 %inc, ptr %i, align 4
-  br label %for.cond1, !llvm.loop !23
+  br label %for.cond1, !llvm.loop !21
 
 for.end:                                          ; preds = %for.cond1
   store i32 0, ptr %i, align 4
@@ -816,7 +816,7 @@ for.inc13:                                        ; preds = %for.body8
   %13 = load i32, ptr %i, align 4
   %inc14 = add nsw i32 %13, 1
   store i32 %inc14, ptr %i, align 4
-  br label %for.cond6, !llvm.loop !24
+  br label %for.cond6, !llvm.loop !22
 
 for.end15:                                        ; preds = %for.cond6
   store i32 0, ptr %i, align 4
@@ -843,7 +843,7 @@ for.inc24:                                        ; preds = %for.body19
   %18 = load i32, ptr %i, align 4
   %inc25 = add nsw i32 %18, 1
   store i32 %inc25, ptr %i, align 4
-  br label %for.cond16, !llvm.loop !25
+  br label %for.cond16, !llvm.loop !23
 
 for.end26:                                        ; preds = %for.cond16
   %19 = load i32, ptr %i, align 4
@@ -860,7 +860,7 @@ for.inc30:                                        ; preds = %for.end26
   %22 = load i32, ptr %j, align 4
   %inc31 = add nsw i32 %22, 1
   store i32 %inc31, ptr %j, align 4
-  br label %for.cond, !llvm.loop !26
+  br label %for.cond, !llvm.loop !24
 
 for.end32:                                        ; preds = %for.cond
   ret void
@@ -922,7 +922,7 @@ for.inc:                                          ; preds = %for.body3
   %11 = load i32, ptr %i, align 4
   %inc = add nsw i32 %11, 1
   store i32 %inc, ptr %i, align 4
-  br label %for.cond1, !llvm.loop !27
+  br label %for.cond1, !llvm.loop !25
 
 for.end:                                          ; preds = %for.cond1
   store i32 0, ptr %i, align 4
@@ -961,7 +961,7 @@ for.inc24:                                        ; preds = %for.body13
   %21 = load i32, ptr %i, align 4
   %inc25 = add nsw i32 %21, 1
   store i32 %inc25, ptr %i, align 4
-  br label %for.cond11, !llvm.loop !28
+  br label %for.cond11, !llvm.loop !26
 
 for.end26:                                        ; preds = %for.cond11
   %22 = load ptr, ptr %arrayTwo.addr, align 8
@@ -988,16 +988,18 @@ for.inc36:                                        ; preds = %for.end26
   %29 = load i32, ptr %j, align 4
   %inc37 = add nsw i32 %29, 1
   store i32 %inc37, ptr %j, align 4
-  br label %for.cond, !llvm.loop !29
+  br label %for.cond, !llvm.loop !27
 
 for.end38:                                        ; preds = %for.cond
   ret void
 }
 
 ; Function Attrs: noinline nounwind optnone uwtable
-define dso_local i32 @main() #0 {
+define dso_local i32 @main(i32 noundef %argc, ptr noundef %argv) #0 {
 entry:
   %retval = alloca i32, align 4
+  %argc.addr = alloca i32, align 4
+  %argv.addr = alloca ptr, align 8
   %n = alloca i32, align 4
   %randomIndex = alloca i32, align 4
   %arrayOne = alloca ptr, align 8
@@ -1010,297 +1012,316 @@ entry:
   %arraySeven = alloca ptr, align 8
   %arrayEight = alloca ptr, align 8
   store i32 0, ptr %retval, align 4
-  store i32 1000, ptr %n, align 4
-  %call = call i32 @rand() #6
-  %0 = load i32, ptr %n, align 4
-  %rem = srem i32 %call, %0
-  store i32 %rem, ptr %randomIndex, align 4
-  %1 = load i32, ptr %n, align 4
-  %conv = sext i32 %1 to i64
-  %call1 = call noalias ptr @calloc(i64 noundef %conv, i64 noundef 16) #7
-  store ptr %call1, ptr %arrayOne, align 8
+  store i32 %argc, ptr %argc.addr, align 4
+  store ptr %argv, ptr %argv.addr, align 8
+  %0 = load ptr, ptr %argv.addr, align 8
+  %arrayidx = getelementptr inbounds ptr, ptr %0, i64 1
+  %1 = load ptr, ptr %arrayidx, align 8
+  %call = call i32 @atoi(ptr noundef %1) #8
+  store i32 %call, ptr %n, align 4
+  %call1 = call i32 @rand() #7
   %2 = load i32, ptr %n, align 4
-  %conv2 = sext i32 %2 to i64
-  %mul = mul i64 %conv2, 16
-  %call3 = call noalias ptr @malloc(i64 noundef %mul) #8
-  store ptr %call3, ptr %arrayTwo, align 8
-  %3 = load ptr, ptr %arrayOne, align 8
+  %rem = srem i32 %call1, %2
+  store i32 %rem, ptr %randomIndex, align 4
+  %3 = load i32, ptr %n, align 4
+  %conv = sext i32 %3 to i64
+  %call2 = call noalias ptr @calloc(i64 noundef %conv, i64 noundef 16) #9
+  store ptr %call2, ptr %arrayOne, align 8
   %4 = load i32, ptr %n, align 4
-  call void @populateNodeOne(ptr noundef %3, i32 noundef %4)
-  %5 = load ptr, ptr %arrayTwo, align 8
+  %conv3 = sext i32 %4 to i64
+  %mul = mul i64 %conv3, 16
+  %call4 = call noalias ptr @malloc(i64 noundef %mul) #10
+  store ptr %call4, ptr %arrayTwo, align 8
+  %5 = load ptr, ptr %arrayOne, align 8
   %6 = load i32, ptr %n, align 4
   call void @populateNodeOne(ptr noundef %5, i32 noundef %6)
-  %7 = load ptr, ptr %arrayOne, align 8
+  %7 = load ptr, ptr %arrayTwo, align 8
   %8 = load i32, ptr %n, align 4
-  call void @multNodeOne(ptr noundef %7, i32 noundef %8)
+  call void @populateNodeOne(ptr noundef %7, i32 noundef %8)
   %9 = load ptr, ptr %arrayOne, align 8
-  %10 = load ptr, ptr %arrayTwo, align 8
-  %11 = load i32, ptr %n, align 4
-  call void @multNodeOneArrays(ptr noundef %9, ptr noundef %10, i32 noundef %11)
-  %call4 = call i32 (ptr, ...) @printf(ptr noundef @.str)
-  %12 = load ptr, ptr %arrayOne, align 8
-  %13 = load i32, ptr %randomIndex, align 4
-  %idxprom = sext i32 %13 to i64
-  %arrayidx = getelementptr inbounds %struct.nodeOne, ptr %12, i64 %idxprom
-  %a = getelementptr inbounds %struct.nodeOne, ptr %arrayidx, i32 0, i32 1
-  %14 = load i32, ptr %a, align 8
-  %call5 = call i32 (ptr, ...) @printf(ptr noundef @.str.1, i32 noundef %14)
-  %15 = load ptr, ptr %arrayOne, align 8
-  %16 = load i32, ptr %randomIndex, align 4
-  %idxprom6 = sext i32 %16 to i64
-  %arrayidx7 = getelementptr inbounds %struct.nodeOne, ptr %15, i64 %idxprom6
-  %b = getelementptr inbounds %struct.nodeOne, ptr %arrayidx7, i32 0, i32 0
-  %17 = load double, ptr %b, align 8
-  %call8 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %17)
-  %18 = load ptr, ptr %arrayOne, align 8
-  %19 = load i32, ptr %randomIndex, align 4
-  %idxprom9 = sext i32 %19 to i64
-  %arrayidx10 = getelementptr inbounds %struct.nodeOne, ptr %18, i64 %idxprom9
-  %c = getelementptr inbounds %struct.nodeOne, ptr %arrayidx10, i32 0, i32 2
-  %20 = load i8, ptr %c, align 4
-  %conv11 = sext i8 %20 to i32
-  %call12 = call i32 (ptr, ...) @printf(ptr noundef @.str.3, i32 noundef %conv11)
-  %21 = load ptr, ptr %arrayOne, align 8
-  %22 = load i32, ptr %randomIndex, align 4
-  %idxprom13 = sext i32 %22 to i64
-  %arrayidx14 = getelementptr inbounds %struct.nodeOne, ptr %21, i64 %idxprom13
-  %d = getelementptr inbounds %struct.nodeOne, ptr %arrayidx14, i32 0, i32 3
-  %23 = load i8, ptr %d, align 1
-  %conv15 = sext i8 %23 to i32
-  %call16 = call i32 (ptr, ...) @printf(ptr noundef @.str.4, i32 noundef %conv15)
-  %24 = load ptr, ptr %arrayOne, align 8
-  call void @free(ptr noundef %24) #6
-  %25 = load ptr, ptr %arrayTwo, align 8
-  call void @free(ptr noundef %25) #6
-  %26 = load i32, ptr %n, align 4
-  %conv17 = sext i32 %26 to i64
-  %mul18 = mul i64 %conv17, 24
-  %call19 = call noalias ptr @malloc(i64 noundef %mul18) #8
-  store ptr %call19, ptr %arrayThree, align 8
-  %27 = load i32, ptr %n, align 4
-  %conv20 = sext i32 %27 to i64
-  %mul21 = mul i64 %conv20, 24
-  %call22 = call noalias ptr @malloc(i64 noundef %mul21) #8
-  store ptr %call22, ptr %arrayFour, align 8
-  %28 = load ptr, ptr %arrayThree, align 8
+  %10 = load i32, ptr %n, align 4
+  call void @multNodeOne(ptr noundef %9, i32 noundef %10)
+  %11 = load ptr, ptr %arrayOne, align 8
+  %12 = load ptr, ptr %arrayTwo, align 8
+  %13 = load i32, ptr %n, align 4
+  call void @multNodeOneArrays(ptr noundef %11, ptr noundef %12, i32 noundef %13)
+  %call5 = call i32 (ptr, ...) @printf(ptr noundef @.str)
+  %14 = load ptr, ptr %arrayOne, align 8
+  %15 = load i32, ptr %randomIndex, align 4
+  %idxprom = sext i32 %15 to i64
+  %arrayidx6 = getelementptr inbounds %struct.nodeOne, ptr %14, i64 %idxprom
+  %a = getelementptr inbounds %struct.nodeOne, ptr %arrayidx6, i32 0, i32 1
+  %16 = load i32, ptr %a, align 8
+  %call7 = call i32 (ptr, ...) @printf(ptr noundef @.str.1, i32 noundef %16)
+  %17 = load ptr, ptr %arrayOne, align 8
+  %18 = load i32, ptr %randomIndex, align 4
+  %idxprom8 = sext i32 %18 to i64
+  %arrayidx9 = getelementptr inbounds %struct.nodeOne, ptr %17, i64 %idxprom8
+  %b = getelementptr inbounds %struct.nodeOne, ptr %arrayidx9, i32 0, i32 0
+  %19 = load double, ptr %b, align 8
+  %call10 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %19)
+  %20 = load ptr, ptr %arrayOne, align 8
+  %21 = load i32, ptr %randomIndex, align 4
+  %idxprom11 = sext i32 %21 to i64
+  %arrayidx12 = getelementptr inbounds %struct.nodeOne, ptr %20, i64 %idxprom11
+  %c = getelementptr inbounds %struct.nodeOne, ptr %arrayidx12, i32 0, i32 2
+  %22 = load i8, ptr %c, align 4
+  %conv13 = sext i8 %22 to i32
+  %call14 = call i32 (ptr, ...) @printf(ptr noundef @.str.3, i32 noundef %conv13)
+  %23 = load ptr, ptr %arrayOne, align 8
+  %24 = load i32, ptr %randomIndex, align 4
+  %idxprom15 = sext i32 %24 to i64
+  %arrayidx16 = getelementptr inbounds %struct.nodeOne, ptr %23, i64 %idxprom15
+  %d = getelementptr inbounds %struct.nodeOne, ptr %arrayidx16, i32 0, i32 3
+  %25 = load i8, ptr %d, align 1
+  %conv17 = sext i8 %25 to i32
+  %call18 = call i32 (ptr, ...) @printf(ptr noundef @.str.4, i32 noundef %conv17)
+  %26 = load ptr, ptr %arrayOne, align 8
+  call void @free(ptr noundef %26) #7
+  %27 = load ptr, ptr %arrayTwo, align 8
+  call void @free(ptr noundef %27) #7
+  %28 = load i32, ptr %n, align 4
+  %conv19 = sext i32 %28 to i64
+  %mul20 = mul i64 %conv19, 24
+  %call21 = call noalias ptr @malloc(i64 noundef %mul20) #10
+  store ptr %call21, ptr %arrayThree, align 8
   %29 = load i32, ptr %n, align 4
-  call void @populateNodeTwo(ptr noundef %28, i32 noundef %29)
-  %30 = load ptr, ptr %arrayFour, align 8
+  %conv22 = sext i32 %29 to i64
+  %mul23 = mul i64 %conv22, 24
+  %call24 = call noalias ptr @malloc(i64 noundef %mul23) #10
+  store ptr %call24, ptr %arrayFour, align 8
+  %30 = load ptr, ptr %arrayThree, align 8
   %31 = load i32, ptr %n, align 4
   call void @populateNodeTwo(ptr noundef %30, i32 noundef %31)
-  %32 = load ptr, ptr %arrayThree, align 8
+  %32 = load ptr, ptr %arrayFour, align 8
   %33 = load i32, ptr %n, align 4
-  call void @multNodeTwo(ptr noundef %32, i32 noundef %33)
+  call void @populateNodeTwo(ptr noundef %32, i32 noundef %33)
   %34 = load ptr, ptr %arrayThree, align 8
-  %35 = load ptr, ptr %arrayFour, align 8
-  %36 = load i32, ptr %n, align 4
-  call void @multNodeTwoArrays(ptr noundef %34, ptr noundef %35, i32 noundef %36)
-  %call23 = call i32 (ptr, ...) @printf(ptr noundef @.str)
-  %37 = load ptr, ptr %arrayThree, align 8
-  %arrayidx24 = getelementptr inbounds %struct.nodeTwo, ptr %37, i64 10
-  %a25 = getelementptr inbounds %struct.nodeTwo, ptr %arrayidx24, i32 0, i32 0
-  %38 = load double, ptr %a25, align 8
-  %call26 = call i32 (ptr, ...) @printf(ptr noundef @.str.5, double noundef %38)
+  %35 = load i32, ptr %n, align 4
+  call void @multNodeTwo(ptr noundef %34, i32 noundef %35)
+  %36 = load ptr, ptr %arrayThree, align 8
+  %37 = load ptr, ptr %arrayFour, align 8
+  %38 = load i32, ptr %n, align 4
+  call void @multNodeTwoArrays(ptr noundef %36, ptr noundef %37, i32 noundef %38)
+  %call25 = call i32 (ptr, ...) @printf(ptr noundef @.str)
   %39 = load ptr, ptr %arrayThree, align 8
-  %arrayidx27 = getelementptr inbounds %struct.nodeTwo, ptr %39, i64 10
-  %b28 = getelementptr inbounds %struct.nodeTwo, ptr %arrayidx27, i32 0, i32 1
-  %bf.load = load i48, ptr %b28, align 8
-  %bf.cast = sext i48 %bf.load to i64
-  %call29 = call i32 (ptr, ...) @printf(ptr noundef @.str.6, i64 noundef %bf.cast)
-  %40 = load ptr, ptr %arrayThree, align 8
-  %arrayidx30 = getelementptr inbounds %struct.nodeTwo, ptr %40, i64 10
-  %c31 = getelementptr inbounds %struct.nodeTwo, ptr %arrayidx30, i32 0, i32 3
-  %41 = load i32, ptr %c31, align 8
-  %call32 = call i32 (ptr, ...) @printf(ptr noundef @.str.7, i32 noundef %41)
+  %40 = load i32, ptr %randomIndex, align 4
+  %idxprom26 = sext i32 %40 to i64
+  %arrayidx27 = getelementptr inbounds %struct.nodeTwo, ptr %39, i64 %idxprom26
+  %a28 = getelementptr inbounds %struct.nodeTwo, ptr %arrayidx27, i32 0, i32 0
+  %41 = load double, ptr %a28, align 8
+  %call29 = call i32 (ptr, ...) @printf(ptr noundef @.str.5, double noundef %41)
   %42 = load ptr, ptr %arrayThree, align 8
-  %arrayidx33 = getelementptr inbounds %struct.nodeTwo, ptr %42, i64 10
-  %d34 = getelementptr inbounds %struct.nodeTwo, ptr %arrayidx33, i32 0, i32 4
-  %43 = load i32, ptr %d34, align 4
-  %call35 = call i32 (ptr, ...) @printf(ptr noundef @.str.8, i32 noundef %43)
+  %43 = load i32, ptr %randomIndex, align 4
+  %idxprom30 = sext i32 %43 to i64
+  %arrayidx31 = getelementptr inbounds %struct.nodeTwo, ptr %42, i64 %idxprom30
+  %b32 = getelementptr inbounds %struct.nodeTwo, ptr %arrayidx31, i32 0, i32 1
+  %bf.load = load i48, ptr %b32, align 8
+  %bf.cast = sext i48 %bf.load to i64
+  %call33 = call i32 (ptr, ...) @printf(ptr noundef @.str.6, i64 noundef %bf.cast)
   %44 = load ptr, ptr %arrayThree, align 8
-  %arrayidx36 = getelementptr inbounds %struct.nodeTwo, ptr %44, i64 10
-  %e = getelementptr inbounds %struct.nodeTwo, ptr %arrayidx36, i32 0, i32 2
-  %45 = load i8, ptr %e, align 2
-  %conv37 = sext i8 %45 to i32
-  %call38 = call i32 (ptr, ...) @printf(ptr noundef @.str.9, i32 noundef %conv37)
-  %46 = load ptr, ptr %arrayThree, align 8
-  call void @free(ptr noundef %46) #6
-  %47 = load ptr, ptr %arrayFour, align 8
-  call void @free(ptr noundef %47) #6
-  %48 = load i32, ptr %n, align 4
-  %conv39 = sext i32 %48 to i64
-  %call40 = call noalias ptr @calloc(i64 noundef %conv39, i64 noundef 400) #7
-  store ptr %call40, ptr %arrayFive, align 8
-  %49 = load i32, ptr %n, align 4
-  %conv41 = sext i32 %49 to i64
-  %mul42 = mul i64 %conv41, 400
-  %call43 = call noalias ptr @malloc(i64 noundef %mul42) #8
-  store ptr %call43, ptr %arraySix, align 8
-  %50 = load ptr, ptr %arrayFive, align 8
-  %51 = load i32, ptr %n, align 4
-  call void @populateNodeThree(ptr noundef %50, i32 noundef %51)
-  %52 = load ptr, ptr %arraySix, align 8
-  %53 = load i32, ptr %n, align 4
-  call void @populateNodeThree(ptr noundef %52, i32 noundef %53)
-  %54 = load ptr, ptr %arrayFive, align 8
+  %45 = load i32, ptr %randomIndex, align 4
+  %idxprom34 = sext i32 %45 to i64
+  %arrayidx35 = getelementptr inbounds %struct.nodeTwo, ptr %44, i64 %idxprom34
+  %c36 = getelementptr inbounds %struct.nodeTwo, ptr %arrayidx35, i32 0, i32 3
+  %46 = load i32, ptr %c36, align 8
+  %call37 = call i32 (ptr, ...) @printf(ptr noundef @.str.7, i32 noundef %46)
+  %47 = load ptr, ptr %arrayThree, align 8
+  %48 = load i32, ptr %randomIndex, align 4
+  %idxprom38 = sext i32 %48 to i64
+  %arrayidx39 = getelementptr inbounds %struct.nodeTwo, ptr %47, i64 %idxprom38
+  %d40 = getelementptr inbounds %struct.nodeTwo, ptr %arrayidx39, i32 0, i32 4
+  %49 = load i32, ptr %d40, align 4
+  %call41 = call i32 (ptr, ...) @printf(ptr noundef @.str.8, i32 noundef %49)
+  %50 = load ptr, ptr %arrayThree, align 8
+  %51 = load i32, ptr %randomIndex, align 4
+  %idxprom42 = sext i32 %51 to i64
+  %arrayidx43 = getelementptr inbounds %struct.nodeTwo, ptr %50, i64 %idxprom42
+  %e = getelementptr inbounds %struct.nodeTwo, ptr %arrayidx43, i32 0, i32 2
+  %52 = load i8, ptr %e, align 2
+  %conv44 = sext i8 %52 to i32
+  %call45 = call i32 (ptr, ...) @printf(ptr noundef @.str.9, i32 noundef %conv44)
+  %53 = load ptr, ptr %arrayThree, align 8
+  call void @free(ptr noundef %53) #7
+  %54 = load ptr, ptr %arrayFour, align 8
+  call void @free(ptr noundef %54) #7
   %55 = load i32, ptr %n, align 4
-  call void @multNodeThree(ptr noundef %54, i32 noundef %55)
-  %56 = load ptr, ptr %arrayFive, align 8
-  %57 = load ptr, ptr %arraySix, align 8
+  %conv46 = sext i32 %55 to i64
+  %call47 = call noalias ptr @calloc(i64 noundef %conv46, i64 noundef 400) #9
+  store ptr %call47, ptr %arrayFive, align 8
+  %56 = load i32, ptr %n, align 4
+  %conv48 = sext i32 %56 to i64
+  %mul49 = mul i64 %conv48, 400
+  %call50 = call noalias ptr @malloc(i64 noundef %mul49) #10
+  store ptr %call50, ptr %arraySix, align 8
+  %57 = load ptr, ptr %arrayFive, align 8
   %58 = load i32, ptr %n, align 4
-  call void @multNodeThreeArrays(ptr noundef %56, ptr noundef %57, i32 noundef %58)
-  %call44 = call i32 (ptr, ...) @printf(ptr noundef @.str)
-  %call45 = call i32 @rand() #6
-  %rem46 = srem i32 %call45, 97
-  store i32 %rem46, ptr %randomDIndex, align 4
-  %59 = load ptr, ptr %arrayFive, align 8
-  %60 = load i32, ptr %randomIndex, align 4
-  %idxprom47 = sext i32 %60 to i64
-  %arrayidx48 = getelementptr inbounds %struct.nodeThree, ptr %59, i64 %idxprom47
-  %a49 = getelementptr inbounds %struct.nodeThree, ptr %arrayidx48, i32 0, i32 2
-  %61 = load i32, ptr %a49, align 8
-  %call50 = call i32 (ptr, ...) @printf(ptr noundef @.str.10, i32 noundef %61)
-  %62 = load ptr, ptr %arrayFive, align 8
-  %63 = load i32, ptr %randomIndex, align 4
-  %idxprom51 = sext i32 %63 to i64
-  %arrayidx52 = getelementptr inbounds %struct.nodeThree, ptr %62, i64 %idxprom51
-  %b53 = getelementptr inbounds %struct.nodeThree, ptr %arrayidx52, i32 0, i32 1
-  %64 = load double, ptr %b53, align 8
-  %call54 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %64)
-  %65 = load ptr, ptr %arrayFive, align 8
-  %66 = load i32, ptr %randomIndex, align 4
-  %idxprom55 = sext i32 %66 to i64
-  %arrayidx56 = getelementptr inbounds %struct.nodeThree, ptr %65, i64 %idxprom55
-  %c57 = getelementptr inbounds %struct.nodeThree, ptr %arrayidx56, i32 0, i32 3
-  %67 = load i32, ptr %c57, align 4
-  %call58 = call i32 (ptr, ...) @printf(ptr noundef @.str.7, i32 noundef %67)
-  %68 = load ptr, ptr %arrayFive, align 8
-  %69 = load i32, ptr %randomIndex, align 4
-  %idxprom59 = sext i32 %69 to i64
-  %arrayidx60 = getelementptr inbounds %struct.nodeThree, ptr %68, i64 %idxprom59
-  %d61 = getelementptr inbounds %struct.nodeThree, ptr %arrayidx60, i32 0, i32 0
-  %70 = load i32, ptr %randomDIndex, align 4
-  %idxprom62 = sext i32 %70 to i64
-  %arrayidx63 = getelementptr inbounds [96 x float], ptr %d61, i64 0, i64 %idxprom62
-  %71 = load float, ptr %arrayidx63, align 4
-  %conv64 = fpext float %71 to double
-  %call65 = call i32 (ptr, ...) @printf(ptr noundef @.str.11, double noundef %conv64)
+  call void @populateNodeThree(ptr noundef %57, i32 noundef %58)
+  %59 = load ptr, ptr %arraySix, align 8
+  %60 = load i32, ptr %n, align 4
+  call void @populateNodeThree(ptr noundef %59, i32 noundef %60)
+  %61 = load ptr, ptr %arrayFive, align 8
+  %62 = load i32, ptr %n, align 4
+  call void @multNodeThree(ptr noundef %61, i32 noundef %62)
+  %63 = load ptr, ptr %arrayFive, align 8
+  %64 = load ptr, ptr %arraySix, align 8
+  %65 = load i32, ptr %n, align 4
+  call void @multNodeThreeArrays(ptr noundef %63, ptr noundef %64, i32 noundef %65)
+  %call51 = call i32 (ptr, ...) @printf(ptr noundef @.str)
+  %call52 = call i32 @rand() #7
+  %rem53 = srem i32 %call52, 97
+  store i32 %rem53, ptr %randomDIndex, align 4
+  %66 = load ptr, ptr %arrayFive, align 8
+  %67 = load i32, ptr %randomIndex, align 4
+  %idxprom54 = sext i32 %67 to i64
+  %arrayidx55 = getelementptr inbounds %struct.nodeThree, ptr %66, i64 %idxprom54
+  %a56 = getelementptr inbounds %struct.nodeThree, ptr %arrayidx55, i32 0, i32 2
+  %68 = load i32, ptr %a56, align 8
+  %call57 = call i32 (ptr, ...) @printf(ptr noundef @.str.10, i32 noundef %68)
+  %69 = load ptr, ptr %arrayFive, align 8
+  %70 = load i32, ptr %randomIndex, align 4
+  %idxprom58 = sext i32 %70 to i64
+  %arrayidx59 = getelementptr inbounds %struct.nodeThree, ptr %69, i64 %idxprom58
+  %b60 = getelementptr inbounds %struct.nodeThree, ptr %arrayidx59, i32 0, i32 1
+  %71 = load double, ptr %b60, align 8
+  %call61 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %71)
   %72 = load ptr, ptr %arrayFive, align 8
-  call void @free(ptr noundef %72) #6
-  %73 = load ptr, ptr %arraySix, align 8
-  call void @free(ptr noundef %73) #6
-  %74 = load i32, ptr %n, align 4
-  %conv66 = sext i32 %74 to i64
-  %call67 = call noalias ptr @calloc(i64 noundef %conv66, i64 noundef 496) #7
-  store ptr %call67, ptr %arraySeven, align 8
-  %75 = load i32, ptr %n, align 4
-  %conv68 = sext i32 %75 to i64
-  %mul69 = mul i64 %conv68, 496
-  %call70 = call noalias ptr @malloc(i64 noundef %mul69) #8
-  store ptr %call70, ptr %arrayEight, align 8
-  %76 = load ptr, ptr %arraySeven, align 8
-  %77 = load i32, ptr %n, align 4
-  call void @populateNodeFour(ptr noundef %76, i32 noundef %77)
-  %78 = load ptr, ptr %arrayEight, align 8
-  %79 = load i32, ptr %n, align 4
-  call void @populateNodeFour(ptr noundef %78, i32 noundef %79)
-  %80 = load ptr, ptr %arraySeven, align 8
-  %81 = load ptr, ptr %arrayEight, align 8
+  %73 = load i32, ptr %randomIndex, align 4
+  %idxprom62 = sext i32 %73 to i64
+  %arrayidx63 = getelementptr inbounds %struct.nodeThree, ptr %72, i64 %idxprom62
+  %c64 = getelementptr inbounds %struct.nodeThree, ptr %arrayidx63, i32 0, i32 3
+  %74 = load i32, ptr %c64, align 4
+  %call65 = call i32 (ptr, ...) @printf(ptr noundef @.str.7, i32 noundef %74)
+  %75 = load ptr, ptr %arrayFive, align 8
+  %76 = load i32, ptr %randomIndex, align 4
+  %idxprom66 = sext i32 %76 to i64
+  %arrayidx67 = getelementptr inbounds %struct.nodeThree, ptr %75, i64 %idxprom66
+  %d68 = getelementptr inbounds %struct.nodeThree, ptr %arrayidx67, i32 0, i32 0
+  %77 = load i32, ptr %randomDIndex, align 4
+  %idxprom69 = sext i32 %77 to i64
+  %arrayidx70 = getelementptr inbounds [96 x float], ptr %d68, i64 0, i64 %idxprom69
+  %78 = load float, ptr %arrayidx70, align 4
+  %conv71 = fpext float %78 to double
+  %call72 = call i32 (ptr, ...) @printf(ptr noundef @.str.11, double noundef %conv71)
+  %79 = load ptr, ptr %arrayFive, align 8
+  call void @free(ptr noundef %79) #7
+  %80 = load ptr, ptr %arraySix, align 8
+  call void @free(ptr noundef %80) #7
+  %81 = load i32, ptr %n, align 4
+  %conv73 = sext i32 %81 to i64
+  %call74 = call noalias ptr @calloc(i64 noundef %conv73, i64 noundef 496) #9
+  store ptr %call74, ptr %arraySeven, align 8
   %82 = load i32, ptr %n, align 4
-  call void @multNodeFourArrays(ptr noundef %80, ptr noundef %81, i32 noundef %82)
-  %call71 = call i32 (ptr, ...) @printf(ptr noundef @.str)
+  %conv75 = sext i32 %82 to i64
+  %mul76 = mul i64 %conv75, 496
+  %call77 = call noalias ptr @malloc(i64 noundef %mul76) #10
+  store ptr %call77, ptr %arrayEight, align 8
   %83 = load ptr, ptr %arraySeven, align 8
-  %84 = load i32, ptr %randomIndex, align 4
-  %idxprom72 = sext i32 %84 to i64
-  %arrayidx73 = getelementptr inbounds %struct.nodeFour, ptr %83, i64 %idxprom72
-  %a74 = getelementptr inbounds %struct.nodeFour, ptr %arrayidx73, i32 0, i32 2
-  %arrayidx75 = getelementptr inbounds [11 x i32], ptr %a74, i64 0, i64 3
-  %85 = load i32, ptr %arrayidx75, align 4
-  %call76 = call i32 (ptr, ...) @printf(ptr noundef @.str.1, i32 noundef %85)
-  %86 = load ptr, ptr %arraySeven, align 8
-  %87 = load i32, ptr %randomIndex, align 4
-  %idxprom77 = sext i32 %87 to i64
-  %arrayidx78 = getelementptr inbounds %struct.nodeFour, ptr %86, i64 %idxprom77
-  %b79 = getelementptr inbounds %struct.nodeFour, ptr %arrayidx78, i32 0, i32 0
-  %arrayidx80 = getelementptr inbounds [111 x float], ptr %b79, i64 0, i64 57
-  %88 = load float, ptr %arrayidx80, align 4
-  %conv81 = fpext float %88 to double
-  %call82 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %conv81)
-  %89 = load ptr, ptr %arraySeven, align 8
-  %90 = load i32, ptr %randomIndex, align 4
-  %idxprom83 = sext i32 %90 to i64
-  %arrayidx84 = getelementptr inbounds %struct.nodeFour, ptr %89, i64 %idxprom83
-  %c85 = getelementptr inbounds %struct.nodeFour, ptr %arrayidx84, i32 0, i32 1
-  %arrayidx86 = getelementptr inbounds [4 x i8], ptr %c85, i64 0, i64 1
-  %91 = load i8, ptr %arrayidx86, align 1
-  %conv87 = sext i8 %91 to i32
-  %call88 = call i32 (ptr, ...) @printf(ptr noundef @.str.3, i32 noundef %conv87)
-  %92 = load ptr, ptr %arraySeven, align 8
-  %93 = load i32, ptr %randomIndex, align 4
-  %idxprom89 = sext i32 %93 to i64
-  %arrayidx90 = getelementptr inbounds %struct.nodeFour, ptr %92, i64 %idxprom89
-  %d91 = getelementptr inbounds %struct.nodeFour, ptr %arrayidx90, i32 0, i32 3
-  %arrayidx92 = getelementptr inbounds [1 x i32], ptr %d91, i64 0, i64 0
-  %94 = load i32, ptr %arrayidx92, align 4
-  %call93 = call i32 (ptr, ...) @printf(ptr noundef @.str.8, i32 noundef %94)
-  %95 = load ptr, ptr %arraySeven, align 8
-  call void @free(ptr noundef %95) #6
-  %96 = load ptr, ptr %arrayEight, align 8
-  call void @free(ptr noundef %96) #6
+  %84 = load i32, ptr %n, align 4
+  call void @populateNodeFour(ptr noundef %83, i32 noundef %84)
+  %85 = load ptr, ptr %arrayEight, align 8
+  %86 = load i32, ptr %n, align 4
+  call void @populateNodeFour(ptr noundef %85, i32 noundef %86)
+  %87 = load ptr, ptr %arraySeven, align 8
+  %88 = load ptr, ptr %arrayEight, align 8
+  %89 = load i32, ptr %n, align 4
+  call void @multNodeFourArrays(ptr noundef %87, ptr noundef %88, i32 noundef %89)
+  %call78 = call i32 (ptr, ...) @printf(ptr noundef @.str)
+  %90 = load ptr, ptr %arraySeven, align 8
+  %91 = load i32, ptr %randomIndex, align 4
+  %idxprom79 = sext i32 %91 to i64
+  %arrayidx80 = getelementptr inbounds %struct.nodeFour, ptr %90, i64 %idxprom79
+  %a81 = getelementptr inbounds %struct.nodeFour, ptr %arrayidx80, i32 0, i32 2
+  %arrayidx82 = getelementptr inbounds [11 x i32], ptr %a81, i64 0, i64 3
+  %92 = load i32, ptr %arrayidx82, align 4
+  %call83 = call i32 (ptr, ...) @printf(ptr noundef @.str.1, i32 noundef %92)
+  %93 = load ptr, ptr %arraySeven, align 8
+  %94 = load i32, ptr %randomIndex, align 4
+  %idxprom84 = sext i32 %94 to i64
+  %arrayidx85 = getelementptr inbounds %struct.nodeFour, ptr %93, i64 %idxprom84
+  %b86 = getelementptr inbounds %struct.nodeFour, ptr %arrayidx85, i32 0, i32 0
+  %arrayidx87 = getelementptr inbounds [111 x float], ptr %b86, i64 0, i64 57
+  %95 = load float, ptr %arrayidx87, align 4
+  %conv88 = fpext float %95 to double
+  %call89 = call i32 (ptr, ...) @printf(ptr noundef @.str.2, double noundef %conv88)
+  %96 = load ptr, ptr %arraySeven, align 8
+  %97 = load i32, ptr %randomIndex, align 4
+  %idxprom90 = sext i32 %97 to i64
+  %arrayidx91 = getelementptr inbounds %struct.nodeFour, ptr %96, i64 %idxprom90
+  %c92 = getelementptr inbounds %struct.nodeFour, ptr %arrayidx91, i32 0, i32 1
+  %arrayidx93 = getelementptr inbounds [4 x i8], ptr %c92, i64 0, i64 1
+  %98 = load i8, ptr %arrayidx93, align 1
+  %conv94 = sext i8 %98 to i32
+  %call95 = call i32 (ptr, ...) @printf(ptr noundef @.str.3, i32 noundef %conv94)
+  %99 = load ptr, ptr %arraySeven, align 8
+  %100 = load i32, ptr %randomIndex, align 4
+  %idxprom96 = sext i32 %100 to i64
+  %arrayidx97 = getelementptr inbounds %struct.nodeFour, ptr %99, i64 %idxprom96
+  %d98 = getelementptr inbounds %struct.nodeFour, ptr %arrayidx97, i32 0, i32 3
+  %arrayidx99 = getelementptr inbounds [1 x i32], ptr %d98, i64 0, i64 0
+  %101 = load i32, ptr %arrayidx99, align 4
+  %call100 = call i32 (ptr, ...) @printf(ptr noundef @.str.8, i32 noundef %101)
+  %102 = load ptr, ptr %arraySeven, align 8
+  call void @free(ptr noundef %102) #7
+  %103 = load ptr, ptr %arrayEight, align 8
+  call void @free(ptr noundef %103) #7
   ret i32 0
 }
 
+; Function Attrs: nounwind willreturn memory(read)
+declare dso_local i32 @atoi(ptr noundef) #3
+
 ; Function Attrs: nounwind allocsize(0,1)
-declare noalias ptr @calloc(i64 noundef, i64 noundef) #3
+declare dso_local noalias ptr @calloc(i64 noundef, i64 noundef) #4
 
 ; Function Attrs: nounwind allocsize(0)
-declare noalias ptr @malloc(i64 noundef) #4
+declare dso_local noalias ptr @malloc(i64 noundef) #5
 
-declare i32 @printf(ptr noundef, ...) #5
+declare dso_local i32 @printf(ptr noundef, ...) #6
 
 ; Function Attrs: nounwind
-declare void @free(ptr noundef) #1
+declare dso_local void @free(ptr noundef) #1
 
-attributes #0 = { noinline nounwind optnone uwtable "frame-pointer"="all" "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #1 = { nounwind "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #0 = { noinline nounwind optnone uwtable "frame-pointer"="all" "min-legal-vector-width"="0" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #1 = { nounwind "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
 attributes #2 = { nocallback nofree nosync nounwind speculatable willreturn memory(none) }
-attributes #3 = { nounwind allocsize(0,1) "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #4 = { nounwind allocsize(0) "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #5 = { "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cmov,+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
-attributes #6 = { nounwind }
-attributes #7 = { nounwind allocsize(0,1) }
-attributes #8 = { nounwind allocsize(0) }
+attributes #3 = { nounwind willreturn memory(read) "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #4 = { nounwind allocsize(0,1) "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #5 = { nounwind allocsize(0) "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #6 = { "frame-pointer"="all" "no-trapping-math"="true" "stack-protector-buffer-size"="8" "target-cpu"="x86-64" "target-features"="+cx8,+fxsr,+mmx,+sse,+sse2,+x87" "tune-cpu"="generic" }
+attributes #7 = { nounwind }
+attributes #8 = { nounwind willreturn memory(read) }
+attributes #9 = { nounwind allocsize(0,1) }
+attributes #10 = { nounwind allocsize(0) }
 
-!llvm.module.flags = !{!0, !1, !2, !3, !4}
-!llvm.ident = !{!5}
+!llvm.module.flags = !{!0, !1, !2}
+!llvm.ident = !{!3}
 
 !0 = !{i32 1, !"wchar_size", i32 4}
-!1 = !{i32 8, !"PIC Level", i32 2}
-!2 = !{i32 7, !"PIE Level", i32 2}
-!3 = !{i32 7, !"uwtable", i32 2}
-!4 = !{i32 7, !"frame-pointer", i32 2}
-!5 = !{!"clang version 18.0.0 (https://github.com/llvm/llvm-project.git 893416051d517d979481510fe3b52d83ba0d1e01)"}
-!6 = distinct !{!6, !7}
-!7 = !{!"llvm.loop.mustprogress"}
-!8 = distinct !{!8, !7}
-!9 = distinct !{!9, !7}
-!10 = distinct !{!10, !7}
-!11 = distinct !{!11, !7}
-!12 = distinct !{!12, !7}
-!13 = distinct !{!13, !7}
-!14 = distinct !{!14, !7}
-!15 = distinct !{!15, !7}
-!16 = distinct !{!16, !7}
-!17 = distinct !{!17, !7}
-!18 = distinct !{!18, !7}
-!19 = distinct !{!19, !7}
-!20 = distinct !{!20, !7}
-!21 = distinct !{!21, !7}
-!22 = distinct !{!22, !7}
-!23 = distinct !{!23, !7}
-!24 = distinct !{!24, !7}
-!25 = distinct !{!25, !7}
-!26 = distinct !{!26, !7}
-!27 = distinct !{!27, !7}
-!28 = distinct !{!28, !7}
-!29 = distinct !{!29, !7}
+!1 = !{i32 7, !"uwtable", i32 2}
+!2 = !{i32 7, !"frame-pointer", i32 2}
+!3 = !{!"clang version 16.0.6 (Red Hat 16.0.6-2.module+el8.9.0+1651+e10a8f6d)"}
+!4 = distinct !{!4, !5}
+!5 = !{!"llvm.loop.mustprogress"}
+!6 = distinct !{!6, !5}
+!7 = distinct !{!7, !5}
+!8 = distinct !{!8, !5}
+!9 = distinct !{!9, !5}
+!10 = distinct !{!10, !5}
+!11 = distinct !{!11, !5}
+!12 = distinct !{!12, !5}
+!13 = distinct !{!13, !5}
+!14 = distinct !{!14, !5}
+!15 = distinct !{!15, !5}
+!16 = distinct !{!16, !5}
+!17 = distinct !{!17, !5}
+!18 = distinct !{!18, !5}
+!19 = distinct !{!19, !5}
+!20 = distinct !{!20, !5}
+!21 = distinct !{!21, !5}
+!22 = distinct !{!22, !5}
+!23 = distinct !{!23, !5}
+!24 = distinct !{!24, !5}
+!25 = distinct !{!25, !5}
+!26 = distinct !{!26, !5}
+!27 = distinct !{!27, !5}

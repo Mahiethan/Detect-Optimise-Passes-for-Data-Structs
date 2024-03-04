@@ -27,7 +27,7 @@ void populateNodeOne(struct nodeOne* array, int size)
 
 void multNodeOne(struct nodeOne* array, int size)
 {
-    for(int j = 0; j < 1000000; j++)
+    for(int j = 0; j < 100000; j++)
     {
         float random = (float)rand()/(float)(RAND_MAX/5.0); //generate same 'random' number for each run
         for(int i = 0; i < size; i++)
@@ -40,7 +40,7 @@ void multNodeOne(struct nodeOne* array, int size)
 
 void multNodeOneArrays(struct nodeOne* arrayOne, struct nodeOne* arrayTwo, int size)
 {
-    for(int j = 0; j < 1000000; j++)
+    for(int j = 0; j < 100000; j++)
     {
         for(int i = 0; i < size; i++)
         {
@@ -79,7 +79,7 @@ void populateNodeTwo(struct nodeTwo* array, int size)
 
 void multNodeTwo(struct nodeTwo* array, int size)
 {
-    for(int j = 0; j < 1000000; j++)
+    for(int j = 0; j < 100000; j++)
     {
         float random = (float)rand()/(float)(RAND_MAX/5.0); //generate same 'random' number for each run
         for(int i = 0; i < size; i++)
@@ -92,7 +92,7 @@ void multNodeTwo(struct nodeTwo* array, int size)
 
 void multNodeTwoArrays(struct nodeTwo* arrayOne, struct nodeTwo* arrayTwo, int size)
 {
-    for(int j = 0; j < 1000000; j++)
+    for(int j = 0; j < 100000; j++)
     {
         char randomletter = 'A' + (random() % 26);
         for(int i = 0; i < size; i++)
@@ -135,7 +135,7 @@ void populateNodeThree(struct nodeThree* array, int size)
 
 void multNodeThree(struct nodeThree* array, int size)
 {
-    for(int j = 0; j < 1000000; j++)
+    for(int j = 0; j < 100000; j++)
     {
         float random = (float)rand()/(float)(RAND_MAX/5.0); //generate same 'random' number for each run
         for(int i = 0; i < size; i++)
@@ -150,7 +150,7 @@ void multNodeThreeArrays(struct nodeThree* arrayOne, struct nodeThree* arrayTwo,
 {
     for(int i = 0; i < size; i++)
     {
-        for(int k = 0; k < 97; k++)
+        for(int k = 0; k < 96; k++)
         {
             arrayOne[i].d[k] += arrayTwo[i].d[k];
         }
@@ -213,96 +213,111 @@ void multNodeFourArrays(struct nodeFour* arrayOne, struct nodeFour* arrayTwo, in
 }
 
 
-int main()
+int main(int argc, char *argv[])
 {
-    int n = 1000; //size of all AoS - change this for testing
+    int n = atoi(argv[1]); //size of all AoS - change this for testing
     int randomIndex = rand() % n;
+    // int randomIteration = rand() % 100000;
 
+    // for(int loop = 0; loop < 10000; loop++)
+    // {
     // normal Struct
 
-    struct nodeOne* arrayOne = (struct nodeOne*) calloc(n,sizeof(struct nodeOne));
-    struct nodeOne* arrayTwo = (struct nodeOne*) malloc(n*sizeof(struct nodeOne));
+        struct nodeOne* arrayOne = (struct nodeOne*) calloc(n,sizeof(struct nodeOne));
+        struct nodeOne* arrayTwo = (struct nodeOne*) malloc(n*sizeof(struct nodeOne));
 
-    populateNodeOne(arrayOne,n);
-    populateNodeOne(arrayTwo,n);
+        populateNodeOne(arrayOne,n);
+        populateNodeOne(arrayTwo,n);
 
-    multNodeOne(arrayOne,n);
-    multNodeOneArrays(arrayOne,arrayTwo,n);
+        multNodeOne(arrayOne,n);
+        multNodeOneArrays(arrayOne,arrayTwo,n);
 
-    printf("Validity check\n");
+        // if(loop == randomIteration)
+        // {
+            printf("Validity check\n");
+            printf("a: %d\n---\n",arrayOne[randomIndex].a);
+            printf("b: %f\n---\n",arrayOne[randomIndex].b);
+            printf("c: %c\n---\n",arrayOne[randomIndex].c);
+            printf("d: %c\n---\n",arrayOne[randomIndex].d);
+        // }
 
-    printf("a: %d\n---\n",arrayOne[randomIndex].a);
-    printf("b: %f\n---\n",arrayOne[randomIndex].b);
-    printf("c: %c\n---\n",arrayOne[randomIndex].c);
-    printf("d: %c\n---\n",arrayOne[randomIndex].d);
+        free(arrayOne); 
+        free(arrayTwo);
+        
+        // struct containing bitfield
 
-    free(arrayOne); 
-    free(arrayTwo);
-    
-    // struct containing bitfield
+        struct nodeTwo* arrayThree = (struct nodeTwo*) malloc(n*sizeof(struct nodeTwo));
+        struct nodeTwo* arrayFour = (struct nodeTwo*) malloc(n*sizeof(struct nodeTwo));
 
-    struct nodeTwo* arrayThree = (struct nodeTwo*) malloc(n*sizeof(struct nodeTwo));
-    struct nodeTwo* arrayFour = (struct nodeTwo*) malloc(n*sizeof(struct nodeTwo));
+        populateNodeTwo(arrayThree,n);
+        populateNodeTwo(arrayFour,n);
 
-    populateNodeTwo(arrayThree,n);
-    populateNodeTwo(arrayFour,n);
+        multNodeTwo(arrayThree,n);
+        multNodeTwoArrays(arrayThree,arrayFour,n);
 
-    multNodeTwo(arrayThree,n);
-    multNodeTwoArrays(arrayThree,arrayFour,n);
+        // if(loop == randomIteration)
+        // {
+            printf("Validity check\n");
 
-    printf("Validity check\n");
+            printf("a: %f\n---\n",arrayThree[randomIndex].a);
+            printf("b: %lld\n---\n",arrayThree[randomIndex].b);
+            printf("c: %d\n---\n",arrayThree[randomIndex].c);
+            printf("d: %d\n---\n",arrayThree[randomIndex].d);
+            printf("e: %c\n---\n",arrayThree[randomIndex].e);
+        // }
 
-    printf("a: %f\n---\n",arrayThree[10].a);
-    printf("b: %lld\n---\n",arrayThree[10].b);
-    printf("c: %d\n---\n",arrayThree[10].c);
-    printf("d: %d\n---\n",arrayThree[10].d);
-    printf("e: %c\n---\n",arrayThree[10].e);
+        free(arrayThree); 
+        free(arrayFour);
 
-    free(arrayThree); 
-    free(arrayFour);
+        //struct containing arrays
 
-    //struct containing arrays
+        struct nodeThree* arrayFive = (struct nodeThree*) calloc(n,sizeof(struct nodeThree));
+        struct nodeThree* arraySix = (struct nodeThree*) malloc(n*sizeof(struct nodeThree));
 
-    struct nodeThree* arrayFive = (struct nodeThree*) calloc(n,sizeof(struct nodeThree));
-    struct nodeThree* arraySix = (struct nodeThree*) malloc(n*sizeof(struct nodeThree));
+        populateNodeThree(arrayFive,n);
+        populateNodeThree(arraySix,n);
 
-    populateNodeThree(arrayFive,n);
-    populateNodeThree(arraySix,n);
+        multNodeThree(arrayFive,n);
+        multNodeThreeArrays(arrayFive,arraySix,n);
 
-    multNodeThree(arrayFive,n);
-    multNodeThreeArrays(arrayFive,arraySix,n);
+        // if(loop == randomIteration)
+        // {
 
-    printf("Validity check\n");
+            printf("Validity check\n");
 
-    int randomDIndex = rand() % 97;
+            int randomDIndex = rand() % 97;
 
-    printf("a: %c\n---\n",arrayFive[randomIndex].a);
-    printf("b: %f\n---\n",arrayFive[randomIndex].b);
-    printf("c: %d\n---\n",arrayFive[randomIndex].c);
-    printf("d: %f\n---\n",arrayFive[randomIndex].d[randomDIndex]);
+            printf("a: %c\n---\n",arrayFive[randomIndex].a);
+            printf("b: %f\n---\n",arrayFive[randomIndex].b);
+            printf("c: %d\n---\n",arrayFive[randomIndex].c);
+            printf("d: %f\n---\n",arrayFive[randomIndex].d[randomDIndex]);
 
-    free(arrayFive); 
-    free(arraySix);
+            free(arrayFive); 
+            free(arraySix);
+        // }
 
-    //AoSoA
+        //AoSoA
 
-    struct nodeFour* arraySeven = (struct nodeFour*) calloc(n,sizeof(struct nodeFour));
-    struct nodeFour* arrayEight = (struct nodeFour*) malloc(n*sizeof(struct nodeFour));
+        struct nodeFour* arraySeven = (struct nodeFour*) calloc(n,sizeof(struct nodeFour));
+        struct nodeFour* arrayEight = (struct nodeFour*) malloc(n*sizeof(struct nodeFour));
 
-    populateNodeFour(arraySeven,n);
-    populateNodeFour(arrayEight,n);
+        populateNodeFour(arraySeven,n);
+        populateNodeFour(arrayEight,n);
 
-    multNodeFourArrays(arraySeven,arrayEight,n);
+        multNodeFourArrays(arraySeven,arrayEight,n);
 
-    printf("Validity check\n");
+        // if(loop == randomIteration)
+        // {
+            printf("Validity check\n");
 
-    printf("a: %d\n---\n",arraySeven[randomIndex].a[3]);
-    printf("b: %f\n---\n",arraySeven[randomIndex].b[57]);
-    printf("c: %c\n---\n",arraySeven[randomIndex].c[1]);
-    printf("d: %d\n---\n",arraySeven[randomIndex].d[0]);
+            printf("a: %d\n---\n",arraySeven[randomIndex].a[3]);
+            printf("b: %f\n---\n",arraySeven[randomIndex].b[57]);
+            printf("c: %c\n---\n",arraySeven[randomIndex].c[1]);
+            printf("d: %d\n---\n",arraySeven[randomIndex].d[0]);
+        // }
 
-    free(arraySeven); 
-    free(arrayEight);
-
+        free(arraySeven); 
+        free(arrayEight);
+    //}
     return 0;
 }
