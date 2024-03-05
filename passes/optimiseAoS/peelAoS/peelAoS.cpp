@@ -77,12 +77,14 @@ struct peelAoS : public PassInfoMixin<peelAoS> {
             Value* aos = get<0>(confirmed.at(i));
             Function* origFunc = get<1>(confirmed.at(i));
             bool isStatic = false;
+            bool isGlobal = false;
             if(get<2>(confirmed.at(i)) == "static")
               isStatic = true;
+            isGlobal = isa<GlobalValue>(aos);
             bool isParam = get<4>(confirmed.at(i));
             bool hasPointerElem = get<5>(confirmed.at(i));
 
-            if(!isParam & !hasPointerElem & isStatic & (TD->getStructLayout(structure)->getSizeInBytes() > 8)) //only optimise structs that have a size greater than a word length (8 bytes)
+            if(!isParam & !hasPointerElem & (isStatic | isGlobal) & (TD->getStructLayout(structure)->getSizeInBytes() > 8)) //only optimise structs that have a size greater than a word length (8 bytes)
             {
               if(structure == nullptr) //should not occur
               {
