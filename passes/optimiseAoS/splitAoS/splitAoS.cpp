@@ -565,6 +565,27 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           continue;
         }
 
+        for(int j = 0; j < coldIndices.size(); j++)
+        {
+          totalColdFieldAccesses += elems.at(coldIndices.at(j).first);
+        }
+
+        errs()<<"Total cold field accesses: "<<totalColdFieldAccesses<<"\n";
+
+        if(totalColdFieldAccesses == 0.0)
+        {
+          errs()<<"No structure splitting required for this struct: cold fields are not accessed.\n";
+          for(auto it = aosValues.begin(); it != aosValues.end(); it)
+          {
+            StructType* structToRemove = get<1>(*it);
+            if(structToRemove == currStruct)
+              aosValues.erase(it);
+            else
+              it++;
+          }
+          continue;
+        }
+
         //// create new hot and cold structs
         //// for hot struct, replace fields of current struct, keeping the same struct name, and add a new ptr field to the cold struct
         //// for cold struct, create new struct with the cold fields, with new struct name
@@ -664,23 +685,6 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         for(int j = 0; j < coldIndices.size(); j++)
         {
           errs()<<"Old index: "<<coldIndices.at(j).first<<" --> New index: "<<coldIndices.at(j).second<<"\n";
-          totalColdFieldAccesses += elems.at(coldIndices.at(j).first);
-        }
-
-        errs()<<"Total cold field accesses: "<<totalColdFieldAccesses<<"\n";
-
-        if(totalColdFieldAccesses == 0.0)
-        {
-          errs()<<"No structure splitting required for this struct: cold fields are not accessed.\n";
-          for(auto it = aosValues.begin(); it != aosValues.end(); it)
-          {
-            StructType* structToRemove = get<1>(*it);
-            if(structToRemove == currStruct)
-              aosValues.erase(it);
-            else
-              it++;
-          }
-          continue;
         }
 
         // //change GEP

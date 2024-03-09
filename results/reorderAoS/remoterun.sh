@@ -5,6 +5,8 @@
 #Any further parameters should be the ones required by the executable itself,
 #  as these will get passed to the program when ran by the compute node.
 
+ulimit -s 99999 # set stack size to maximum limit
+
 if [ $# -lt 1 ]; then
 	echo "Please provide a path to the executable you want to run"
 	exit 1
@@ -28,9 +30,9 @@ echo "#!/bin/sh
 #SBATCH --job-name=$( whoami )-$1
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=16G
-#SBATCH --time=2:00:00
-#SBATCH --output=./orderedResults/Size250000/output_%j.out
-#SBATCH --error=./orderedResults/Size250000/error_%j.err
+#SBATCH --time=1-00:00:00
+#SBATCH --output=./orderedResults/Size1000000/output_%j.out
+#SBATCH --error=./orderedResults/Size1000000/error_%j.err
 echo ===== ENVIRONMENT =====
 
 lscpu

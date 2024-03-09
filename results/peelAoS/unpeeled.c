@@ -18,8 +18,8 @@ struct nodeOneOld
     float j;
 };
 
-struct nodeOneOld arrayOneOld[10000];
-struct nodeOneOld arrayTwoOld[10000];
+struct nodeOneOld arrayOneOld[1000000];
+struct nodeOneOld arrayTwoOld[1000000];
 
 void populateNodeOneOld(int size)
 {

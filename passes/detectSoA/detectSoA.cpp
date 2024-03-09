@@ -2047,7 +2047,26 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
           }
           else
           {
-            errs()<<" - global "<<type<<" SoA\n";
+            errs()<<" - global "<<type<<" SoA";
+
+            if(structure != nullptr)
+            {
+              struct_str = structure->getName();
+              errs()<<" with element: "<<struct_str<<"\n";
+            }
+            else
+            {
+              errs()<<" with undefined element"<<"\n";
+            }
+
+            if(isParam == true)
+            {
+              errs()<<" - used as function argument\n";
+            }
+            if(hasPointerElem == true)
+            {
+              errs()<<" - uses struct that contains a pointer field\n";
+            }
           }
           errs()<<"\n";
         }
