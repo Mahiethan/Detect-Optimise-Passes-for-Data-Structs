@@ -3,7 +3,7 @@
 
 struct nodeOneOld
 {
-    double f[67];
+    double f[2];
     double b;
     double g;
     double h;
