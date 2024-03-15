@@ -37,11 +37,11 @@ void populateNodeOneOld(int size)
         arrayTwoOld[i].a = 1;
         arrayTwoOld[i].b = 10.0;
         arrayTwoOld[i].c = 9;
-        arrayTwoOld[i].d = 23.0;
-        arrayTwoOld[i].e = 'a';
-        for(int j = 0; j < 67; j++)
-            arrayTwoOld[i].f[j] = 23.0;
-        arrayTwoOld[i].g = 23.0;
+        // arrayTwoOld[i].d = 23.0;
+        // arrayTwoOld[i].e = 'a';
+        // for(int j = 0; j < 67; j++)
+        //     arrayTwoOld[i].f[j] = 23.0;
+        // arrayTwoOld[i].g = 23.0;
     }
 }
 

@@ -131,13 +131,13 @@ int main(int argc, char *argv[])
     printf("\na: ---\n%d",arrayOne[i].a);
     printf("\nb: ---\n%f",arrayOne[i].b);
     printf("\nc: ---\n%d",arrayOne[i].c);
-    // printf("\nd: ---\n%lld",arrayOne[i].d);
-    // printf("\ne: ---\n%d",arrayOne[i].e);
-    // // printf("\nf: ---\n%f",arrayOneOld[i].f[j]);
-    // printf("\ng: ---\n%f",arrayOne[i].g);
-    // printf("\nh: ---\n%f",arrayOne[i].h);
-    // printf("\ni: ---\n%f",arrayOne[i].i);
-    // printf("\nj: ---\n%f\n",arrayOneOld[i].j[2]);
+    printf("\nd: ---\n%lld",arrayOne[i].d);
+    printf("\ne: ---\n%d",arrayOne[i].e);
+    // printf("\nf: ---\n%f",arrayOneOld[i].f[j]);
+    printf("\ng: ---\n%f",arrayOne[i].g);
+    printf("\nh: ---\n%f",arrayOne[i].h);
+    printf("\ni: ---\n%f",arrayOne[i].i);
+    // printf("\nj: ---\n%f\n",arrayOne[i].j[2]);
 
     free(arrayOne);
     free(arrayTwo);

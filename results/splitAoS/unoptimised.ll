@@ -9,6 +9,11 @@ target triple = "x86_64-redhat-linux-gnu"
 @.str.1 = private unnamed_addr constant [11 x i8] c"\0Aa: ---\0A%d\00", align 1
 @.str.2 = private unnamed_addr constant [11 x i8] c"\0Ab: ---\0A%f\00", align 1
 @.str.3 = private unnamed_addr constant [11 x i8] c"\0Ac: ---\0A%d\00", align 1
+@.str.4 = private unnamed_addr constant [13 x i8] c"\0Ad: ---\0A%lld\00", align 1
+@.str.5 = private unnamed_addr constant [11 x i8] c"\0Ae: ---\0A%d\00", align 1
+@.str.6 = private unnamed_addr constant [11 x i8] c"\0Ag: ---\0A%f\00", align 1
+@.str.7 = private unnamed_addr constant [11 x i8] c"\0Ah: ---\0A%f\00", align 1
+@.str.8 = private unnamed_addr constant [11 x i8] c"\0Ai: ---\0A%f\00", align 1
 
 ; Function Attrs: noinline nounwind optnone uwtable
 define dso_local void @populateNodeOne(ptr noundef %arrayOne, ptr noundef %arrayTwo, i32 noundef %size) #0 {
@@ -415,9 +420,46 @@ entry:
   %33 = load i32, ptr %c33, align 8
   %call34 = call i32 (ptr, ...) @printf(ptr noundef @.str.3, i32 noundef %33)
   %34 = load ptr, ptr %arrayOne, align 8
-  call void @free(ptr noundef %34) #8
-  %35 = load ptr, ptr %arrayTwo, align 8
-  call void @free(ptr noundef %35) #8
+  %35 = load i32, ptr %i, align 4
+  %idxprom35 = sext i32 %35 to i64
+  %arrayidx36 = getelementptr inbounds %struct.nodeOneOld, ptr %34, i64 %idxprom35
+  %d = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx36, i32 0, i32 4
+  %bf.load = load i48, ptr %d, align 8
+  %bf.cast = sext i48 %bf.load to i64
+  %call37 = call i32 (ptr, ...) @printf(ptr noundef @.str.4, i64 noundef %bf.cast)
+  %36 = load ptr, ptr %arrayOne, align 8
+  %37 = load i32, ptr %i, align 4
+  %idxprom38 = sext i32 %37 to i64
+  %arrayidx39 = getelementptr inbounds %struct.nodeOneOld, ptr %36, i64 %idxprom38
+  %e = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx39, i32 0, i32 5
+  %38 = load i8, ptr %e, align 2
+  %conv40 = sext i8 %38 to i32
+  %call41 = call i32 (ptr, ...) @printf(ptr noundef @.str.5, i32 noundef %conv40)
+  %39 = load ptr, ptr %arrayOne, align 8
+  %40 = load i32, ptr %i, align 4
+  %idxprom42 = sext i32 %40 to i64
+  %arrayidx43 = getelementptr inbounds %struct.nodeOneOld, ptr %39, i64 %idxprom42
+  %g = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx43, i32 0, i32 7
+  %41 = load double, ptr %g, align 8
+  %call44 = call i32 (ptr, ...) @printf(ptr noundef @.str.6, double noundef %41)
+  %42 = load ptr, ptr %arrayOne, align 8
+  %43 = load i32, ptr %i, align 4
+  %idxprom45 = sext i32 %43 to i64
+  %arrayidx46 = getelementptr inbounds %struct.nodeOneOld, ptr %42, i64 %idxprom45
+  %h = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx46, i32 0, i32 8
+  %44 = load double, ptr %h, align 8
+  %call47 = call i32 (ptr, ...) @printf(ptr noundef @.str.7, double noundef %44)
+  %45 = load ptr, ptr %arrayOne, align 8
+  %46 = load i32, ptr %i, align 4
+  %idxprom48 = sext i32 %46 to i64
+  %arrayidx49 = getelementptr inbounds %struct.nodeOneOld, ptr %45, i64 %idxprom48
+  %i50 = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx49, i32 0, i32 9
+  %47 = load double, ptr %i50, align 8
+  %call51 = call i32 (ptr, ...) @printf(ptr noundef @.str.8, double noundef %47)
+  %48 = load ptr, ptr %arrayOne, align 8
+  call void @free(ptr noundef %48) #8
+  %49 = load ptr, ptr %arrayTwo, align 8
+  call void @free(ptr noundef %49) #8
   ret i32 0
 }
 

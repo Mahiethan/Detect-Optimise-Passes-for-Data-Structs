@@ -23,16 +23,15 @@ entry:
   %size.addr = alloca i32, align 4
   %i = alloca i32, align 4
   %j = alloca i32, align 4
-  %j33 = alloca i32, align 4
   store i32 %size, ptr %size.addr, align 4
   store i32 0, ptr %i, align 4
   br label %for.cond
 
-for.cond:                                         ; preds = %for.inc48, %entry
+for.cond:                                         ; preds = %for.inc27, %entry
   %0 = load i32, ptr %i, align 4
   %1 = load i32, ptr %size.addr, align 4
   %cmp = icmp slt i32 %0, %1
-  br i1 %cmp, label %for.body, label %for.end50
+  br i1 %cmp, label %for.body, label %for.end29
 
 for.body:                                         ; preds = %for.cond
   %2 = load i32, ptr %i, align 4
@@ -106,56 +105,15 @@ for.end:                                          ; preds = %for.cond9
   %arrayidx25 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayTwoOld, i64 0, i64 %idxprom24
   %c26 = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx25, i32 0, i32 2
   store i32 9, ptr %c26, align 8
+  br label %for.inc27
+
+for.inc27:                                        ; preds = %for.end
   %15 = load i32, ptr %i, align 4
-  %idxprom27 = sext i32 %15 to i64
-  %arrayidx28 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayTwoOld, i64 0, i64 %idxprom27
-  %d29 = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx28, i32 0, i32 4
-  store i48 23, ptr %d29, align 8
-  %16 = load i32, ptr %i, align 4
-  %idxprom30 = sext i32 %16 to i64
-  %arrayidx31 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayTwoOld, i64 0, i64 %idxprom30
-  %e32 = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx31, i32 0, i32 5
-  store i8 97, ptr %e32, align 2
-  store i32 0, ptr %j33, align 4
-  br label %for.cond34
+  %inc28 = add nsw i32 %15, 1
+  store i32 %inc28, ptr %i, align 4
+  br label %for.cond, !llvm.loop !6
 
-for.cond34:                                       ; preds = %for.inc42, %for.end
-  %17 = load i32, ptr %j33, align 4
-  %cmp35 = icmp slt i32 %17, 67
-  br i1 %cmp35, label %for.body36, label %for.end44
-
-for.body36:                                       ; preds = %for.cond34
-  %18 = load i32, ptr %i, align 4
-  %idxprom37 = sext i32 %18 to i64
-  %arrayidx38 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayTwoOld, i64 0, i64 %idxprom37
-  %f39 = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx38, i32 0, i32 6
-  %19 = load i32, ptr %j33, align 4
-  %idxprom40 = sext i32 %19 to i64
-  %arrayidx41 = getelementptr inbounds [67 x double], ptr %f39, i64 0, i64 %idxprom40
-  store double 2.300000e+01, ptr %arrayidx41, align 8
-  br label %for.inc42
-
-for.inc42:                                        ; preds = %for.body36
-  %20 = load i32, ptr %j33, align 4
-  %inc43 = add nsw i32 %20, 1
-  store i32 %inc43, ptr %j33, align 4
-  br label %for.cond34, !llvm.loop !6
-
-for.end44:                                        ; preds = %for.cond34
-  %21 = load i32, ptr %i, align 4
-  %idxprom45 = sext i32 %21 to i64
-  %arrayidx46 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayTwoOld, i64 0, i64 %idxprom45
-  %g47 = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx46, i32 0, i32 7
-  store double 2.300000e+01, ptr %g47, align 8
-  br label %for.inc48
-
-for.inc48:                                        ; preds = %for.end44
-  %22 = load i32, ptr %i, align 4
-  %inc49 = add nsw i32 %22, 1
-  store i32 %inc49, ptr %i, align 4
-  br label %for.cond, !llvm.loop !7
-
-for.end50:                                        ; preds = %for.cond
+for.end29:                                        ; preds = %for.cond
   ret void
 }
 
@@ -227,7 +185,7 @@ for.inc:                                          ; preds = %for.body3
   %14 = load i32, ptr %i, align 4
   %inc = add nsw i32 %14, 1
   store i32 %inc, ptr %i, align 4
-  br label %for.cond1, !llvm.loop !8
+  br label %for.cond1, !llvm.loop !7
 
 for.end:                                          ; preds = %for.cond1
   br label %for.inc19
@@ -236,7 +194,7 @@ for.inc19:                                        ; preds = %for.end
   %15 = load i32, ptr %j, align 4
   %inc20 = add nsw i32 %15, 1
   store i32 %inc20, ptr %j, align 4
-  br label %for.cond, !llvm.loop !9
+  br label %for.cond, !llvm.loop !8
 
 for.end21:                                        ; preds = %for.cond
   ret void
@@ -311,7 +269,7 @@ for.inc:                                          ; preds = %for.body3
   %13 = load i32, ptr %i, align 4
   %inc = add nsw i32 %13, 1
   store i32 %inc, ptr %i, align 4
-  br label %for.cond1, !llvm.loop !10
+  br label %for.cond1, !llvm.loop !9
 
 for.end:                                          ; preds = %for.cond1
   br label %for.inc18
@@ -320,7 +278,7 @@ for.inc18:                                        ; preds = %for.end
   %14 = load i32, ptr %j, align 4
   %inc19 = add nsw i32 %14, 1
   store i32 %inc19, ptr %j, align 4
-  br label %for.cond, !llvm.loop !11
+  br label %for.cond, !llvm.loop !10
 
 for.end20:                                        ; preds = %for.cond
   ret void
@@ -470,4 +428,3 @@ attributes #6 = { nounwind }
 !8 = distinct !{!8, !5}
 !9 = distinct !{!9, !5}
 !10 = distinct !{!10, !5}
-!11 = distinct !{!11, !5}
