@@ -1,3 +1,10 @@
+// OPTIMISATION: Structure Splitting
+
+/* Applied to: 
+    - locally declared, dynamic AoS
+    - AoS that uses structs with pointers
+*/
+
 #include "llvm/Pass.h"
 #include "llvm/Passes/PassBuilder.h"
 #include "llvm/Passes/PassPlugin.h"
@@ -13,34 +20,8 @@ IRBuilder<> split_Builder(split_Context);
 
 namespace {
 
-//For Function Pass, use run(Function &F, FunctionAnalysisManager &FM)
 struct splitAoS : public PassInfoMixin<splitAoS> {
     PreservedAnalyses run(Module &M, ModuleAnalysisManager &AM) {
-        //ADD CODE HERE:
-
-        // get vector of <AoS>
-        // for each struct
-            // find AoS that use current struct and put it in new list
-        // if this list size > 0, proceed with struct splitting (use code from peelAoS)
-            //create new cold struct
-            //make a new struct ptr field in the current struct that points to the cold struct
-            //calculate new indices
-        // otherwise skip to next struct
-
-            // for each AoS in list
-                //iterate through all GEP
-                //if GEP accesses a global (first operand) and source == curr struct and return == curr struct
-                    //set prec to true
-                //if prec is true and source == curr struct and return != curr struct
-                    //determine whether a cold or hot index was used and make aprropriate changes (use existing code)
-                    //for cold indices, need to add a new GEP to cold struct 
-                    //create new load to that ptr, and access new index
-
-
-        //Sample code to return all function names
-        // for (auto &F : M) {
-        //     errs() << "I saw a function called " << F.getName() << "!\n";
-        // }
 
         errs()<<"\n-------------------------- STRUCT SPLITTING --------------------------\n\n";
 
@@ -60,32 +41,22 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           exit = true;
         }
 
-        // if(M.getFunction("malloc_usable_size") == nullptr)
-        // {
-        //   errs()<<"Function malloc_usable_size() not found in IR. Unable to perform structure splitting without this function.\n\n";
-        //   errs()<<"Please add this function to the source file.\n";
-        //   exit = true;
-        // }
-
         if(exit)
         {
           errs()<<"\n----------------------- END OF STRUCT SPLITTING -----------------------\n";
           return PreservedAnalyses::all();
         }
 
-        vector<StructType*> allStructs; //stores all structs to be optimised
-        vector<tuple<Value*,StructType*,int,Value*>> aosValues; //AoS values to optimise - int is the index of cold struct ptr, last Value* is the size of malloc()
+        vector<StructType*> allStructs; // stores all structs to be optimised
+        vector<tuple<Value*,StructType*,int,Value*>> aosValues; // AoS values to optimise - int is the index of cold struct ptr, last Value* is the size of malloc()
 
         map<StructType*,bool> functionCreated; //stores bool for each struct to shows that a free function was created for it
 
         float totalColdFieldAccesses = 0.0;
 
-        // vector<pair<GlobalVariable*,StructType*>> globalAoS;
-        // vector<tuple<Value*,StructType*,Function*>> localAoS;
+        DataLayout* TD = new DataLayout(&M); // to get size and layout of structs
 
-        DataLayout* TD = new DataLayout(&M); //to get size and layout of structs
-
-        //check for unique "permitStructSplitting" global variable and see if it exists, before proceed to split struct
+        // check for unique "permitStructSplitting" global variable and see if it exists, before proceed to split struct
         if(permitStructSplitting == false)
         {
           errs()<<"Struct splitting is not permitted for this program. The optimisation may be disabled or has already been applied.\n";
@@ -98,7 +69,7 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         // - dynamic
         // - contains a ptr element - which might make it a recursive struct
 
-        if(confirmed.size() == 0) //if no AoS is found, do not apply this optimisation (MAYBE GET RID OF THIS, IT IS POSSIBLE TO SPLIT ALL STRUCTS)
+        if(confirmed.size() == 0) //if no AoS is found, do not apply this optimisation
         {
           errs()<<"No AoS values found. Not applying struct splitting.\n";
           errs()<<"\n----------------------- END OF STRUCT SPLITTING -----------------------\n";
@@ -106,7 +77,8 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         }
         else
         {
-          //get structs used by all AoS
+          /* get structs used by all AoS */
+
           for(int i = 0; i < confirmed.size(); i++)
           {
             StructType* structure = get<3>(confirmed.at(i));
@@ -118,9 +90,9 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
             bool isParam = get<4>(confirmed.at(i));
             bool hasPointerElem = get<5>(confirmed.at(i));
 
-            if((isParam | hasPointerElem | isDynamic) & (TD->getTypeAllocSize(structure) > 8)) //only optimise structs that have a size greater than a word length (8 bytes)
+            if((isParam | hasPointerElem | isDynamic) & (TD->getTypeAllocSize(structure) > 8)) // only optimise structs that have a size greater than a word length (8 bytes)
             {
-              if(structure == nullptr) //should not occur
+              if(structure == nullptr) // should not occur
               {
                 errs()<<"WARNING: nullptr found!\n";
                 continue;
@@ -145,31 +117,9 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
               {
                 errs()<<"Dupe found\n";
               }
-              
-              // if(auto *GV = dyn_cast<GlobalVariable>(aos))
-              // {
-              //   globalAoS.push_back(make_pair(GV,structure));
-              // }
-              // else
-              // {
-              //   localAoS.push_back(make_tuple(aos,structure,origFunc));
-              // }
             }
             else
             {
-              //erase the structure from globalAoS and localAoS vectors - cannot optimise it - used as function parameter
-              // for(auto it = globalAoS.begin(); it != globalAoS.end(); it)
-              // {
-              //   StructType* structToRemove = get<1>(*it);
-              //   if(structToRemove == structure)
-              //   {
-              //     globalAoS.erase(it);
-              //   }
-              //   else
-              //   {
-              //     it++;
-              //   }
-              // }
 
               functionCreated.erase(structure);
 
@@ -205,7 +155,6 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
 
         if(allStructs.size() != 0 & aosValues.size() != 0) 
         {
-          // errs()<<"Optimising "<<globalAoS.size()<<" global AoS and "<<localAoS.size()<<" local AoS, which contain the following struct(s):\n";
           errs()<<"Optimising "<<aosValues.size()<<" AoS data structures with the following struct(s):\n";
         }
         else
@@ -215,9 +164,10 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           return PreservedAnalyses::all(); 
         }
         
-
         for(int i = 0; i < allStructs.size(); i++)
         {
+          /* Calculate hotness values and affinity groups for each struct */
+
           allStructs.at(i)->print(errs());
           errs()<<"\n";
           
@@ -225,9 +175,9 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
 
           set<vector<int>> fieldAccessPattern;
 
-          //Need to identify if the struct contains a recursive ptr to itself
+          // Need to identify if the struct contains a recursive ptr to itself
 
-          vector<float> elems; //this is used to store the no. of times each field element was used in the current struct
+          vector<float> elems; // this is used to store the no. of times each field element was used in the current struct
 
           vector<int> pointerIndices;
           vector<int> recursivePointerIndices;
@@ -244,21 +194,12 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           { 
             for (auto &B : F)  
             {
-              // LoopInfo& loops = getAnalysis<LoopInfoWrapperPass>().getLoopInfo(); //sort this out ltr - check trello
-
-              //// SORT OUT LATER ////
-              // LoopInfo LI = LoopInfo();
-              // Loop* l = LI.getLoopFor(&B); 
-              // runOnLoop(l); //gives seg fault
-
               vector<int> accessPattern;
 
               for(int f = 0; f < currStruct->getStructNumElements(); f++)
               {
                 accessPattern.push_back(0);
               }
-
-              // errs()<<"No. of fields: "<<accessPattern.size()<<"\n";
 
               bool searchForStore = false;
 
@@ -275,22 +216,13 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
                     {
                       AI->print(errs());
                       errs()<<"\n";
-                      // AI->getAllocatedType()->print(errs());
-                      // errs()<<"\n";
+
                       if(AI->getAllocatedType() == currStruct) //single struct allocation
                       {
                         recursivePointerIndices.push_back(inspectingIndex);
                         elems.at(inspectingIndex) = INT_MAX;
                         errs()<<"Found recursive ptr at index "<<inspectingIndex<<"\n";
                       }
-                      // else if(auto *Array = dyn_cast<ArrayType>(AI->getAllocatedType())) //static AoS allocation
-                      // {
-                      //   if(Array->getArrayElementType() == currStruct)
-                      //   {
-                      //     recursivePointerIndices.push_back(inspectingIndex);
-                      //     errs()<<"Found recursive static AoS ptr at index "<<inspectingIndex<<"\n";
-                      //   }
-                      // }
                     }
                     else if(auto *LI = dyn_cast<LoadInst>(elem))
                     {
@@ -351,8 +283,6 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
 
                     int in = std::stoi(indexStr); // index accessed by GEP instruction
 
-                    // errs()<<"index "<<in<<"\n";
-
                     /// increment correct index counter 
                     float count = elems.at(in);
                     count++;
@@ -381,25 +311,11 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
 
               if(!allZero)
               {
-                // if(fieldAccessPattern.find(accessPattern) != fieldAccessPattern.end())
-                //   errs()<<"Exists\n";
                 fieldAccessPattern.insert(accessPattern);
-
-              // for(int o = 0; o < accessPattern.size(); o++)
-              // { 
-              //   errs()<<accessPattern.at(o)<<",";
-              // }
-              // errs()<<"\n";
               }
              
           }
         }
-
-        // /// printing out all recursive pointer fields in struct
-        // for(int j = 0; j < recursivePointerIndices.size(); j++)
-        // {
-        //   errs()<<"Index "<<recursivePointerIndices.at(i)<<" is recursive\n";
-        // }
 
         /// finding mean no. of accesses
         float total = 0.0;
@@ -413,9 +329,6 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
 
         mean = total/(elems.size() - recursivePointerIndices.size());
         errs()<<"Mean: "<<mean<<"\n";
-
-        // errs()<<fieldAccessPattern.size()<<"\n";
-
 
         // split fields based on mean no. of accesses
         // with no. of accesses >= mean, put field in hot struct
@@ -434,7 +347,7 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
 
         /// put each struct field into a hot or cold struct, based on whether its been accessed frequently (> mean)
         int index = 0;
-        // int coldIndex = 0;
+
         int hotIndex = 0;
         for(auto it = elemTypes.begin(); it != elemTypes.end(); it++)
         {
@@ -446,19 +359,14 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
             hotIndex++;
             hotIndicesForInspection.insert(make_pair(index,0));
           }
-          // else if(elems.at(index) < mean)
-          // {
-          //   coldFields.push_back(*it);
-          //   coldIndices.push_back(make_pair(index,coldIndex));
-          //   coldIndex++;
-          // }
 
           index++;
         }
 
-        //iterate through the access patterns
-        //if a group exists where all fields are accessed, this shows good affinity within the struct - NO need to split
-        //
+        /// START OF AFFINITY GROUP CHECK
+
+        // iterate through the access patterns in 'fieldAccessPattern' vector
+        // if a group exists where all fields are accessed, this shows good affinity within the struct - NO need to split
 
         vector<int> analyse;
 
@@ -476,7 +384,6 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           bool allOnes = true;
           for(int j = 0; j < pattern.size(); j++)
           {
-            // errs()<<pattern.at(j);
             if(pattern.at(j) == 0)
               allOnes = false;
             if(hotIndicesForInspection.find(j) != hotIndicesForInspection.end())
@@ -484,7 +391,7 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
               if(pattern.at(j) == 1)
                 shared = true;
             }
-            else
+            else // if a cold field is found inside an affinity group sharing an access with a hot field, increment the value of analyse
             {
               if(pattern.at(j) == 1)
               {
@@ -494,7 +401,6 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
             }
 
           }
-          // errs()<<"\n";
 
           if(allOnes)
           {
@@ -505,7 +411,7 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
 
         if(exitIfAllOnes)
         {
-          errs()<<"Struct shows good affinity. No need to split it\n"; //if access pattern is all ones, it means that all fields in the struct are accessed together
+          errs()<<"Struct shows good affinity. No need to split it\n"; //if access pattern is all 1s, it means that all fields of the struct are accessed together
           for(auto it = aosValues.begin(); it != aosValues.end(); it)
           {
             StructType* structToRemove = get<1>(*it);
@@ -517,11 +423,13 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           continue;
         }
 
-        map<int,int> toAddToHot;
+        /* Separate fields into 'hot' and 'cold' structs based on hotness and affinity */
+
+
+        map<int,int> toAddToHot; // used as a set data structure - to store unique elements and for easier finding
 
         for(int k = 0; k < currStruct->getStructNumElements(); k++)
         {
-          // errs()<<analyse.at(k)<<", \n";
           if(analyse.at(k) > 1)
           {
             toAddToHot.insert(make_pair(k,0));
@@ -533,13 +441,13 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         int coldIndex = 0;
         for(auto it = elemTypes.begin(); it != elemTypes.end(); it++)
         {
-          if(toAddToHot.find(index) != toAddToHot.end())
+          if(toAddToHot.find(index) != toAddToHot.end()) // additional fields are added to the hot fields
           {
             hotFields.push_back(*it);
             hotIndices.push_back(make_pair(index,hotIndex));
             hotIndex++;
           }
-          else if(elems.at(index) < mean)
+          else if(elems.at(index) < mean) // create cold fields
           {
             coldFields.push_back(*it);
             coldIndices.push_back(make_pair(index,coldIndex));
@@ -549,7 +457,7 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           index++;
         }
 
-        // END OF AFFINITY GROUP CHECK
+        /// END OF AFFINITY GROUP CHECK
 
         if(coldFields.size() == 0) //no cold field required for this struct
         {
@@ -590,14 +498,10 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         //// for hot struct, replace fields of current struct, keeping the same struct name, and add a new ptr field to the cold struct
         //// for cold struct, create new struct with the cold fields, with new struct name
 
-        ////// ADD POINTER TO COLD STRUCT WITHIN HOT STRUCT
-
         ArrayRef<Type*> newColdFields = ArrayRef(coldFields);
         
-        // //// creating hot struct
-        // allStructs.at(i)->setBody(newHotFields);
-        
-        //// creating cold struct
+        /* creating cold struct */
+
         string coldName = currStruct->getName().str();
         coldName = coldName.append("Cold");
         StructType* coldStruct = StructType::create(split_Context, coldName);
@@ -605,10 +509,11 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
 
         coldStructs.push_back(coldStruct);
 
-        PointerType* coldStructPtr = PointerType::get(coldStruct, 0); // Initialise the pointer type now
+        PointerType* coldStructPtr = PointerType::get(coldStruct, 0); // Initialise the cold struct pointer
         int coldStructPtrIndex = hotIndex++;
         errs()<<"Cold struct accessed at index: "<<coldStructPtrIndex<<"\n";
-        //store coldStructPtrIndex
+
+        // update the AoS information in 'aosValues' to store the field index of the cold struct
         for(int s = 0; s < aosValues.size(); s++)
         {
           StructType* structure = get<1>(aosValues.at(s));
@@ -616,23 +521,22 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
             get<2>(aosValues.at(s)) = coldStructPtrIndex;
         }
 
-        // //// creating hot struct
-        hotFields.push_back(coldStructPtr);
+        /* creating hot struct */
+
+        hotFields.push_back(coldStructPtr); // add the cold struct ptr to the 'hot' fields
         ArrayRef<Type*> newHotFields = ArrayRef(hotFields);
 
         StructType* temporaryStruct = StructType::create(split_Context, allStructs.at(i)->getName());
 
-        temporaryStruct->setBody(newHotFields); //to calculate size of hot struct
+        temporaryStruct->setBody(newHotFields); // to calculate size of hot struct
 
         int originalSize = origStructSizes.find(allStructs.at(i))->second.first;
 
         int newSize = TD->getTypeAllocSize(temporaryStruct);
 
-        // int size = (TD->getTypeAllocSize(currStruct) + 8) - TD->getTypeAllocSize(coldStruct);
-
-        if(newSize > originalSize) //don't bother splitting if the struct size is the same after splitting
+        if(newSize > originalSize) // don't bother splitting if the struct size is the same after splitting
         {
-          if(newSize == originalSize) //this is done to fix errors when attempting to split dynamicAoS.ll 
+          if(newSize == originalSize) // this is done to fix errors when attempting to split dynamicAoS.ll 
             errs()<<"Hot struct same in size after splitting. Not feasible to split this structure.\n";
           else
             errs()<<"Hot struct larger in size after splitting. Not feasible to split this structure.\n";
@@ -661,13 +565,13 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         auto updateMap = origStructSizes.find(currStruct);
         if(updateMap != origStructSizes.end())  
         {
-          updateMap->second.first = updateMap->second.second; //update the old size
-          updateMap->second.second = newSize; //update the new size
+          updateMap->second.first = updateMap->second.second; // update the old size
+          updateMap->second.second = newSize; // update the new size
         } 
 
         origStructSizes.insert(make_pair(coldStruct,make_pair(TD->getTypeAllocSize(coldStruct),TD->getTypeAllocSize(coldStruct))));
 
-        // errs()<<TD->getTypeAllocSize(allStructs.at(i))+8<<"\n"; //including 8 bytes for the cold ptr field
+        /// print out the 'hot' and 'cold' structs
 
         errs()<<"Hot Struct:\n";
         currStruct->print(errs());
@@ -687,13 +591,13 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           errs()<<"Old index: "<<coldIndices.at(j).first<<" --> New index: "<<coldIndices.at(j).second<<"\n";
         }
 
-        // //change GEP
+        /* update all field accesses to the new structs */
 
-        //when an access to a field that now belongs to the cold struct is found within a block, perform (in this order):
-        //1. create GEP inst to access the cold struct ptr
-        //2. create new malloc call inst to allocate data
-        //3. create store inst to store the returned malloc memory to the GEP 
-        //4. create a load inst to the GEP as a ptr, so the pointer operand and the indices of existing GEP inst can be changed for the cold fields
+        // When an access to a field that now belongs to the cold struct is found within a block, perform these operations (in this order):
+        // 1. create GEP inst to access the cold struct ptr
+        // 2. create new malloc call inst to allocate data
+        // 3. create store inst to store the returned malloc memory to the GEP 
+        // 4. create a load inst to the GEP as a ptr, so the pointer operand and the indices of existing GEP inst can be changed for the cold fields
 
         GetElementPtrInst* prec; //stores preceding GEP inst - the GEP that accesses an AoS element, not the struct fields
         GetElementPtrInst* coldGEP; //need to create a GEP inst to access the cold pointer struct
@@ -703,7 +607,7 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
         bool isMalloced = false;
         bool temp = false;
 
-            //// iterate through all GEP instructions and change indices, ptr operands and source and result element types, based on whether a hot or cold struct was used 
+        //// iterate through all GEP instructions and change indices, ptr operands and source and result element types, based on whether a hot or cold struct was used 
         for(auto &F : M) 
         { 
           for(auto &B : F)  
@@ -711,25 +615,6 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
             coldGEP = nullptr;
             for(auto &I : B) /// iterate through all instructions
             {
-              /// below works for splitAoS only
-              // if(F.getName() == "main")
-              // {
-              //   if(auto *CI = dyn_cast<CallInst>(&I))
-              //   {
-              //     if(CI->getCalledFunction()->getName() == "malloc")
-              //       temp = true;
-              //   }
-              //   else
-              //   {
-              //     if(temp)
-              //     {
-              //   IRBuilder<> TmpB(&I);
-              //   // Instruction* loadInst = new LoadInst(PointerType::get(split_Context,0),coldGEP,"",&I);
-              //   TmpB.CreateCall(M.getFunction("malloc_usable_size"),get<0>(confirmed.at(0)),"",nullptr);
-              //   temp = false;
-              //     }
-              //   }
-              // }
               if(auto *GEP = dyn_cast<GetElementPtrInst>(&I))
               {
                 Type* op = GEP->getSourceElementType(); // get the type the GEP is accessing from
@@ -761,15 +646,11 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
 
                 if(condition & precSet == false) //if a GEP access to the current global AoS is found, the preceding GEP is found
                 {
-                  // GEP->print(errs());
-                  // errs()<<"\n";
                   prec = GEP;
                   precSet = true; //flag is set to true, indicating that a global AoS is being accessed and the next GEP instruction accesses the struct fields
                 } 
                 else if(GEP->getSourceElementType() == currStruct & GEP->getResultElementType() != currStruct & precSet == true) //if the GEP that is accessing a struct field is found, following prec
                 {
-                  // GEP->print(errs());
-                  // errs()<<"\n";
                   string operand_str;
                   raw_string_ostream opstr(operand_str);
                   Value* index = GEP->getOperand(GEP->getNumIndices()); //get last index value being access
@@ -779,7 +660,7 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
                   string type;
                   string indexStr;
 
-                  //string manipulation to get 'type' and 'name' of the indices
+                  // string manipulation to get 'type' and 'name' of the indices
                   if (space_pos != std::string::npos) 
                   {
                     type = operand_str.substr(0, space_pos);
@@ -819,76 +700,34 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
                     }
                   }
 
-                  // errs()<<"hot:"<<isHotIndex<<" or cold:"<<isColdIndex<<"\n";
-                  // errs()<<"old index:"<<in<<" new index:"<<newIndex<<"\n";
-
                   if(isHotIndex & !isColdIndex) // if the GEP operates on a index that should be in a hot struct
                   {
-                    // if(isArray)
-                    // {
-                    //   Type* newTy = ArrayType::get(currStruct,numElem);
-                    //   prec->setSourceElementType(newTy); // set this to array of hot structs
-                    // }
-                    // else
-                    //   prec->setSourceElementType(currStruct);
-
-                    // prec->setResultElementType(currStruct); // set result element type of prec to hot struct
                     GEP->setOperand(GEP->getNumIndices(),ConstantInt::get(split_Context,APInt(32,newIndex))); // change the index
-                    // GEP->setSourceElementType(currStruct); // set source element type to hot struct
                   }
                   else if(!isHotIndex & isColdIndex)  // if the GEP operates on a index that should be in a cold struct
                   {
-                    // if(coldGEP == nullptr)
-                    // {
-                      vector<Value*> indexVector;
-                      indexVector.push_back(ConstantInt::get(split_Context,APInt(32,0)));
-                      indexVector.push_back(ConstantInt::get(split_Context,APInt(32,coldStructPtrIndex)));
-                      ArrayRef<Value*> indexList = ArrayRef(indexVector);
-                      coldGEP = GetElementPtrInst::CreateInBounds(currStruct, prec, indexList, "cold", &I);
-                      // errs()<<"RET:";
-                      // coldGEP->getResultElementType()->print(errs());
-                      //                       errs()<<"\n";
 
-                      // coldGEP->print(errs());
-                      // errs()<<"\n";
+                    vector<Value*> indexVector;
+                    indexVector.push_back(ConstantInt::get(split_Context,APInt(32,0)));
+                    indexVector.push_back(ConstantInt::get(split_Context,APInt(32,coldStructPtrIndex)));
+                    ArrayRef<Value*> indexList = ArrayRef(indexVector);
+                    coldGEP = GetElementPtrInst::CreateInBounds(currStruct, prec, indexList, "cold", &I);
+                   
+                    if(isMalloced == false) // create a malloc() call for the cold struct ptr
+                    {
+                      IRBuilder<> TmpB(&I);
+                      int size = TD->getTypeAllocSize(coldStruct);
+                      if(size < 8)
+                        size = 8;
+                      Value* structSize = ConstantInt::get(M.getContext(),APInt(64,size));
+                      Type* ITy = Type::getInt32Ty(split_Context);
 
-                      // // create alloca inst for cold struct ptr - doesn't work
-                      // if(isMalloced == false)
-                      // {
-                      // Instruction* allocaInst = new AllocaInst(coldStruct,0,ConstantInt::get(split_Context,APInt(32,1)),"",&I);
-                      // allocaInst->print(errs());
-                      // errs()<<"\n";
+                      CallInst* mallocInst = TmpB.CreateCall(M.getFunction("malloc"),structSize,"",nullptr);                      
 
-                      // Instruction* storeInst = new StoreInst(allocaInst,coldGEP,&I);
-                      // storeInst->print(errs());
-                      // errs()<<"\n";
-                      // isMalloced = true;
-                      // }
+                      Instruction* storeInst = new StoreInst(mallocInst,coldGEP,&I);
 
-                      //find a way to create a malloc() call that works without seg fault
-
-                      if(isMalloced == false)
-                      {
-                        IRBuilder<> TmpB(&I);
-                        int size = TD->getTypeAllocSize(coldStruct);
-                        if(size < 8)
-                          size = 8;
-                        Value* structSize = ConstantInt::get(M.getContext(),APInt(64,size));
-                        Type* ITy = Type::getInt32Ty(split_Context);
-                        // Instruction* mallocInst = TmpB.CreateMalloc(ITy, coldStruct, structSize,ConstantInt::get(split_Context,APInt(32,1)), nullptr, ""); //creates tail call
-                        //above tail call to malloc() should be converted to non-tail call in detectAoS()
-                        //it is converting but still giving seg fault - recreating malloc
-                        CallInst* mallocInst = TmpB.CreateCall(M.getFunction("malloc"),structSize,"",nullptr);
-                        // mallocInst->setAttributes(mallocAttributes);
-                        
-
-                        Instruction* storeInst = new StoreInst(mallocInst,coldGEP,&I);
-                        // storeInst->print(errs());
-                        // errs()<<"\n";
-                        isMalloced = true;
-                      }
-
-                    //}
+                      isMalloced = true;
+                    }
 
                     /* with a coldGEP created/existing, edit the current GEP to access the cold struct by
                       - changing the sourceElementptr to cold struct
@@ -902,42 +741,27 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
                     GEP->setOperand(0,loadInst);
                     GEP->setOperand(GEP->getNumIndices(),ConstantInt::get(split_Context,APInt(32,newIndex))); // change the index
                     
-
-                    // if(isArray)
-                    // {
-                    //   Type* newTy = ArrayType::get(coldStruct,numElem); 
-                    //   prec->setSourceElementType(newTy); // set this to array of cold structs
-                    // }
-                    // else
-                    //   prec->setSourceElementType(coldStruct);
-
-                    // prec->setResultElementType(coldStruct); // set result element type of prec to cold struct
-                    // GEP->setOperand(GEP->getNumIndices(),ConstantInt::get(peel_Context,APInt(32,newIndex))); // change the index
-                    // GEP->setSourceElementType(coldStruct); // set source element type to cold struct
-                    // prec->setOperand(0,coldArray); //change ptr operand of prec to cold array
                   }
                   precSet = false; // set this to false so next array access GEP can be found
                   isArray = false;
                 }
-                // GEP->print(errs());
-                // errs()<<"\n";
               }
             }
           }
         }
         }
 
-        // create a variable in main() to signify that struct splitting has been applied to this program/IR. 
-        // This is checked for before struct splitting is applied to it again, which is not permitted.
+        // Create a variable in main() to signify that struct splitting has been applied to this program/IR. 
+        // This variable is checked for before struct splitting is applied, to prevent applying this optimisation twice which is not permitted.
 
-        // Value* structSplittingApplied = ConstantInt::get(split_Context,APInt(1,0), 1); //initialise index to 0
-
-        //Create a unique global variable with these attributes
-        //Similarly a programmer can include a global variable with the same name as "permitStructSplittingFlag" to disable this struct splitting optimisation for any reason.
+        // Create a unique global variable with these attributes
+        // Similarly a programmer can include a global variable with the same name as "permitStructSplittingFlag" to disable this struct splitting optimisation for any reason.
         GlobalVariable* permitStructSplitting = new GlobalVariable(M, Type::getInt1Ty(split_Context), true, GlobalValue::LinkageTypes::PrivateLinkage, Constant::getNullValue(Type::getInt1Ty(split_Context)), "permitStructSplittingFlag");
 
-        //now for every AoS used as function arguments, create a for/whileloop that frees the allocated cold pointer struct (if it is not NULL)
-        //to determine where to create this for/while loop, get the LAST use of the AoS, and add the for/while loop in the next block?
+        /* Update allocation sizes for dynamic AoS and update free() function to de-allocate the cold struct ptr */
+
+        //// now for every AoS used as function arguments, create a function containing a for/while loop that frees the allocated cold pointer struct (if it is not NULL)
+        // to determine where to create this for/while loop, get the LAST use of the AoS, and add the for/while loop in the next block
 
         for(int i = 0; i < aosValues.size(); i++)
         {
@@ -952,9 +776,7 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           if(findElem != functionCreated.end())
             needToCreateFunc = findElem->second;
 
-          
           bool mallocFound = false;
-
 
           //update malloc() call for this AoS
           for(auto u = currentAoS->users().begin(); u != currentAoS->users().end(); u++)
@@ -968,17 +790,6 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
                 if(CI->getCalledFunction()->getName() == "malloc") //replace the malloc with a new one, allocating the reduced size
                 {
                   mallocFound = true;
-                  // Instruction* finalPred = CI->getPrevNode();
-                  // if(auto *MI = dyn_cast<BinaryOperator>(finalPred))
-                  // {
-                  //   // Value* newSize = ConstantInt::get(M.getContext(),APInt(64,TD->getTypeAllocSize(currentStruct) + 8));
-                  //   int newSize = origStructSizes.find(currentStruct)->second;
-                  //   Value* newSizeOperand = ConstantInt::get(M.getContext(),APInt(64,newSize)); //get the correct size and insert it here
-                  //   MI->setOperand(1,newSizeOperand);
-                  // }
-                  // //can be a constant
-
-                  // //can be a variable
 
                   Instruction* next = CI->getNextNode();
                   
@@ -1003,34 +814,13 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
 
                 }
                  else if(CI->getCalledFunction()->getName() == "calloc") //update second operand of calloc with new struct size
-                      {
-                        // mallocFound = true;
-                        // Instruction* next = CI->getNextNode();
-                        
+                      { 
                         int newSize = origStructSizes.find(allStructs.at(i))->second.second;
                         Value* structSize = ConstantInt::get(M.getContext(),APInt(64,newSize));
 
                         CI->setArgOperand(1,structSize);
                         get<3>(aosValues.at(i)) = CI->getOperand(0);
                       }
-                      // do one for realloc() and test it
-                    // else if(CI->getCalledFunction()->getName() == "realloc") //update second operand of realloc
-                    // {
-                    //   // mallocFound = true;
-                    //     IRBuilder<> TmpB(CI);
-                        
-                    //     int newSize = origStructSizes.find(allStructs.at(i))->second.second;
-                    //     Value* structSize = ConstantInt::get(M.getContext(),APInt(64,newSize));
-
-                    //     int origSize = origStructSizes.find(allStructs.at(i))->second.first;
-                    //     Value* origSizeValue = ConstantInt::get(M.getContext(),APInt(64,origSize));
-
-                    //     Value* numElements = TmpB.CreateUDiv(CI->getArgOperand(1),origSizeValue,"");
-                    //     Value* newAllocSize = TmpB.CreateMul(numElements,structSize,"",false,false);
-
-                    //     CI->setArgOperand(1,newAllocSize);
-                    // }
-                // do one for realloc() and test it
               }
             }
           }
@@ -1038,11 +828,9 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           if(mallocFound == false)
           {
             currentAoS->print(errs());
-            errs()<<"\nNo malloc() found. Possible a global pointer not yet malloced in origin function.\n";
+            errs()<<"\nNo malloc() found for this AoS.\n";
             continue;
           }
-
-          errs()<<"need to create func for"<<currentStruct->getName()<<": "<<needToCreateFunc<<"\n";
 
           BasicBlock* blockToAdd = nullptr;
 
@@ -1059,8 +847,7 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           for(auto usr = usersList.begin(); usr != usersList.end(); usr++)
           {
             Value* call = *usr;
-            // call->print(errs());
-            // errs()<<"\n";
+
             if(auto *CI = dyn_cast<CallInst>(call))
             {
               Value* operand = CI->getArgOperand(0);
@@ -1068,30 +855,18 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
               {
                 if(LI->getPointerOperand() == currentAoS)
                 {
-                  // if(CI->getNumUses() == 0)
-                    // CI->eraseFromParent(); //erase this free() call
-                  
                   blockToAdd = CI->getParent();
-                  // blockToAdd->printAsOperand(errs());
                   terminator = LI->getNextNode();
                   aosLoadInst = LI;
                   freeAoSExists = true;
-                  // errs()<<"\n";
                 }
               }
             }
-          }
-          
+          } 
 
-          User* lastUsage = *(currentAoS->users().begin()); //last user of the AoS
-          // lastUsage->print(errs());
-          // errs()<<"\n";
+          User* lastUsage = *(currentAoS->users().begin()); // last user of the AoS
 
           Instruction* lastInstructionUsage = cast<Instruction>(lastUsage);
-          // lastInstructionUsage->printAsOperand(errs());
-          // errs()<<" in function: ";
-          // lastInstructionUsage->getFunction()->printAsOperand(errs());
-          // errs()<<"\n";
 
           BasicBlock* currentBlock = lastInstructionUsage->getParent(); 
           currentBlock->printAsOperand(errs());
@@ -1100,12 +875,10 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           errs()<<"\n";
           
           if(blockToAdd == nullptr)
-            blockToAdd = currentBlock->getSingleSuccessor(); //this may break for blocks with return statements - test it out
+            blockToAdd = currentBlock->getSingleSuccessor();
           if(blockToAdd == nullptr)
           {
-            // errs()<<"No successor\n";
             auto inst = currentBlock->getTerminator();
-            // inst->print(errs());
             errs()<<"\n";
             if(auto *BR = dyn_cast<BranchInst>(inst))
             {
@@ -1113,14 +886,6 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
             }
           }
 
-          // if(blockToAdd == nullptr)
-          //   blockToAdd = currentBlock;
-
-          // // blockToAdd->printAsOperand(errs());
-          // if(terminator == nullptr)
-          //   terminator = blockToAdd->getFirstNonPHI();
-
-          // terminator->print(errs());
           errs()<<"\n";
 
           IRBuilder<> FreeBuilder(terminator);
@@ -1128,201 +893,100 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           string funcName = "freeAoS";
           funcName.append(currentStruct->getName());
 
-          // Function* aosFreeFunction = M.getFunction("freeAoS");
-
-          if(!needToCreateFunc)
+          if(!needToCreateFunc) 
           {
-          vector<Type *> ArgTypes;
+            vector<Type *> ArgTypes;
 
-          ArgTypes.push_back(PointerType::get(M.getContext(),0)); //AoS parameter
-          ArgTypes.push_back(Type::getInt64Ty(M.getContext())); //size parameter
+            ArgTypes.push_back(PointerType::get(M.getContext(),0)); // AoS parameter
+            ArgTypes.push_back(Type::getInt64Ty(M.getContext())); // size parameter
 
-          FunctionType *FT = FunctionType::get(Type::getVoidTy(M.getContext()), ArgTypes, false);
+            FunctionType *FT = FunctionType::get(Type::getVoidTy(M.getContext()), ArgTypes, false);
 
-          Function* freeAoSFunction = Function::Create(FT,Function::ExternalLinkage,funcName,M);
-          // freeAoSFunction->setName(funcName);
-          // M.getFunctionList().push_back(freeAoSFunction);
+            Function* freeAoSFunction = Function::Create(FT,Function::ExternalLinkage,funcName,M);
 
-          BasicBlock *entryBlock = BasicBlock::Create(split_Context, "entry", freeAoSFunction);
+            BasicBlock *entryBlock = BasicBlock::Create(split_Context, "entry", freeAoSFunction);
 
-          // //at entry block, obtain the size of AoS
-          FreeBuilder.SetInsertPoint(entryBlock);
+            //// at entry block, obtain the size of AoS
+            FreeBuilder.SetInsertPoint(entryBlock);
 
-          // Type* argTy = M.getFunction("malloc_usable_size")->getArg(0)->getType();
-          // // Function* mallocFunc = M.getFunction("malloc_usable_size");
-          // // Value* a = *(mallocFunc->users().begin());
-          // // CallInst* c = cast<CallInst>(a);
-          // // a->print(errs());
-          // // errs()<<"\n";
-          // // argTy = c->getArgOperand(0)->getType();
-          // // auto list = c->getAttributes();
-          // // auto list = M.getFunction("malloc_usable_size")->getAttributes();
-          // // argTy->print(errs());
-          // // errs()<<"\n";
+            // loading the function argument: aos ptr
 
-          //loading the function argument: aos ptr
+            AllocaInst* aosStore = FreeBuilder.CreateAlloca(PointerType::get(split_Context,0), nullptr, "aos"); // stores AoS pointer
+            FreeBuilder.CreateStore(freeAoSFunction->getArg(0), aosStore);
 
-          AllocaInst* aosStore = FreeBuilder.CreateAlloca(PointerType::get(split_Context,0), nullptr, "aos"); //stores aos pointer
-          FreeBuilder.CreateStore(freeAoSFunction->getArg(0), aosStore);
+            AllocaInst* sizeStore = FreeBuilder.CreateAlloca(Type::getInt64Ty(split_Context), nullptr, "size"); // stores number of AoS elements
+            FreeBuilder.CreateStore(freeAoSFunction->getArg(1), sizeStore);
 
-          AllocaInst* sizeStore = FreeBuilder.CreateAlloca(Type::getInt64Ty(split_Context), nullptr, "size"); //stores number of AoS elements
-          FreeBuilder.CreateStore(freeAoSFunction->getArg(1), sizeStore);
+            AllocaInst* indexStore = FreeBuilder.CreateAlloca(Type::getInt32Ty(split_Context), nullptr, "index"); // stores while loop index
+            FreeBuilder.CreateStore(ConstantInt::get(split_Context,APInt(32,0)), indexStore); // initialise index to 0
 
-          AllocaInst* indexStore = FreeBuilder.CreateAlloca(Type::getInt32Ty(split_Context), nullptr, "index"); //stores while loop index
-          FreeBuilder.CreateStore(ConstantInt::get(split_Context,APInt(32,0)), indexStore); //initialise index to 0
+            LoadInst* aosLoad = new LoadInst(PointerType::get(M.getContext(),0),aosStore,"",entryBlock);
 
-          LoadInst* aosLoad = new LoadInst(PointerType::get(M.getContext(),0),aosStore,"",entryBlock);
+            BasicBlock *whileCond = BasicBlock::Create(split_Context, "while.cond", freeAoSFunction);
+            
+            FreeBuilder.CreateBr(whileCond);
+            
+            /// End of entry block
 
-          // CallInst* mallocSizeCall = FreeBuilder.CreateCall(M.getFunction("malloc_usable_size"),aosLoad,"",nullptr);
-          // mallocSizeCall->setAttributes(list);
+            /// Start of whileCond block
 
-          // //create variable to store number of elements in AoS
-          // Instruction* numElements = new AllocaInst(Type::getInt32Ty(split_Context),0,ConstantInt::get(split_Context,APInt(32,1)),"",terminator);
+            FreeBuilder.SetInsertPoint(whileCond);
 
-          //get size of struct used by the AoS
-          // int elementSize = TD->getStructLayout(currentStruct)->getSizeInBytes(); //may be incorrect after struct field reordering
-          // int elementSize = 0;
-          // if(origStructSizes.find(currentStruct) != origStructSizes.end())
-          //   elementSize = origStructSizes.find(currentStruct)->second; //get the original struct size before any optimisations were applied to it
+            LoadInst* indexLoad = FreeBuilder.CreateLoad(Type::getInt32Ty(split_Context),indexStore); //load index
+            LoadInst* sizeLoad = FreeBuilder.CreateLoad(Type::getInt32Ty(split_Context),sizeStore); //load size
 
-          // elementSize = TD->getTypeAllocSize(currentStruct) + 8; //get the new size of the split struct
-          // elementSize = origStructSizes.find(currentStruct)->second.second; //get the correct size and insert it here
+            Value* whileConditon = FreeBuilder.CreateICmp(ICmpInst::ICMP_NE,indexLoad,sizeLoad,"condition");
 
+            //creating whileBody block
 
-          // Value* elementSizeValue = ConstantInt::get(split_Context,APInt(32,elementSize));
+            BasicBlock* whileBody = BasicBlock::Create(split_Context, "while.body", freeAoSFunction);
 
-          ///divide the size of AoS by element size to get the number of elements in AoS, store it in numElements
+            //creating whileEnd block
 
-          //divide operation
+            BasicBlock *whileEnd = BasicBlock::Create(split_Context, "while.end", freeAoSFunction);
 
-          // mallocSizeCall->getType()->print(errs());
-          // errs()<<"\n";
-          // elementSizeValue->getType()->print(errs());
-          // errs()<<"\n";
+            FreeBuilder.CreateCondBr(whileConditon,whileBody,whileEnd);
 
-          // if(mallocSizeCall->getType() == elementSizeValue->getType())
-          //   errs()<<"yes\n";
+            /// End of whileCond
 
-          // Instruction* trunc = new TruncInst(mallocSizeCall,Type::getInt32Ty(split_Context),"",entryBlock);
+            /// Start of whileEnd
 
-          // Value* result = FreeBuilder.CreateUDiv(trunc,elementSizeValue,"");
+            FreeBuilder.SetInsertPoint(whileEnd);
+            FreeBuilder.CreateRetVoid(); // end of function
 
-          // Instruction* storeSize = new StoreInst(result,sizeStore,entryBlock);
-          
-          //creating while.cond block
+            /// End of whileEnd
 
-          BasicBlock *whileCond = BasicBlock::Create(split_Context, "while.cond", freeAoSFunction);
-          
-          FreeBuilder.CreateBr(whileCond);
-          /// End of entry block
+            /// Start of whileBody
 
-          /// Start of whileCond block
+            FreeBuilder.SetInsertPoint(whileBody);
 
-          FreeBuilder.SetInsertPoint(whileCond);
+            aosLoad = FreeBuilder.CreateLoad(PointerType::get(M.getContext(),0),aosStore,"aos"); //load aos to be accessed
+            indexLoad = FreeBuilder.CreateLoad(Type::getInt32Ty(split_Context),indexStore); //load index
 
-          LoadInst* indexLoad = FreeBuilder.CreateLoad(Type::getInt32Ty(split_Context),indexStore); //load index
-          LoadInst* sizeLoad = FreeBuilder.CreateLoad(Type::getInt32Ty(split_Context),sizeStore); //load size
+            //extend index from i32 to i64
 
-          Value* whileConditon = FreeBuilder.CreateICmp(ICmpInst::ICMP_NE,indexLoad,sizeLoad,"condition");
+            Value* extendedIndex = FreeBuilder.CreateSExt(indexLoad,Type::getInt64Ty(split_Context));
 
-          //creating whileBody block
+            Value* elemAccess = FreeBuilder.CreateGEP(currentStruct,aosLoad,extendedIndex,"elemAccess",true);
 
-          BasicBlock* whileBody = BasicBlock::Create(split_Context, "while.body", freeAoSFunction);
+            vector<Value*> indices;
+            indices.push_back(ConstantInt::get(split_Context,APInt(32,0)));
+            indices.push_back(ConstantInt::get(split_Context,APInt(32,coldStructPtrIndex)));
 
-          //creating whileEnd block
+            Value* coldStructPtrAccess = FreeBuilder.CreateGEP(currentStruct,elemAccess,indices,"coldStructPtr",true);
 
-          BasicBlock *whileEnd = BasicBlock::Create(split_Context, "while.end", freeAoSFunction);
+            LoadInst* gepLoad = FreeBuilder.CreateLoad(coldStructPtrAccess->getType(),coldStructPtrAccess,"coldStruct");
 
-          FreeBuilder.CreateCondBr(whileConditon,whileBody,whileEnd);
+            Value* freeColdStruct = FreeBuilder.CreateCall(M.getFunction("free"),gepLoad,"");
 
-          /// End of whileCond
+            indexLoad = FreeBuilder.CreateLoad(Type::getInt32Ty(split_Context),indexStore); //load index
+            Value* inc = FreeBuilder.CreateAdd(indexLoad,ConstantInt::get(split_Context,APInt(32,1)),"",false,true);
+            FreeBuilder.CreateStore(inc,indexStore);
 
-          /// Start of whileEnd
+            FreeBuilder.CreateBr(whileCond);
 
-          FreeBuilder.SetInsertPoint(whileEnd);
-          FreeBuilder.CreateRetVoid(); // end of function
-
-          /// End of whileEnd
-
-          /// Start of whileBody
-
-          FreeBuilder.SetInsertPoint(whileBody);
-
-          aosLoad = FreeBuilder.CreateLoad(PointerType::get(M.getContext(),0),aosStore,"aos"); //load aos to be accessed
-          indexLoad = FreeBuilder.CreateLoad(Type::getInt32Ty(split_Context),indexStore); //load index
-
-          //extend index from i32 to i64
-
-          Value* extendedIndex = FreeBuilder.CreateSExt(indexLoad,Type::getInt64Ty(split_Context));
-
-          Value* elemAccess = FreeBuilder.CreateGEP(currentStruct,aosLoad,extendedIndex,"elemAccess",true);
-
-          vector<Value*> indices;
-          indices.push_back(ConstantInt::get(split_Context,APInt(32,0)));
-          indices.push_back(ConstantInt::get(split_Context,APInt(32,coldStructPtrIndex)));
-
-          Value* coldStructPtrAccess = FreeBuilder.CreateGEP(currentStruct,elemAccess,indices,"coldStructPtr",true);
-
-          LoadInst* gepLoad = FreeBuilder.CreateLoad(coldStructPtrAccess->getType(),coldStructPtrAccess,"coldStruct");
-
-          // Value* ifCondition = FreeBuilder.CreateIsNotNull(gepLoad,"isNull");
-
-          // //creating ifThen and ifEnd
-
-          // BasicBlock *ifThen = BasicBlock::Create(split_Context, "if.then", freeAoSFunction);
-
-          // BasicBlock *ifEnd = BasicBlock::Create(split_Context, "if.end", freeAoSFunction);
-
-          // FreeBuilder.CreateCondBr(ifCondition,ifEnd,ifThen);
-
-          /// End of whileBody
-
-          /// Start of ifEnd
-
-          // FreeBuilder.SetInsertPoint(ifEnd);
-
-          // indexLoad = FreeBuilder.CreateLoad(Type::getInt32Ty(split_Context),indexStore); //load index
-          // Value* inc = FreeBuilder.CreateAdd(indexLoad,ConstantInt::get(split_Context,APInt(32,1)),"",false,true);
-          // FreeBuilder.CreateStore(inc,indexStore);
-          // FreeBuilder.CreateBr(whileCond);
-
-          /// End of ifEnd
-
-          /// Start of ifThen
-
-          // FreeBuilder.SetInsertPoint(ifThen);
-          // aosLoad = FreeBuilder.CreateLoad(argTy,aosStore,"aos"); //load aos to be accessed
-          // indexLoad = FreeBuilder.CreateLoad(Type::getInt32Ty(split_Context),indexStore); //load index
-
-          // //extend index from i32 to i64
-
-          // extendedIndex = FreeBuilder.CreateSExt(indexLoad,Type::getInt64Ty(split_Context));
-
-          // elemAccess = FreeBuilder.CreateGEP(currentStruct,aosLoad,extendedIndex,"elemAccess",true);
-
-          // indices.clear();
-          // indices.push_back(ConstantInt::get(split_Context,APInt(32,0)));
-          // indices.push_back(ConstantInt::get(split_Context,APInt(32,coldStructPtrIndex)));
-
-          // coldStructPtrAccess = FreeBuilder.CreateGEP(currentStruct,elemAccess,indices,"coldStructPtr",true);
-
-          // gepLoad = FreeBuilder.CreateLoad(coldStructPtrAccess->getType(),coldStructPtrAccess,"coldStruct");
-
-          Value* freeColdStruct = FreeBuilder.CreateCall(M.getFunction("free"),gepLoad,"");
-          // FreeBuilder.CreateBr(ifEnd);
-
-          indexLoad = FreeBuilder.CreateLoad(Type::getInt32Ty(split_Context),indexStore); //load index
-          Value* inc = FreeBuilder.CreateAdd(indexLoad,ConstantInt::get(split_Context,APInt(32,1)),"",false,true);
-          FreeBuilder.CreateStore(inc,indexStore);
-
-          FreeBuilder.CreateBr(whileCond);
-
-          /// End of ifThen
-
-                    // canBeFreed()  <- probably use this somewhere - use this on the currentAoS Value*
-
-          functionCreated.find(currentStruct)->second = true;
-          errs()<<"Created function: "<<funcName<<"\n";
+            functionCreated.find(currentStruct)->second = true;
+            errs()<<"Created function: "<<funcName<<"\n";
           }
 
           FreeBuilder.SetInsertPoint(terminator);
@@ -1334,45 +998,14 @@ struct splitAoS : public PassInfoMixin<splitAoS> {
           arguments.push_back(aosLoadInst);
           arguments.push_back(get<3>(aosValues.at(i)));
 
-          CallInst* freeAoSCall = FreeBuilder.CreateCall(M.getFunction(funcName),arguments,"",nullptr);
+          CallInst* freeAoSCall = FreeBuilder.CreateCall(M.getFunction(funcName),arguments,"",nullptr); // insert the function call after the last usage of the AoS
 
-          // if(freeAoSExists == false)
-          // {
-          //   CallInst* freeAoSCall = FreeBuilder.CreateCall(freeFunc,aosLoadInst,"",nullptr);
-          // }
-          
-          
         }
-
-        
 
         errs()<<"\n----------------------- END OF STRUCT SPLITTING -----------------------\n";
 
-
-        //Set to ::all() if IR is unchanged, otherwise ::none()
         return PreservedAnalyses::none();
     };
 };
 
 }
-
-
-// //Creates plugin for pass - required
-// extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
-// llvmGetPassPluginInfo() {
-//   return {
-//     LLVM_PLUGIN_API_VERSION, "splitAoS", "v0.1",
-//     [](PassBuilder &PB) {
-//       PB.registerPipelineParsingCallback(
-//         [](StringRef Name, ModulePassManager &MPM, //For FunctionPass use FunctionPassManager &FPM
-//         ArrayRef<PassBuilder::PipelineElement>) {
-//           if(Name == "splitAoS"){ //name of pass
-//             MPM.addPass(splitAoS());
-//             return true;
-//           }
-//           return false;
-//         }
-//       );
-//     }
-//   };
-// }

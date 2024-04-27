@@ -1,122 +1,3 @@
-//detect dynamic SoA - OLD!!
-//get all structs
-//create vector of sizes of all structs
-//find function calls
-  //check if function is malloc
-    //get size operand
-    //if size is in structSizes
-      //dynamic SoA found
-
-/////////////////////////////////////////////
-
-//gloval vector variables
-//vector potentialSoA
-//vector confirmedSoA 
-//vector calledFunctions //stores names of functions that where called in either main or in another function - check every called function for a s_AoS or d_AoS
-
-//void detectAoS(AllocaInst* v)
-
-  //get allocatedtype
-  //get allocatedtype as a string
-
-  //if it is an arrayallocation (of size greater than 0)
-    //check if allocatedtype is a struct
-      //static SoA found!
-      //store staticAoS in confirmedSoA vector
-  //else if string contains 'struct' word inside '[ ]' - e.g. [50 x %struct.node]
-    //static SoA found!
-    //store staticAoS in confirmedSoA vector
-  //endif
-
-//endif
-
-//void checkFunction(Value* v)
-
-
-/// start with main function
-
-//iterate through main function
-
-  //if v is an AllocaInst
-    //detectAoS(v)
-  //endif
-
-
-
-  
-
-
-
-//detect dynamic SoA - requires the arrays to be populated with data to confidently detect them
-//iterate through main function until end
-  //find malloc DONE
-  //get next instruction
-    //check if its a store
-    //get first operand - a ptr - this is where the array is stored - save this % value in potentialSoA vector
-//continue iterating through main function
-  //checkFunction
-
-
-
-  //if CallInst found
-    //checkFunction(F,possibleAoSList,confirmedAoSList);
-  //find GetElementPtrInst DONE
-    //get first operand
-    //check if load instruction
-      //get first operand
-      //if equal to array ptr - % value
-        //if return type is struct
-          //add SoA to confirmedAoS list
-          //remove SoA from possibleAoS list
-          //confidently detected a dynamic SoA!!!!!!!!!!!!!!!!!!
-
-//void checkFunction(Function F, vector possibleAoSList, vector confirmedAoSList)
-//iterate through function
-  //if CallInst found
-    //checkFunction(F)
-  //find GetElementPtrInst DONE
-    //get first operand
-    //check if load instruction
-      //get first operand
-      //if equal to array ptr - % value
-        //if return type is struct
-          //if return type is struct
-          //add SoA to confirmedAoS list
-          //remove SoA from possibleAoS list
-          //confidently detected a dynamic SoA!!!!!!!!!!!!!!!!!!
-  
-  //!!do this at the end after collecting all function names
-  //iterate through functions if its name is in the vector defined previously
-    //find function with name in vector 
-      //remove function name from vector
-      //get the argument at index (%array) saved in vector, this is the arguement where the array is passed through 
-      //iterate through all instructions in function
-      //if StoreInst found
-        //if first operand == %array
-          //get second operand - this is where the malloc-ed array is stored in - save this and now look out for this % value
-      //if GetElementPtrInst is found
-        //get first operand
-    //check if load instruction
-      //get first operand
-      //if equal to array ptr - % value
-        //if return type is struct
-          //confidently detected a dynamic SoA!!!!!!!!!!!!!!!!!!
-
-//if list of potentialSoA SoA still > 0
-  //check if SoA is global dyn_cast<GlobalVariable>
-  //look through other functions, (some functions might operate on a global SoA without taking it as an argument)
-    //if GetElementPtrInst is found
-          //get first operand
-      //check if load instruction
-        //get first operand
-        //if equal to array ptr - % value
-          //if return type is struct
-            //save function name in a queue
-    //iterate through main function
-      //check for call inst
-        //check if function name matches one in queue
-          //confidently detected a dynamic SoA!!!!!!!!!!!!!!!!!! (globally declared)
-
 //CONDITION: for dynamic SoA, the array must be populated with some data, either explicitly in the main function or via a function
 //empty dynamic SoA will not be detected 
 
@@ -134,116 +15,28 @@
 using namespace llvm;
 using namespace std;
 
-//helper functions
+vector<tuple<Value*,Function*,string,StructType*>> potentialSoA; // stores list of pointers that potentially be storing an SoA
+vector<tuple<Value*,Function*,string,StructType*>> potentialArgumentsSoA; //stores list of arguments used in function calls that could be SoA
+vector<tuple<Value*,StoreInst*,string>> argStoresSoA; // stores list of StoreInst that stores the arguments within the function body
+vector<tuple<Value*,Function*,StructType*>> possibleGlobalsSoA; // stores list of global variables that potentially be an SoA
+set<tuple<int,string,vector<int>,Value*,Function*,string>> calledFunctionSoA; // stores pair of function name and used argument index of pointer (if any)
+int calledNumSoA = 0; // index used to store each called function uniquely in a set.
 
-// void printAoS(vector<Value*> list)
-// {
-//   for(int i = 0; i < list.size(); i++)
-//   {
-//     list.at(i)->print(errs());
-//     errs()<<"\n";
-//   }
-// }
-
-// void removeFromPossibleAoSList(vector<Value*> &list, Value* remove)
-// {
-//   for (auto it = list.begin(); it != list.end();it++)
-//   {
-//     if(*it == remove)
-//     {
-//       list.erase(it);
-//       break;
-//     }
-//   }
-// }
-
-// void printFinalAoS(vector<Value*>& list)
-// {
-//   for(int i = 0; i < list.size(); i++)
-//   {
-//     list.at(i)->print(errs());
-//     errs()<<"\n";
-//   }
-// }
-
-// bool searchPossibleAoS(vector<Value*>& list, string name, bool addToFinal, vector<Value*>& finalList)
-// {
-//   for (auto it = list.begin(); it != list.end();it++)
-//   {
-//     Value* aos = *it;
-//     std::string aos_string; 
-//     raw_string_ostream aos_stream(aos_string);
-//     aos->printAsOperand(aos_stream);
-//     if(aos_string.find(name) != std::string::npos)
-//     {
-//         if(addToFinal == true)
-//         {
-//           finalList.push_back(aos);
-//           list.erase(it);
-//         }
-//         else
-//         {
-//           finalList.push_back(aos); //going to popped out soon
-//         }
-        
-//         return true;
-//     }
-
-//   }
-//   return false;
-// }
-
-//get SoA arg
-
-/*
-map<Value*, vector<value>> aosArgs
-// first = param
-// second = vector of SoA that are associated with that param during func call
-
-func getAoSArgs(aos,param,F,index) //initially, this is called in main(), param = aos
-  For B in F
-    For I in B
-      if I is callInst
-        get called function
-        get Function arg list
-        for i in function arg list
-          if arglist.at(i) == param
-            index = i
-            param = F->getArg(i) //get parameter somehow
-            if(aosArgs.find(param) != aosArgs.end())
-              aosArgs.find(param).second.push_back(aos);
-            endif
-            else
-              vector<Value*> list
-              list.push_back(aos)
-              aosArgs.insert(make_pair<param,list>)
-            endif
-            getAoSArgs(aos, param, calledFunctionSoA, index)
-          endif
-        endfor
-      endif
-  endfor
-*/
-vector<tuple<Value*,Function*,string,StructType*>> potentialSoA;
-vector<tuple<Value*,Function*,string,StructType*>> potentialArgumentsSoA;
-vector<tuple<Value*,StoreInst*,string>> argStoresSoA;
-vector<tuple<Value*,Function*,StructType*>> possibleGlobalsSoA;
-// vector<tuple<Value*,Function*,string>> confirmedSoA;
-set<tuple<int,string,vector<int>,Value*,Function*,string>> calledFunctionSoA; //stores pair of function name and used argument index of pointer (if any)
-int calledNumSoA = 0;
-
-map<string,set<string>> functionStreamSoA;
-
+map<string,set<string>> functionStreamSoA; //for each function, stores names of functions that may be called within in
  
-Function* originFunctionSoA = NULL;
+Function* originFunctionSoA = NULL; //temporary variable used to store original function of current SoA being inspected
 
-int nonPointerCount = 0;
-int pointerCount = 0;
-bool mallocFlagSoA = false;
+int nonPointerCount = 0; // total number of found non-pointer SoA
+int pointerCount = 0; // total number of found pointer SoA
+bool mallocFlagSoA = false; // flag used to check for StoreInst right after a malloc() function call is found
 
+// temporary data structures used to obtain original SoA names and functions (if they are used in function calls)
 set<CallInst*> searchedCISoA;
 vector<Function*> searchedFunctionCallsSoA;
 
+// ------------------------------------------- START OF HELPER FUNCTIONS -------------------------------------------
+
+// find origin of a function call
 pair<Value*,Function*> getOriginSoA(Function* toSearch, Value* call, Module* M)
 {
   pair<Value*,Function*> result = make_pair(call,toSearch);
@@ -261,9 +54,6 @@ pair<Value*,Function*> getOriginSoA(Function* toSearch, Value* call, Module* M)
               {
                 searchedCISoA.insert(CI);
                 searchedFunctionCallsSoA.push_back(parentFunction);
-                // errs()<<"FOUND:";
-                // CI->print(errs());
-                // errs()<<"\n";
                 return make_pair(CI,parentFunction);
               }  
             }
@@ -273,7 +63,7 @@ pair<Value*,Function*> getOriginSoA(Function* toSearch, Value* call, Module* M)
     return result;
   }
 
-
+// obtain statically declared SoA
 void detectNonPointerSoA(AllocaInst* AI)
 {
   Type* returnType = AI->getAllocatedType();
@@ -287,66 +77,30 @@ void detectNonPointerSoA(AllocaInst* AI)
   {
       if(toFind.find(returnType) != toFind.end()) //if the allocated type is a struct
       {
-        // errs()<<"Static Array of Structs (SoA) found"<<"\n"; //static SoA found
-        // nonPointerCount++;
-
         Value* SoA = cast<Instruction>(AI); //store as Value in vector
         StructType* structure = cast<StructType>(returnType);
-        // SoA->print(errs());
         potentialSoA.push_back(make_tuple(SoA,originFunctionSoA,"static",structure));
-
-      //   errs()<<type_str<<"\n";
       }
   }
   else //AoSoA
   {
     if(toFind.find(returnType) != toFind.end()) //if the allocated type is a struct
       {
-        // errs()<<"Static Array of Structs (SoA) found"<<"\n"; //static SoA found
-        // nonPointerCount++;
-
         Value* SoA = cast<Instruction>(AI); //store as Value in vector
         StructType* structure = cast<StructType>(returnType);
-        // SoA->print(errs());
         AoSoAList.push_back(make_tuple(SoA,originFunctionSoA,"static",structure));
-
-      //   errs()<<type_str<<"\n";
       }
   }
-  // else if(type_str.find("struct") != std::string::npos & type_str.find("[") != std::string::npos & type_str.find("]") != std::string::npos) //identifying SoA with size given as int literal - if type contains word "struct"
-  // {
-  //     if(type_str.find("[0 x") == std::string::npos) //if allocated size is not 0
-  //     {
-  //     //allocation size can be 1 or more
-  //     // errs()<<"Static Array of Structs (SoA) found"<<"\n"; //static SoA found
-  //     // nonPointerCount++;
-
-  //     if(auto *AT = dyn_cast<ArrayType>(AI->getAllocatedType()))
-  //     {
-  //       Type* elem = AT->getArrayElementType();
-  //       int num = AT->getArrayNumElements();
-  //       if(num > 0)
-  //       {
-  //         if(auto *ST = dyn_cast<StructType>(elem))
-  //         {
-  //             Value* SoA = cast<Instruction>(AI); //store as Value in vector
-  //             StructType* structure = cast<StructType>(elem);
-  //             // SoA->print(errs());
-  //             potentialSoA.push_back(make_tuple(SoA,originFunctionSoA,"static",structure));
-  //         }
-  //       }
-  //     }
-  //     }
-  // }
 }
 
+// check whether an SoA is found in the 'confirmed' list
 bool findInConfirmedSoA(Value* val)
 {
   for(auto it = confirmedSoA.begin(); it != confirmedSoA.end(); it)
   {
-    Value* aos = get<0>(*it);
+    Value* soa = get<0>(*it);
   
-    if(aos == val)
+    if(soa == val)
     {
       printf("Found in confirmedSoA\n");
       return true;
@@ -357,20 +111,19 @@ bool findInConfirmedSoA(Value* val)
   return false;
 }
 
+// erase an SoA from the 'confirmed' list, if found.
 StructType* eraseFromConfirmedSoA(Value* val)
 {
   for(auto it = confirmedSoA.begin(); it != confirmedSoA.end(); it)
   {
-    Value* aos = get<0>(*it);
+    Value* soa = get<0>(*it);
     string type = get<2>(*it);
     StructType* structure = get<3>(*it);
-    std::string aos_string; 
-    raw_string_ostream aos_stream(aos_string);
-    aos->printAsOperand(aos_stream);
-    if(aos == val)
+    std::string soa_string; 
+    raw_string_ostream soa_stream(soa_string);
+    soa->printAsOperand(soa_stream);
+    if(soa == val)
     {
-      // errs()<<"ERasing from potentialSoA\n";
-      //  errs()<<"Adding back to potentialSoA: "<<aos_string<<"\n";
       confirmedSoA.erase(it);
     if(type == "static")
           nonPointerCount--;
@@ -387,18 +140,16 @@ StructType* eraseFromConfirmedSoA(Value* val)
   return nullptr;
 }
 
+// erase the global SoA from the 'possibleGlobals' list if found
 StructType* eraseFromPossibleGlobalsSoA(Value* val)
 {
   for(auto it = possibleGlobalsSoA.begin(); it != possibleGlobalsSoA.end(); it)
   {
-    Value* aos = get<0>(*it);
+    Value* soa = get<0>(*it);
     StructType* structure = get<2>(*it);
-    // std::string aos_string; 
-    // raw_string_ostream aos_stream(aos_string);
-    // aos->printAsOperand(aos_stream);
-    if(aos == val)
+
+    if(soa == val)
     {
-      // errs()<<"ERasing from potentialSoA\n";
       possibleGlobalsSoA.erase(it);
       return structure;
     }
@@ -409,6 +160,7 @@ StructType* eraseFromPossibleGlobalsSoA(Value* val)
   }
   return nullptr;
 }
+
 // to check whether the next function call will eventually led to the current function, making it recursive
 bool checkIfRecursiveSoA(string nextFunction, string currentFunction)
 {
@@ -420,45 +172,29 @@ bool checkIfRecursiveSoA(string nextFunction, string currentFunction)
   }
   return false;
 }
+
+//function used to add an SoA to potential vector
 void getPotentialSoA(Instruction* I) //adding to potentialSoA vector
 {
   if(auto *SI = dyn_cast<StoreInst>(I))
   {
     Value* operand = SI->getOperand(1); //get second operand of this store instruction
-    // potentialSoA.push_back(operand);
-
     
-    std::string aos_string; 
-    raw_string_ostream aos_stream(aos_string);
-    operand->printAsOperand(aos_stream);
-    // errs()<<"Potential "<<aos_string<<"\n";
+    std::string soa_string; 
+    raw_string_ostream soa_stream(soa_string);
+    operand->printAsOperand(soa_stream);
 
-    // if(find(possibleGlobalsSoA.begin(),possibleGlobalsSoA.end(),operand) != possibleGlobalsSoA.end()) //if a malloc uses a global variable that has had a GPE operation applied to it, its is a dynamic SoA
-    // {
-    //   // errs()<<"Found possible global: "<<aos_string<<"\n";
-    //   eraseFromPossibleGlobalsSoA(operand);
-    //   confirmedSoA.push_back(make_pair(operand,originFunctionSoA));
-    //   pointerCount++;
-    // }
-    // else if(find(potentialSoA.begin(),potentialSoA.end(),operand) == potentialSoA.end())
-    // {
-    //   eraseFromConfirmedSoA(operand); //remove from confirmedSoA list if it exists before adding it to potentialSoA
-    //   potentialSoA.push_back(make_pair(operand,originFunctionSoA));
-    // }
     bool foundInPossibleGlobals = false;
     bool foundInPotential = false;
-    Value* aos;
+    Value* soa;
     Function* func;
     for(auto it = possibleGlobalsSoA.begin(); it != possibleGlobalsSoA.end(); it)
     {
-      aos = get<0>(*it);
+      soa = get<0>(*it);
       func = get<1>(*it);
-      // std::string aos_string; 
-      // raw_string_ostream aos_stream(aos_string);
-      // aos->printAsOperand(aos_stream);
-      if(aos == operand)
+
+      if(soa == operand)
       {
-        // errs()<<"ERasing from potentialSoA\n";
         foundInPossibleGlobals = true;
         break;
       }
@@ -469,28 +205,22 @@ void getPotentialSoA(Instruction* I) //adding to potentialSoA vector
     }
     if(foundInPossibleGlobals)
     {
-      //errs()<<"Found possible global: "<<aos_string<<"\n";
       StructType* structure = eraseFromPossibleGlobalsSoA(operand);
       if(!findInConfirmedSoA(operand))
       {
-        confirmedSoA.push_back(make_tuple(aos,func,"dynamic",structure,false,false));
+        confirmedSoA.push_back(make_tuple(soa,func,"dynamic",structure,false,false));
         pointerCount++;
       }
-
-      
     }
     else
     {
       for(auto it = potentialSoA.begin(); it != potentialSoA.end(); it)
       {
-        aos = get<0>(*it);
+        soa = get<0>(*it);
         func = get<1>(*it);
-        // std::string aos_string; 
-        // raw_string_ostream aos_stream(aos_string);
-        // aos->printAsOperand(aos_stream);
-        if(aos == operand & func == originFunctionSoA)
+
+        if(soa == operand & func == originFunctionSoA)
         {
-          // errs()<<"ERasing from potentialSoA\n";
           foundInPotential = true;
           break;
         }
@@ -510,19 +240,17 @@ void getPotentialSoA(Instruction* I) //adding to potentialSoA vector
   mallocFlagSoA = false; //disable flag - don't search for StoreInst after malloc
 }
 
+// erase an SoA from the 'potential' list if found
 tuple<llvm::Value *, llvm::Function *, std::string, llvm::StructType *> eraseFromPotentialSoA(Value* val)
 {
   for(auto it = potentialSoA.begin(); it != potentialSoA.end(); it)
   {
-    Value* aos = get<0>(*it);
+    Value* soa = get<0>(*it);
     StructType* structure = get<3>(*it);
     tuple<Value*,Function*,string,StructType*> elem = *it;
-    // std::string aos_string; 
-    // raw_string_ostream aos_stream(aos_string);
-    // aos->printAsOperand(aos_stream);
-    if(aos == val)
+
+    if(soa == val)
     {
-      // errs()<<"ERasing from potentialSoA\n";
       potentialSoA.erase(it);
       return elem;
     }
@@ -534,19 +262,17 @@ tuple<llvm::Value *, llvm::Function *, std::string, llvm::StructType *> eraseFro
   return make_tuple(nullptr,nullptr,"",nullptr);
 }
 
+// erase an SoA function argument from the 'potentialArguments' list
 void eraseFromPotentialArgumentsSoA(Value* val)
 {
   for(auto it = potentialArgumentsSoA.begin(); it != potentialArgumentsSoA.end(); it)
   {
-    Value* aos = get<0>(*it);
+    Value* soa = get<0>(*it);
     StructType* structure = get<3>(*it);
     auto elem = *it;
-    // std::string aos_string; 
-    // raw_string_ostream aos_stream(aos_string);
-    // aos->printAsOperand(aos_stream);
-    if(aos == val)
+
+    if(soa == val)
     {
-      // errs()<<"ERasing from potentialSoA\n";
       potentialArgumentsSoA.erase(it);
     }
     else
@@ -556,25 +282,24 @@ void eraseFromPotentialArgumentsSoA(Value* val)
   }
 }
 
+// erase an StoreInst from 'argStores' if found
 pair<StoreInst*,string> eraseFromArgStoresSoA(Value* val)
 {
   for(auto it = argStoresSoA.begin(); it != argStoresSoA.end(); it)
   {
-    Value* aos = get<0>(*it);
+    Value* soa = get<0>(*it);
     StoreInst* store = get<1>(*it);
     string type = get<2>(*it);
-    std::string aos_string; 
-    raw_string_ostream aos_stream(aos_string);
-    aos->printAsOperand(aos_stream);
+    std::string soa_string; 
+    raw_string_ostream soa_stream(soa_string);
+    soa->printAsOperand(soa_stream);
 
     std::string val_string; 
     raw_string_ostream val_stream(val_string);
     val->printAsOperand(val_stream);
 
-    // errs()<<"removing "<<val_string<<"from uaa "<<aos_string<<"\n";
-    if(aos == val)
+    if(soa == val)
     {
-      // errs()<<"ERasing from usedasArgs\n";
       argStoresSoA.erase(it);
       return make_pair(store,type);
     }
@@ -586,6 +311,7 @@ pair<StoreInst*,string> eraseFromArgStoresSoA(Value* val)
   return make_pair(nullptr,"");
 }
 
+// temporary variables to store information about current GEPInst that is being inspected
 Value* gepOperandSoA = NULL;
 Value* calledAoSSoA = NULL;
 Function* paramFunctionSoA = NULL;
@@ -601,7 +327,8 @@ bool findInAoSoAList(Value* op)
   return false;
 }
 
-bool checkGEPSoA(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
+// check whether a GEP instruction is accessing a structure element from an array
+bool checkGEPSoA(GetElementPtrInst *gep, Value* soa, bool isParam, string type)
 {
     Value* operand = gep->getOperand(0);
     StructType* gepStruct = nullptr;
@@ -613,18 +340,14 @@ bool checkGEPSoA(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
 
     if(auto *ST = dyn_cast<StructType>(gep->getSourceElementType()))
     {
-      // if(gep->getResultElementType()->isArrayTy())
         gepStruct = ST;
     }
-
-    // errs()<<"Checking operand: "<<op_string<<"\n";
 
     while(isa<LoadInst>(operand) == false & isa<AllocaInst>(operand) == false & isa<GlobalVariable>(operand) == false)
     {
       if(auto *GEP = dyn_cast<GetElementPtrInst>(operand))
       {
         operand = GEP->getOperand(0);
-        // operand->printAsOperand(ops);
       }
       else
       {
@@ -636,7 +359,7 @@ bool checkGEPSoA(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
     {
       std::string ptr_string; 
       raw_string_ostream ptr(ptr_string);
-      aos->print(ptr);
+      soa->print(ptr);
 
       if(op_string == ptr_string)
       {
@@ -646,10 +369,10 @@ bool checkGEPSoA(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
           pointerCount++;
 
         // output not needed
-        StructType* structure = get<3>(eraseFromPotentialSoA(aos));
+        StructType* structure = get<3>(eraseFromPotentialSoA(soa));
         if(structure == nullptr)
-          structure = eraseFromPossibleGlobalsSoA(aos);
-        confirmedSoA.push_back(make_tuple(aos,originFunctionSoA,type,gepStruct,false,false));
+          structure = eraseFromPossibleGlobalsSoA(soa);
+        confirmedSoA.push_back(make_tuple(soa,originFunctionSoA,type,gepStruct,false,false));
         return true;
       }
     }
@@ -657,32 +380,27 @@ bool checkGEPSoA(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
     {
       std::string ptr_string; 
       raw_string_ostream ptr(ptr_string);
-      aos->print(ptr);
-
-      // errs()<<"does it equal "<<ptr_string<<"\n";
+      soa->print(ptr);
 
       if(op_string == ptr_string) //if loaded operand is one of the malloc-ed arrays detected earlier
       {
-        // errs()<<"Dynamic Array of Structs (SoA) found"<<"\n"; //dynamic SoA found
         if(type == "static")
           nonPointerCount++;
         else if(type == "dynamic")
           pointerCount++;
 
-        // output not needed
-        StructType* structure =  get<3>(eraseFromPotentialSoA(aos));
+        StructType* structure =  get<3>(eraseFromPotentialSoA(soa));
         if(structure == nullptr)
-          structure = eraseFromPossibleGlobalsSoA(aos);
+          structure = eraseFromPossibleGlobalsSoA(soa);
 
         if(isParam)
         {
-          Value* storedAoS = eraseFromArgStoresSoA(aos).first;
+          Value* storedAoS = eraseFromArgStoresSoA(soa).first;
           confirmedSoA.push_back(make_tuple(storedAoS,originFunctionSoA,type,gepStruct,true,false));
         }
         else
-          confirmedSoA.push_back(make_tuple(aos,originFunctionSoA,type,gepStruct,false,false));
-        // errs()<<"Size of argStoresSoA: "<<argStoresSoA.size()<<"\n";
-        // errs()<<"Size of potentialSoA: "<<potentialSoA.size()<<"\n";
+          confirmedSoA.push_back(make_tuple(soa,originFunctionSoA,type,gepStruct,false,false));
+
         return true;
       }
       gepOperandSoA = operand;
@@ -694,39 +412,30 @@ bool checkGEPSoA(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
       std::string op_string; 
       raw_string_ostream ops(op_string);
       operand->print(ops);
-
-        // errs()<<"for operand: "<<op_string<<"\n";
       
-
       std::string ptr_string; 
       raw_string_ostream ptr(ptr_string);
-      aos->print(ptr);
-
-      // errs()<<"does it equal "<<ptr_string<<"\n";
+      soa->print(ptr);
 
       if(op_string == ptr_string) //if loaded operand is one of the malloc-ed arrays detected earlier
       {
-        // errs()<<"Dynamic Array of Structs (SoA) found"<<"\n"; //dynamic SoA found
        if(type == "static")
           nonPointerCount++;
         else if(type == "dynamic")
           pointerCount++;
 
-        // output not needed
-        StructType* structure =  get<3>(eraseFromPotentialSoA(aos));
+        StructType* structure =  get<3>(eraseFromPotentialSoA(soa));
         if(structure == nullptr)
-          structure = eraseFromPossibleGlobalsSoA(aos);
+          structure = eraseFromPossibleGlobalsSoA(soa);
 
         if(isParam)
         {
-          Value* storedAoS = eraseFromArgStoresSoA(aos).first;
+          Value* storedAoS = eraseFromArgStoresSoA(soa).first;
           confirmedSoA.push_back(make_tuple(storedAoS,originFunctionSoA,type,gepStruct,true,false));
         }
         else
-          confirmedSoA.push_back(make_tuple(aos,originFunctionSoA,type,gepStruct,false,false));
+          confirmedSoA.push_back(make_tuple(soa,originFunctionSoA,type,gepStruct,false,false));
       
-        // errs()<<"Size of argStoresSoA: "<<argStoresSoA.size()<<"\n";
-        // errs()<<"Size of potentialSoA: "<<potentialSoA.size()<<"\n";
         return true;
       }
       gepOperandSoA = operand;
@@ -736,22 +445,20 @@ bool checkGEPSoA(GetElementPtrInst *gep, Value* aos, bool isParam, string type)
   return false;
 }
 
+// obtain the function that has been called using the CallInst
 void getCalledFunctionsSoA(CallInst* CI, Function* orig)
 {
   vector<int> indices;
-  Value* aos;
+  Value* soa;
   Value* paramAoS;
   string type = "undefined";
   int index = 0;
-  // CI->print(errs());
-  // errs()<<"\n";
+
   CI->setTailCall(false);
-  // CI->print(errs());
-  // errs()<<"\n";
+
   Function* f = CI->getCalledFunction();
   string funcName = f->getName().str();
-  // errs()<<funcName<<"\n";
-  // errs()<<"Checking func call "<<funcName<<"\n";
+
   if(funcName == orig->getName() | checkIfRecursiveSoA(funcName,orig->getName().str())) //function call may be recursive
   {
     return;
@@ -764,7 +471,7 @@ void getCalledFunctionsSoA(CallInst* CI, Function* orig)
       break;
     }
 
-    Value* argument = a->get(); //get argument o
+    Value* argument = a->get(); //get argument operand
     Value* operand;
     if(auto LI = dyn_cast<LoadInst>(argument))
       operand = LI->getOperand(0); //get first operand (value being loaded)      
@@ -775,29 +482,23 @@ void getCalledFunctionsSoA(CallInst* CI, Function* orig)
     std::string op_string; 
     raw_string_ostream ops(op_string);
     operand->printAsOperand(ops);
-
-    // errs()<<op_string<<"\n";
-
-      // bool detect = false;
       
       for(int i = 0; i < potentialSoA.size(); i++)
       {
-        aos = get<0>(potentialSoA.at(i));
+        soa = get<0>(potentialSoA.at(i));
         std::string value_string; 
         raw_string_ostream aos_stream(value_string);
-        aos->printAsOperand(aos_stream);
-        // errs()<<"pointer: "<<value_string<<"\n";
-        // errs()<<"operand: "<<op_string<<"\n";
+        soa->printAsOperand(aos_stream);
+
         if(value_string == op_string)
         {
-          // errs()<<"adding "<<value_string<<" to indices\n";
           indices.push_back(index);
           //add to new list: potentialArgumentsSoA
-          tuple<Value*,Function*,string,StructType*> elem = eraseFromPotentialSoA(aos);
+          tuple<Value*,Function*,string,StructType*> elem = eraseFromPotentialSoA(soa);
           type = get<2>(elem);
           potentialArgumentsSoA.push_back(elem);
           detect = true;
-          paramAoS = aos;
+          paramAoS = soa;
 
           break;
         }
@@ -806,19 +507,17 @@ void getCalledFunctionsSoA(CallInst* CI, Function* orig)
       {
         for(int i = 0; i < argStoresSoA.size(); i++)
         {
-          aos = get<0>(argStoresSoA.at(i));
+          soa = get<0>(argStoresSoA.at(i));
           std::string value_string; 
           raw_string_ostream aos_stream(value_string);
-          aos->printAsOperand(aos_stream);
-          // errs()<<"pointer: "<<value_string<<"\n";
-          // errs()<<"operand: "<<op_string<<"\n";
+          soa->printAsOperand(aos_stream);
+
           if(value_string == op_string)
           {
-            // errs()<<"adding to indices\n";
             detect = true;
             indices.push_back(index);
-            eraseFromArgStoresSoA(aos);
-            paramAoS = aos;
+            eraseFromArgStoresSoA(soa);
+            paramAoS = soa;
 
             break;
           }
@@ -830,19 +529,19 @@ void getCalledFunctionsSoA(CallInst* CI, Function* orig)
         {
           bool inConfirmed = findInConfirmedSoA(operand);
           if(inConfirmed == false & (findInAoSoAList(operand) == false))
-            possibleGlobalsSoA.push_back(make_tuple(operand,f,nullptr)); //@globalFive in dynamic_AoS.c called in main() function 
+            possibleGlobalsSoA.push_back(make_tuple(operand,f,nullptr)); 
           detect = true;
         }
       }
     
     index++;
   }
-  // errs()<<"Size of indices: "<<indices.size()<<"\n";
-  // errs()<<"Adding function: "<<funcName<<"with indices size"<<indices.size()<<"that operates on"<<valName<<"\n";
+
   calledFunctionSoA.insert(std::make_tuple(calledNumSoA,funcName,indices,paramAoS,orig,type));
   calledNumSoA++;
 }
 
+// obtain the StoreInst that stores the potential SoA argument 
 vector<tuple<Value*,StoreInst*,string>> getArgumentStoresSoA(Function *F, vector<int> indices,string type)
 {
   vector<Value*> arguments;
@@ -864,14 +563,11 @@ vector<tuple<Value*,StoreInst*,string>> getArgumentStoresSoA(Function *F, vector
           raw_string_ostream ops(op_string);
           operand->printAsOperand(ops);
           
-          // errs()<<"Get operand "<<op_string<<"\n";
-
           for(int i = 0; i < arguments.size(); i++)
           {
             std::string arg_string; 
             raw_string_ostream args(arg_string);
             arguments.at(i)->printAsOperand(args);
-            // errs()<<"Size "<<i<<" Search for "<<arg_string<<"\n";
             if(arg_string == op_string)
             {
               Value* arrayStore = SI->getOperand(1); //get second operand of this store instruction
@@ -887,6 +583,10 @@ vector<tuple<Value*,StoreInst*,string>> getArgumentStoresSoA(Function *F, vector
   }
   return newStores;
 }
+
+// ------------------------------------------- END OF HELPER FUNCTIONS -------------------------------------------
+
+// ------------------------------------------- START OF SOA DETECTION CODE -------------------------------------------
 
 namespace {
 
@@ -908,7 +608,7 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
         //for each struct, look through all element tyes
 
         //if all elements are of aggregrate types, with size > 1, then it can be used as an SoA
-        //add this struct to "toFind" vector
+        // add this struct to "toFind" vector
 
         for(int i = 0; i < allStructs.size(); i++)
         {
@@ -923,13 +623,11 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
 
           for(int i = 0; i < numFields; i++)
           {
-            // get type of field i
+            // get type of field
             Type* fieldType = currStruct->getElementType(i);
 
             if(fieldType->isArrayTy())
             {
-              // errs()<<"Aggregate type found\n";
-
               int arrayElements = fieldType->getArrayNumElements();
               if(arrayElements > 1)
                 allFieldsArrays = true;
@@ -960,16 +658,10 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
             errs()<<" with size "<<size<<" bytes.\n\n";
 
             toFind.insert(make_pair(currStruct,size));
-
-              toFind.insert(make_pair(currStruct,size));
-
           }
 
         }
 
-        // errs()<<"\n\n";
-
-        // errs()<<"Getting globals\n";
         for(auto Global = M.global_begin(); Global != M.global_end(); ++Global)
         {
           Constant* constValue = nullptr; 
@@ -990,9 +682,7 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
             if(toFind.find(t) != toFind.end())
             {
               Value* AoSoA = cast<Value>(&(*Global)); //store as Value in vector
-              // errs()<<"Adding AoSoA ";
-              // Global->print(errs());
-              // errs()<<" to confirmedSoA list\n";
+
               StructType* structure = cast<StructType>(t);
               AoSoAList.push_back(make_tuple(AoSoA,nullptr,"static",structure));
             }
@@ -1004,9 +694,7 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
               Value* SoA = cast<Value>(&(*Global)); //store as Value in vector
               Type* structure = toFind.find(t)->first;
               StructType* ST = cast<StructType>(structure);
-              // errs()<<"Adding SoA ";
-              // Global->print(errs());
-              // errs()<<" to confirmedSoA list\n";
+
               potentialSoA.push_back(make_tuple(SoA,originFunctionSoA,"static",ST));
             }
           }
@@ -1017,7 +705,7 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
         { 
             if(checkMain == true)
               break;
-            // errs()<<"In function: "<<F.getName()<<"\n";
+
             if(F.getName().find("main") != std::string::npos)
             {
               originFunctionSoA = &F;
@@ -1042,20 +730,18 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                         loadedAoS = LI->getOperand(0);
                       }
 
-                      // errs()<<op_str<<"\n";
-
                       for(auto it = potentialSoA.begin(); it != potentialSoA.end(); it++)
                       {
-                        Value* aos = get<0>(*it);
+                        Value* soa = get<0>(*it);
                         std::string ptr_string; 
                         raw_string_ostream ptr(ptr_string);
-                        aos->printAsOperand(ptr);
+                        soa->printAsOperand(ptr);
 
                         if((op_str.find("getelementptr") != std::string::npos) & (op_str.find(ptr_string) != std::string::npos))
                         {
-                          StructType* structure =  get<3>(eraseFromPotentialSoA(aos));
+                          StructType* structure =  get<3>(eraseFromPotentialSoA(soa));
                           nonPointerCount++;
-                          confirmedSoA.push_back(make_tuple(aos,originFunctionSoA,"static",structure,false,false));
+                          confirmedSoA.push_back(make_tuple(soa,originFunctionSoA,"static",structure,false,false));
                           found = true;
                           break;
                         }
@@ -1065,11 +751,11 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                       {
                         for(auto it = potentialSoA.begin(); it != potentialSoA.end(); it++)
                         {
-                          Value* aos = get<0>(*it);
+                          Value* soa = get<0>(*it);
                           string type = get<2>(*it);
                           StructType* structure = get<3>(*it);
 
-                          if(loadedAoS == aos) //an potentialSoA SoA could be stored into an empty pointer - add this pointer to 'potentialSoA' list
+                          if(loadedAoS == soa) //an potentialSoA SoA could be stored into an empty pointer - add this pointer to 'potentialSoA' list
                           {
                             eraseFromPossibleGlobalsSoA(SI->getOperand(1));
                             potentialSoA.push_back(make_tuple(SI->getOperand(1),originFunctionSoA,type,structure));
@@ -1080,11 +766,11 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
 
                         for(auto it = confirmedSoA.begin(); it != confirmedSoA.end(); it++)
                         {
-                          Value* aos = get<0>(*it);
+                          Value* soa = get<0>(*it);
                           string type = get<2>(*it);
                           StructType* structure = get<3>(*it);
 
-                          if(loadedAoS == aos) //an potential AoS could be stored into an empty pointer - add this pointer to 'potential' list
+                          if(loadedAoS == soa) //a potential SoA could be stored into an empty pointer - add this pointer to 'potential' list
                           {
                             eraseFromPossibleGlobalsSoA(SI->getOperand(1));
                             confirmedSoA.push_back(make_tuple(SI->getOperand(1),originFunctionSoA,type,structure,false,false));
@@ -1098,14 +784,11 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                       detectNonPointerSoA(AI);
                     else if(auto *CI = dyn_cast<CallInst>(&I))
                     {
-                      // CI->print(errs());
-                      // errs()<<"\n";
                       CI->setTailCall(false);
-                      // CI->print(errs());
-                      // errs()<<"\n";
+
                       Function* f = CI->getCalledFunction();
                       string funcName = f->getName().str();
-                      // errs()<<funcName<<"\n";
+
                       if(funcName == "malloc" | funcName == "calloc")
                       {
                           bool findSoA = false, findAoSoA = false;
@@ -1116,15 +799,12 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                             if(auto *CO = dyn_cast<ConstantInt>(size))
                             {
                               int constIntValue = CO->getSExtValue();
-                              // errs()<<"Size :"<<constIntValue<<"\n";
-
-                              // StructType* SoA = nullptr;
 
                               Type* foundStruct = nullptr;
 
                               for(auto it = toFind.begin(); it != toFind.end(); it++)
                               {
-                                errs()<<it->second<<" dviide by "<<constIntValue<<"\n";
+                                errs()<<it->second<<" divide by "<<constIntValue<<"\n";
                                 if(it->second == constIntValue) //if size is exactly equal to a struct in toFind, this malloc-ed ptr could potentially be an SoA
                                 {
                                   findSoA = true;
@@ -1155,7 +835,7 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                                 }
                               }
                             }
-                            else //assume it is an AoSoA if the size cannot be determines (not a constant int)
+                            else //assume it is an AoSoA if the size cannot be determined (not a constant int)
                             {
                               if(auto *SI = dyn_cast<StoreInst>(I.getNextNode()))
                               {
@@ -1196,9 +876,6 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                             if(auto *CO = dyn_cast<ConstantInt>(size))
                             {
                               int constIntValue = CO->getSExtValue();
-                              // errs()<<"Size :"<<constIntValue<<"\n";
-
-                              // StructType* SoA = nullptr;
 
                               Type* foundStruct = nullptr;
 
@@ -1241,7 +918,6 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                               }
                             }
                           }
-                        // mallocAttributes = f->getAttributes();
                       }
                       else if(funcName != "free")
                       {
@@ -1258,30 +934,28 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                     else if(auto *GEP = dyn_cast<GetElementPtrInst>(&I))
                     {
                       bool found = false;
-                      Value* aos;
+                      Value* soa;
                       string type;
                       if((toFind.find(GEP->getSourceElementType()) != toFind.end()))
                       {
                         for(auto it = potentialSoA.begin(); it != potentialSoA.end(); it++)
                         {
-                          aos = get<0>(*it);
+                          soa = get<0>(*it);
                           type = get<2>(*it);
                           std::string ptr_string; 
                           raw_string_ostream ptr(ptr_string);
-                          aos->printAsOperand(ptr);
-                          // errs()<<"Searching for "<<ptr_string<<"\n";
-                          if(checkGEPSoA(GEP,aos,false,type) == true)
+                          soa->printAsOperand(ptr);
+
+                          if(checkGEPSoA(GEP,soa,false,type) == true)
                           {
-                            // errs()<<"Found "<<ptr_string<<"\n";
                             found = true;
-                            eraseFromPotentialSoA(aos);
+                            eraseFromPotentialSoA(soa);
                             break;
                           }
                         }
-                        // errs()<<found<<"\n";
+
                         if(found == false)
                         {
-                          // errs()<<"adding to possibleGlobalsSoA\n";
                           if(gepOperandSoA != NULL)
                           {
                             if(auto *GV = dyn_cast<GlobalVariable>(gepOperandSoA))
@@ -1289,7 +963,7 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                               StructType* structure = cast<StructType>(GEP->getSourceElementType());
                               bool inConfirmed = findInConfirmedSoA(gepOperandSoA);
                               if(inConfirmed == false & (findInAoSoAList(gepOperandSoA) == false))
-                                possibleGlobalsSoA.push_back(make_tuple(gepOperandSoA,originFunctionSoA,structure)); //@globalFive in dynamic_AoS.c called in main() function 
+                                possibleGlobalsSoA.push_back(make_tuple(gepOperandSoA,originFunctionSoA,structure)); 
                             }
                           }
                         }
@@ -1301,20 +975,7 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
             }
         }
 
-        // errs()<<"Size of calledFunctions vector: "<<calledFunctionSoA.size()<<"\n";
-        // for(int i = 0; i < calledFunctionSoA.size(); i++)
-        // {
-        //   vector<int> indices = get<1>(calledFunctionSoA.at(i));
-        //   // errs()<<get<0>(calledFunctionSoA.at(i))<<" uses ";
-        //   for(int j = 0; j < indices.size(); j++)
-        //   {
-        //     // errs()<<"index "<<indices.at(j)<<"\n";
-        //   }
-        // }
-
-        // errs()<<potentialSoA.size()<<"\n";
-        // errs()<<confirmedSoA.size()<<"\n";
-
+      // Now go through all called functions and search for any newly declared SoA values or search for any 'potential' SoA values that are being populated
       for(auto it = calledFunctionSoA.begin(); it != calledFunctionSoA.end(); it++)
       {
         tuple<int,string,vector<int>,Value*,Function*,string> searchFunc = *it;
@@ -1332,11 +993,10 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
             functionStreamSoA.insert(make_pair(F.getName().str(),next));
 
             originFunctionSoA = &F;
-            // errs()<<"Searching "<<get<0>(searchFunc)<<"\n";
+
             if(argIndices.size() != 0)
             {
               argStoresSoA = getArgumentStoresSoA(&F,argIndices,type);
-              // errs()<<"compare indices "<<argIndices.size()<<" to argStoresSoA "<<argStoresSoA.size()<<"\n";
             }
 
             for(auto &B : F)
@@ -1360,20 +1020,18 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
 
                   bool found = false;
                 
-                  // errs()<<op_str<<"\n";
-
                   for(auto it = potentialSoA.begin(); it != potentialSoA.end(); it++)
                   {
-                    Value* aos = get<0>(*it);
+                    Value* soa = get<0>(*it);
                     std::string ptr_string; 
                     raw_string_ostream ptr(ptr_string);
-                    aos->printAsOperand(ptr);
+                    soa->printAsOperand(ptr);
 
                     if((op_str.find("getelementptr") != std::string::npos) & (op_str.find(ptr_string) != std::string::npos))
                     {
-                      StructType* structure =  get<3>(eraseFromPotentialSoA(aos));
+                      StructType* structure =  get<3>(eraseFromPotentialSoA(soa));
                       nonPointerCount++;
-                      confirmedSoA.push_back(make_tuple(aos,originFunctionSoA,"static",structure,false,false));
+                      confirmedSoA.push_back(make_tuple(soa,originFunctionSoA,"static",structure,false,false));
                       found = true;
                       break;
                     }
@@ -1383,11 +1041,11 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                   {
                     for(auto it = potentialSoA.begin(); it != potentialSoA.end(); it++)
                     {
-                      Value* aos = get<0>(*it);
+                      Value* soa = get<0>(*it);
                       string type = get<2>(*it);
                       StructType* structure = get<3>(*it);
 
-                      if(loadedAoS == aos) //an potential AoS could be stored into an empty pointer - add this pointer to 'potential' list
+                      if(loadedAoS == soa) //a potential SoA could be stored into an empty pointer - add this pointer to 'potential' list
                       {
                         eraseFromPossibleGlobalsSoA(SI->getOperand(1));
                         potentialSoA.push_back(make_tuple(SI->getOperand(1),originFunctionSoA,type,structure));
@@ -1398,11 +1056,11 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
 
                     for(auto it = confirmedSoA.begin(); it != confirmedSoA.end(); it++)
                     {
-                      Value* aos = get<0>(*it);
+                      Value* soa = get<0>(*it);
                       string type = get<2>(*it);
                       StructType* structure = get<3>(*it);
 
-                      if(loadedAoS == aos) //an potential AoS could be stored into an empty pointer - add this pointer to 'potential' list
+                      if(loadedAoS == soa) //a potential SoA could be stored into an empty pointer - add this pointer to 'potential' list
                       {
                         eraseFromPossibleGlobalsSoA(SI->getOperand(1));
                         confirmedSoA.push_back(make_tuple(SI->getOperand(1),originFunctionSoA,type,structure,false,false));
@@ -1417,14 +1075,12 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                   detectNonPointerSoA(AI);
                 else if(auto *CI = dyn_cast<CallInst>(&I))
                 {
-                  // CI->print(errs());
-                  // errs()<<"\n";
+
                   CI->setTailCall(false);
-                  // CI->print(errs());
-                  // errs()<<"\n";
+
                   Function* f = CI->getCalledFunction();
                   string funcName = f->getName().str();
-                  // errs()<<funcName<<"\n";
+
                   if(funcName == "malloc" | funcName == "calloc")
                   {
                     bool findSoA = false, findAoSoA = false;
@@ -1498,9 +1154,6 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                       if(auto *CO = dyn_cast<ConstantInt>(size))
                       {
                         int constIntValue = CO->getSExtValue();
-                        // errs()<<"Size :"<<constIntValue<<"\n";
-
-                        // StructType* SoA = nullptr;
 
                         Type* foundStruct = nullptr;
 
@@ -1569,34 +1222,31 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                     }
 
                     getCalledFunctionsSoA(CI,&F);
-                    // errs()<<"yh\n";
                   }
                 }
                 else if(auto *GEP = dyn_cast<GetElementPtrInst>(&I))
                 {
-                  // GEP->print(errs());
-                  // errs()<<"\n";
                   if((toFind.find(GEP->getSourceElementType()) != toFind.end()))
                   {
                     bool found = false;
-                    Value* aos;
+                    Value* soa;
                     string type;
                     for(auto it = potentialSoA.begin(); it != potentialSoA.end(); it++)
                     {
-                      aos = get<0>(*it);
+                      soa = get<0>(*it);
                       type = get<2>(*it);
-                      if(checkGEPSoA(GEP,aos,false,type) == true)
+                      if(checkGEPSoA(GEP,soa,false,type) == true)
                       {
                         found = true;
-                        eraseFromPotentialSoA(aos);
+                        eraseFromPotentialSoA(soa);
                         break;
                       }
                     }
                     for(auto it = argStoresSoA.begin(); it != argStoresSoA.end(); it++)
                     {
-                      aos = get<0>(*it);
+                      soa = get<0>(*it);
                       type = get<2>(*it);
-                      if(checkGEPSoA(GEP,aos,true,type) == true)
+                      if(checkGEPSoA(GEP,soa,true,type) == true)
                       {
                         found = true;
                         break;
@@ -1611,7 +1261,7 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                           StructType* structure = cast<StructType>(GEP->getSourceElementType());
                           bool inConfirmed = findInConfirmedSoA(gepOperandSoA);
                           if(inConfirmed == false & (findInAoSoAList(gepOperandSoA) == false))
-                            possibleGlobalsSoA.push_back(make_tuple(gepOperandSoA,originFunctionSoA,structure)); //@globalFive in dynamic_AoS.c called in main() function 
+                            possibleGlobalsSoA.push_back(make_tuple(gepOperandSoA,originFunctionSoA,structure));
                         }
                       }
                     }
@@ -1620,199 +1270,53 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
               }
             }
           }
-        //remove duplicate function calls - store value as well
-        // for(auto it = calledFunctionSoA.begin(); it != calledFunctionSoA.end(); it)
-        // {
-        //   tuple<string,vector<int>,string> val = *it;
-        //   if((get<0>(val) == get<0>(searchFunc)) & (get<1>(val) == get<1>(searchFunc)) & (get<2>(val) == get<2>(searchFunc)))
-        //   {
-        //     errs()<<"Removing function: "<<get<0>(val)<<" with val:"<<get<2>(val)<<" and"<<get<2>(searchFunc)<<"\n";
-        //     calledFunctionSoA.erase(it);
-        //   }
-        //   else
-        //   {
-        //     it++;
-        //   }
-        // }
         }
       }
 
-      //correctly detect SoA used as function arguments
+// ------------------------------------------- END OF AOS DETECTION CODE -------------------------------------------
 
-      /*
+// ------------------------------------------- FINDING CORRECT ORIGIN OF EACH SOA -------------------------------------------
 
-        pair<value,function> getOriginSoA(F,aos,M)
-        {
-          result = pair<F,aos>
-          search thru all F,B,I
-            if callInst found
-              if call to F found & not found in searchedCISoA vector
-                  searchedCIvector.append(call)
-                  return pair<value,function> res = getOriginSoA(new F)
-          end
-             
-          return result
-        }
-
-        for each aos in confirmedSoA
-          current confirmedSoA value = temp;
-          result;
-          newAoS = current aos;
-          newFunc = nullptr;
-          if aos = a callInsts
-            get the associated function F
-            while(newAoS != callInst & newFunc == nullptr)
-              pair<Value*,Function*> result = look for a function call to this function: getOriginSoA(F,aos,M)
-              for each operand used in the function call
-                check if the operand exists in potentialSoA and if function matches
-                  if yes, delete from potentialSoA
-                    newAOS = aos
-              endfor
-              newFunc = origin function
-            endwhile
-
-          update temp with new values from newValues
-        endfor
-      
-      */
-
-     
-
+     // iterate through all SoA in 'confirmed' and find its original name and function where it has been used in a function call.
      for(int a = 0; a < confirmedSoA.size(); a++)
      {
-      // errs()<<"AOS: "<<a<<"\n";
        auto currConfirmed = confirmedSoA.at(a);
-       Value* aos = get<0>(currConfirmed);
+       Value* soa = get<0>(currConfirmed);
        Function* func = get<1>(currConfirmed);
        pair<Value*,Function*> result;
        bool found = false;
        string type = "dynamic";
        
 
-      if(auto *SI = dyn_cast<StoreInst>(aos))
+      if(auto *SI = dyn_cast<StoreInst>(soa))
       {
-        //  errs()<<"To search call: "<<func->getName()<<"\n";
         searchedFunctionCallsSoA.push_back(func);
         while(found == false)
         {
-          result = getOriginSoA(func,aos,&M);
-          // errs()<<"------------RESULTS----------------\n";
-          // result.first->print(errs());
-          // errs()<<"\n";
-          // result.second->printAsOperand(errs());
-          // errs()<<"\n";
-          // errs()<<"-----------------------------------\n";
+          result = getOriginSoA(func,soa,&M);
 
           if(auto *SI = dyn_cast<StoreInst>(result.first)) //no callinst found
           {
             searchedFunctionCallsSoA.pop_back();
             func = searchedFunctionCallsSoA.at(searchedFunctionCallsSoA.size() - 1);
-            // errs()<<"Checking "<<func->getName()<<" again\n";
           }
           else if(auto *CI = dyn_cast<CallInst>(result.first))
           {
-            // CI->print(errs());
-            // errs()<<"\n";
-            // if(CI->getCalledFunction()->getReturnType()->isVoidTy() == false) //for functions without a void return type, get the following LoadInst which could be an SoA
-            // {
-            //   Value* toFind = nullptr;
-            //   if(auto *newCI = dyn_cast<CallInst>(CI->getNextNode()))
-            //   {
-            //     toFind = newCI->getOperand(0); //memcpy function
-            //   }
-            //   else if(auto *SI = dyn_cast<LoadInst>(CI->getNextNode()))
-            //   {
-            //     toFind = SI->getPointerOperand(); //store inst
-            //   }
-
-            //   toFind->print(errs());
-
-            //   for(auto it = potentialArgumentsSoA.begin(); it != potentialArgumentsSoA.end(); it)
-            //   {
-            //       Value* aos = get<0>(*it);
-            //       Function* func = get<1>(*it);
-
-            //       // errs()<<"Is it: ";
-            //       // aos->print(errs());
-            //       // errs()<<"\n";
-
-            //       if(aos == toFind)
-            //       {
-            //         // errs()<<"FOUND AOS\n";
-            //         eraseFromPotentialArgumentsSoA(aos);
-            //         result.first = aos;
-            //         result.second = func;
-            //         type = get<2>(*it);
-            //         found = true;
-            //         break;
-            //       }
-            //       else
-            //         it++;
-            //     }
-
-            //     if(found == false)
-            //     {
-            //       for(auto it = possibleGlobalsSoA.begin(); it != possibleGlobalsSoA.end(); it)
-            //       {
-            //         Value* aos = get<0>(*it);
-            //         Function* func = get<1>(*it);
-
-            //         // errs()<<"Is it: ";
-            //         // aos->print(errs());
-            //         // errs()<<"\n";
-
-            //         if(aos == toFind)
-            //         {
-            //           // errs()<<"FOUND AOS\n";
-            //           eraseFromPossibleGlobalsSoA(aos);
-            //           result.first = aos;
-            //           result.second = func;
-            //           found = true;
-            //           break;
-            //         }
-            //         else
-            //           it++;
-            //       }
-            //     }
-            
-            //     if(found == true)
-            //     {
-            //       searchedCISoA.clear();
-            //       searchedFunctionCallsSoA.clear();
-            //       break;
-            //     }
-            //     else
-            //     {
-            //       // searchedCISoA.clear();
-            //       func = result.second;
-            //     }
-            // }
-            // else
-            // {
               for(auto a = CI->arg_begin(); a != CI->arg_end(); a++)
               {
                 Value* toFind = *a;
                 if(auto *LI = dyn_cast<LoadInst>(toFind))
                   toFind = LI->getOperand(0);
 
-                // errs()<<"Call inst operand: ";
-                // toFind->print(errs());
-                // errs()<<"\n";
-
                 for(auto it = potentialArgumentsSoA.begin(); it != potentialArgumentsSoA.end(); it)
                 {
-                  Value* aos = get<0>(*it);
+                  Value* soa = get<0>(*it);
                   Function* func = get<1>(*it);
 
-                  // errs()<<"Is it: ";
-                  // aos->print(errs());
-                  // errs()<<"\n";
-
-                  if(aos == toFind)
+                  if(soa == toFind)
                   {
-                    // errs()<<"FOUND AOS\n";
-                    eraseFromPotentialArgumentsSoA(aos);
-                    result.first = aos;
+                    eraseFromPotentialArgumentsSoA(soa);
+                    result.first = soa;
                     result.second = func;
                     type = get<2>(*it);
                     found = true;
@@ -1826,18 +1330,13 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                 {
                   for(auto it = possibleGlobalsSoA.begin(); it != possibleGlobalsSoA.end(); it)
                   {
-                    Value* aos = get<0>(*it);
+                    Value* soa = get<0>(*it);
                     Function* func = get<1>(*it);
 
-                    // errs()<<"Is it: ";
-                    // aos->print(errs());
-                    // errs()<<"\n";
-
-                    if(aos == toFind)
+                    if(soa == toFind)
                     {
-                      // errs()<<"FOUND AOS\n";
-                      eraseFromPossibleGlobalsSoA(aos);
-                      result.first = aos;
+                      eraseFromPossibleGlobalsSoA(soa);
+                      result.first = soa;
                       result.second = func;
                       found = true;
                       break;
@@ -1855,7 +1354,6 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
                 }
                 else
                 {
-                  // searchedCISoA.clear();
                   func = result.second;
                 }
               }
@@ -1875,12 +1373,14 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
 
       for(auto it = possibleGlobalsSoA.begin(); it != possibleGlobalsSoA.end(); it)
       {
-        Value* aos = get<0>(*it);
-        if(findInConfirmedSoA(aos))
+        Value* soa = get<0>(*it);
+        if(findInConfirmedSoA(soa))
           possibleGlobalsSoA.erase(it);
         else
           it++;
       }
+
+      // ------------------------------------------- ORIGINS FOR EACH SOA FOUND -------------------------------------------
 
       int staticCountTemp = 0;
       int dynamicCountTemp = 0;
@@ -1892,25 +1392,24 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
           staticCountTemp++;
         else if(type == "dynamic")
           dynamicCountTemp++;
-
       }
 
       nonPointerCount = staticCountTemp;
       pointerCount = dynamicCountTemp;
+
+    // ------------------------------------------- COLLECT STRUCT INFO FOR EACH SOA DATA STRUCTURE -------------------------------------------
+
 
       vector<pair<StructType*, bool>> checkedStructs;
 
       //iterate through all structs in the confirmedSoA list, and determine whether it contains a ptr field - which could make it recursive
       for(int i = 0; i < confirmedSoA.size(); i++)
       {
-        // if(get<5>(confirmedSoA.at(i)) == true)
-        //   continue;
 
         StructType* structure = get<3>(confirmedSoA.at(i));
 
         /// for each used structure, store the size of each struct
 
-        // origStructSizes.insert(make_pair(structure,TD->getStructLayout(structure)->getSizeInBytes()));
         origStructSizes.insert(make_pair(structure,make_pair(TD->getTypeAllocSize(structure),TD->getTypeAllocSize(structure))));
 
         bool alreadyChecked = false;
@@ -1952,11 +1451,11 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
           std::string func_str; 
           string struct_str;
           string type;
-          // string type = get<2>(potentialSoA.at(i));
-          raw_string_ostream aos(aos_str);
+
+          raw_string_ostream soa(aos_str);
           raw_string_ostream func(func_str);
           raw_string_ostream stru(struct_str);
-          get<0>(potentialSoA.at(i))->printAsOperand(aos);
+          get<0>(potentialSoA.at(i))->printAsOperand(soa);
           type = get<2>(potentialSoA.at(i));
           errs()<<i+1<<": "<<aos_str;
           Function* funcName = get<1>(potentialSoA.at(i));
@@ -1989,9 +1488,9 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
         {
           std::string aos_str; 
           std::string func_str; 
-          raw_string_ostream aos(aos_str);
+          raw_string_ostream soa(aos_str);
           raw_string_ostream func(func_str);
-          get<0>(possibleGlobalsSoA.at(i))->printAsOperand(aos);
+          get<0>(possibleGlobalsSoA.at(i))->printAsOperand(soa);
           errs()<<i+1<<": "<<aos_str;
           get<1>(possibleGlobalsSoA.at(i))->printAsOperand(func);
           errs()<<" used in function: "<<func_str<<"\n";
@@ -2011,10 +1510,10 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
           bool hasPointerElem;
 
           string type = get<2>(confirmedSoA.at(i));
-          raw_string_ostream aos(aos_str);
+          raw_string_ostream soa(aos_str);
           raw_string_ostream func(func_str);
           raw_string_ostream stru(struct_str);
-          get<0>(confirmedSoA.at(i))->print(aos);
+          get<0>(confirmedSoA.at(i))->print(soa);
           errs()<<i+1<<": "<<aos_str;
 
           Function* funcName = get<1>(confirmedSoA.at(i));
@@ -2077,24 +1576,3 @@ struct detectSoA : public PassInfoMixin<detectSoA> {
     };
 };
 }
-
-
-// //Creates plugin for pass - required
-// extern "C" ::llvm::PassPluginLibraryInfo LLVM_ATTRIBUTE_WEAK
-// llvmGetPassPluginInfo() {
-//   return {
-//     LLVM_PLUGIN_API_VERSION, "detectAoS", "v0.1",
-//     [](PassBuilder &PB) {
-//       PB.registerPipelineParsingCallback(
-//         [](StringRef Name, ModulePassManager &MPM, //Module pass
-//         ArrayRef<PassBuilder::PipelineElement>) {
-//           if(Name == "detectAoS"){ //name of pass
-//             MPM.addPass(detectAoS());
-//             return true;
-//           }
-//           return false;
-//         }
-//       );
-//     }
-//   };
-// }
