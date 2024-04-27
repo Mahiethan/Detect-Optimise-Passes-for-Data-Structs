@@ -13,10 +13,10 @@ CPU family:          6
 Model:               63
 Model name:          Intel(R) Xeon(R) CPU E5-2660 v3 @ 2.60GHz
 Stepping:            2
-CPU MHz:             3133.689
+CPU MHz:             2901.099
 CPU max MHz:         3300.0000
 CPU min MHz:         1200.0000
-BogoMIPS:            5200.03
+BogoMIPS:            5200.15
 Virtualization:      VT-x
 L1d cache:           32K
 L1i cache:           32K

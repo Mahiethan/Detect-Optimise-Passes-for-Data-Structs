@@ -19,20 +19,19 @@ The compiler passes are found in `./passes`. The existing `.so` files were alrea
 
 After compiling the passes, feel free to utilise them with the C programs stored in the folder `./demo-programs`. This folder contains specific C programs that were used to test the functionality of the compiler passes during the implementation, and these compiler passes are guaranteed to work on these test programs.
 
-Additionally, you can insert your own custom C programs and test the compiler passes on them. A `README.md` file is included in this folder to show what commands are necessary to apply the compiler passes on C programs.
+Additionally, you can insert your own custom C programs and test the compiler passes on them. A [`README`](./passes/README.md) file is included in this folder to show what commands are necessary to apply the compiler passes on C programs.
 
-## Test results used in final report:
+## Test results:
 
-Please see the `./test-results` folder to view the results that was discussed in the final report, as well as the programs written for these tests. 
-
-This contains several subdirectories that contains test results for each optimisation pass (reorderAos, peelAoS and splitAoS). 
-
-Within these subdirectories, there are two folders that contains the results for multiple AoS sizes used for running the unoptimised and optimised programs. 
-
-The `.c` source code files, the IR representations (`.ll` files) and executable binaries all represent the test programs used for each optimisation. Feel free to view the code for these programs and run the executables. 
-
-The bash scripts (`.sh` files) were used to run the tests and compare the outputs between the unoptimised and optimised programs. These can be deleted as they are no longer needed, but will remain within this project to show the automated testing process that was used.
+Please see the [README](./test-results/README.md) file in `./test-results` folder for more information about this directory.
 
 ## Written project deliverables:
 
 The Specification, Progress Report and the Final Report are all available within this project as `.pdf` files for easier viewing.
+
+## Navigation:
+
+- [Main README](./README.md)
+- [./passes README](./passes/README.md)
+- [./test-results README](./test-results/README.md)
+<!-- - [./demo-programs README](./demo-programs/README.md) -->

@@ -31,8 +31,8 @@ echo "#!/bin/sh
 #SBATCH --cpus-per-task=1
 #SBATCH --mem=16G
 #SBATCH --time=1-00:00:00
-#SBATCH --output=./orderedResults/Size1000000/output_%j.out
-#SBATCH --error=./orderedResults/Size1000000/error_%j.err
+#SBATCH --output=./orderedResults/Size500000/output_%j.out
+#SBATCH --error=./orderedResults/Size500000/error_%j.err
 echo ===== ENVIRONMENT =====
 
 lscpu

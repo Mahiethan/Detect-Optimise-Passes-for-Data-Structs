@@ -5,7 +5,7 @@ target triple = "x86_64-redhat-linux-gnu"
 
 %struct.nodeOneOld = type { [2 x double], double, double, double, double, [6 x i8], i8, i32, i32, float }
 
-@arrayOne = dso_local global [1000000 x %struct.nodeOneOld] zeroinitializer, align 16
+@arrayOne = dso_local global [500000 x %struct.nodeOneOld] zeroinitializer, align 16
 @.str = private unnamed_addr constant [16 x i8] c"Validity check\0A\00", align 1
 @.str.1 = private unnamed_addr constant [11 x i8] c"\0Aa: ---\0A%d\00", align 1
 @.str.2 = private unnamed_addr constant [11 x i8] c"\0Ab: ---\0A%f\00", align 1
@@ -131,22 +131,22 @@ for.cond24:                                       ; preds = %for.inc63, %for.end
 for.body26:                                       ; preds = %for.cond24
   %25 = load i32, ptr %i23, align 4
   %idxprom27 = sext i32 %25 to i64
-  %arrayidx28 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom27
+  %arrayidx28 = getelementptr inbounds [500000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom27
   %a29 = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx28, i32 0, i32 8
   store i32 1, ptr %a29, align 8
   %26 = load i32, ptr %i23, align 4
   %idxprom30 = sext i32 %26 to i64
-  %arrayidx31 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom30
+  %arrayidx31 = getelementptr inbounds [500000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom30
   %b32 = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx31, i32 0, i32 4
   store double 1.000000e+01, ptr %b32, align 8
   %27 = load i32, ptr %i23, align 4
   %idxprom33 = sext i32 %27 to i64
-  %arrayidx34 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom33
+  %arrayidx34 = getelementptr inbounds [500000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom33
   %c35 = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx34, i32 0, i32 7
   store i32 9, ptr %c35, align 8
   %28 = load i32, ptr %i23, align 4
   %idxprom36 = sext i32 %28 to i64
-  %arrayidx37 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom36
+  %arrayidx37 = getelementptr inbounds [500000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom36
   %d38 = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx37, i32 0, i32 5
   %bf.load39 = load i64, ptr %d38, align 8
   %bf.clear40 = and i64 %bf.load39, -281474976710656
@@ -155,7 +155,7 @@ for.body26:                                       ; preds = %for.cond24
   store i48 %29, ptr %d38, align 8
   %30 = load i32, ptr %i23, align 4
   %idxprom42 = sext i32 %30 to i64
-  %arrayidx43 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom42
+  %arrayidx43 = getelementptr inbounds [500000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom42
   %e44 = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx43, i32 0, i32 6
   store i8 97, ptr %e44, align 8
   store i32 0, ptr %j45, align 4
@@ -187,12 +187,12 @@ for.inc54:                                        ; preds = %for.body48
 for.end56:                                        ; preds = %for.cond46
   %36 = load i32, ptr %i23, align 4
   %idxprom57 = sext i32 %36 to i64
-  %arrayidx58 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom57
+  %arrayidx58 = getelementptr inbounds [500000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom57
   %g59 = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx58, i32 0, i32 1
   store double 2.300000e+01, ptr %g59, align 8
   %37 = load i32, ptr %i23, align 4
   %idxprom60 = sext i32 %37 to i64
-  %arrayidx61 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom60
+  %arrayidx61 = getelementptr inbounds [500000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom60
   %h62 = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx61, i32 0, i32 2
   store double 0x407C852CA57A786C, ptr %h62, align 8
   br label %for.inc63
@@ -236,28 +236,28 @@ for.cond1:                                        ; preds = %for.inc29, %for.bod
 for.body3:                                        ; preds = %for.cond1
   %3 = load i32, ptr %i, align 4
   %idxprom = sext i32 %3 to i64
-  %arrayidx = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom
+  %arrayidx = getelementptr inbounds [500000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom
   %a = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx, i32 0, i32 8
   %4 = load i32, ptr %a, align 8
   %add = add nsw i32 %4, 1
   store i32 %add, ptr %a, align 8
   %5 = load i32, ptr %i, align 4
   %idxprom4 = sext i32 %5 to i64
-  %arrayidx5 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom4
+  %arrayidx5 = getelementptr inbounds [500000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom4
   %b = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx5, i32 0, i32 4
   %6 = load double, ptr %b, align 8
   %add6 = fadd double %6, 1.000000e-03
   store double %add6, ptr %b, align 8
   %7 = load i32, ptr %i, align 4
   %idxprom7 = sext i32 %7 to i64
-  %arrayidx8 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom7
+  %arrayidx8 = getelementptr inbounds [500000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom7
   %c = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx8, i32 0, i32 7
   %8 = load i32, ptr %c, align 8
   %add9 = add nsw i32 %8, 1
   store i32 %add9, ptr %c, align 8
   %9 = load i32, ptr %i, align 4
   %idxprom10 = sext i32 %9 to i64
-  %arrayidx11 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom10
+  %arrayidx11 = getelementptr inbounds [500000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom10
   %d = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx11, i32 0, i32 5
   %bf.load = load i64, ptr %d, align 8
   %bf.shl = shl i64 %bf.load, 16
@@ -282,7 +282,7 @@ for.cond15:                                       ; preds = %for.inc, %for.body3
 for.body17:                                       ; preds = %for.cond15
   %12 = load i32, ptr %i, align 4
   %idxprom18 = sext i32 %12 to i64
-  %arrayidx19 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom18
+  %arrayidx19 = getelementptr inbounds [500000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom18
   %f = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx19, i32 0, i32 0
   %13 = load i32, ptr %j14, align 4
   %idxprom20 = sext i32 %13 to i64
@@ -301,14 +301,14 @@ for.inc:                                          ; preds = %for.body17
 for.end:                                          ; preds = %for.cond15
   %16 = load i32, ptr %i, align 4
   %idxprom23 = sext i32 %16 to i64
-  %arrayidx24 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom23
+  %arrayidx24 = getelementptr inbounds [500000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom23
   %g = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx24, i32 0, i32 1
   %17 = load double, ptr %g, align 8
   %add25 = fadd double %17, 1.000000e-03
   store double %add25, ptr %g, align 8
   %18 = load i32, ptr %i, align 4
   %idxprom26 = sext i32 %18 to i64
-  %arrayidx27 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom26
+  %arrayidx27 = getelementptr inbounds [500000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom26
   %h = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx27, i32 0, i32 2
   %19 = load double, ptr %h, align 8
   %add28 = fadd double %19, 1.000000e-03
@@ -365,7 +365,7 @@ for.cond1:                                        ; preds = %for.inc55, %for.bod
 for.body3:                                        ; preds = %for.cond1
   %3 = load i32, ptr %i, align 4
   %idxprom = sext i32 %3 to i64
-  %arrayidx = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom
+  %arrayidx = getelementptr inbounds [500000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom
   %a = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx, i32 0, i32 8
   %4 = load i32, ptr %a, align 8
   %5 = load ptr, ptr %array.addr, align 8
@@ -378,7 +378,7 @@ for.body3:                                        ; preds = %for.cond1
   store i32 %add, ptr %a6, align 8
   %8 = load i32, ptr %i, align 4
   %idxprom7 = sext i32 %8 to i64
-  %arrayidx8 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom7
+  %arrayidx8 = getelementptr inbounds [500000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom7
   %b = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx8, i32 0, i32 4
   %9 = load double, ptr %b, align 8
   %10 = load ptr, ptr %array.addr, align 8
@@ -391,7 +391,7 @@ for.body3:                                        ; preds = %for.cond1
   store double %add12, ptr %b11, align 8
   %13 = load i32, ptr %i, align 4
   %idxprom13 = sext i32 %13 to i64
-  %arrayidx14 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom13
+  %arrayidx14 = getelementptr inbounds [500000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom13
   %c = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx14, i32 0, i32 7
   %14 = load i32, ptr %c, align 8
   %15 = load ptr, ptr %array.addr, align 8
@@ -404,7 +404,7 @@ for.body3:                                        ; preds = %for.cond1
   store i32 %add18, ptr %c17, align 8
   %18 = load i32, ptr %i, align 4
   %idxprom19 = sext i32 %18 to i64
-  %arrayidx20 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom19
+  %arrayidx20 = getelementptr inbounds [500000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom19
   %d = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx20, i32 0, i32 5
   %bf.load = load i64, ptr %d, align 8
   %bf.shl = shl i64 %bf.load, 16
@@ -437,7 +437,7 @@ for.cond30:                                       ; preds = %for.inc, %for.body3
 for.body32:                                       ; preds = %for.cond30
   %23 = load i32, ptr %i, align 4
   %idxprom33 = sext i32 %23 to i64
-  %arrayidx34 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom33
+  %arrayidx34 = getelementptr inbounds [500000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom33
   %f = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx34, i32 0, i32 0
   %24 = load i32, ptr %j29, align 4
   %idxprom35 = sext i32 %24 to i64
@@ -465,7 +465,7 @@ for.inc:                                          ; preds = %for.body32
 for.end:                                          ; preds = %for.cond30
   %31 = load i32, ptr %i, align 4
   %idxprom43 = sext i32 %31 to i64
-  %arrayidx44 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom43
+  %arrayidx44 = getelementptr inbounds [500000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom43
   %g = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx44, i32 0, i32 1
   %32 = load double, ptr %g, align 8
   %33 = load ptr, ptr %array.addr, align 8
@@ -478,7 +478,7 @@ for.end:                                          ; preds = %for.cond30
   store double %add48, ptr %g47, align 8
   %36 = load i32, ptr %i, align 4
   %idxprom49 = sext i32 %36 to i64
-  %arrayidx50 = getelementptr inbounds [1000000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom49
+  %arrayidx50 = getelementptr inbounds [500000 x %struct.nodeOneOld], ptr @arrayOne, i64 0, i64 %idxprom49
   %h = getelementptr inbounds %struct.nodeOneOld, ptr %arrayidx50, i32 0, i32 2
   %37 = load double, ptr %h, align 8
   %38 = load ptr, ptr %array.addr, align 8

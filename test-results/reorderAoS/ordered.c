@@ -1,5 +1,13 @@
+/*
+    This program uses the re-ordered struct from the unordered.c file
+
+    Re-ordering was done manually by hand
+*/
+
 #include <stdio.h>
 #include <stdlib.h>
+
+#define SIZE 500000
 
 struct nodeOneOld
 {
@@ -15,12 +23,10 @@ struct nodeOneOld
     float j;
 };
 
-struct nodeOneOld arrayOne[1000000];
+struct nodeOneOld arrayOne[SIZE]; // global AoS
 
 void populateNode(struct nodeOneOld* array, int size)
 {
-    // for(int j = 0; j < 100000; j++)
-    // {
         for(int i = 0; i < size; i++)
         {
             array[i].a = 1;
@@ -46,64 +52,7 @@ void populateNode(struct nodeOneOld* array, int size)
             arrayOne[i].g = 23.0;
             arrayOne[i].h = 456.3234;
         }
-    // }
 }
-
-/*
-    Field reordering is not effective for large struct, when only a few structs are being accessed frequently
-
-    No performance gains seen or in worst case, performance loss is seen (especially if top fields of structs are accessed frequently and this is then reordered)
-
-    Mention this in report
-
-*/
-
-// void multNodeOneOld(int size)
-// {
-//     for(int j = 0; j < 100000; j++)
-//     {
-//         for(int i = 0; i < size; i++)
-//         {
-//             arrayOneOld[i].a = (arrayOneOld[i].b * arrayOneOld[i].a) + (100 / 5);
-//             arrayOneOld[i].b = (arrayOneOld[i].a / arrayOneOld[i].c) - (99 * 3);
-//         }
-//     }
-// }
-
-// void multArrays(int size, struct nodeOneOld* arrayTwo)
-// {
-//     for(int j = 0; j < 100000; j++)
-//     {
-//         for(int i = 0; i < size; i++)
-//         {
-//             arrayOneOld[i].a = arrayOneOld[i].a * arrayTwo[i].a;
-//             arrayOneOld[i].b = (arrayOneOld[i].b + arrayTwo[i].a) / 1.1;
-//         }
-//     }
-// }
-
-// void multNode(int size, struct nodeOneOld* array)
-// {
-//     for(int j = 0; j < 100000; j++)
-//     {
-//         for(int i = 0; i < size; i++)
-//         {
-//             array[i].b = (array[i].f[0] / array[i].b) - (99 * 3);
-//             // array[i].i = (array[i].f[1] / array[i].c) - (99 * 3);
-//         }
-//     }
-// }
-
-// void multArrays(int size, struct nodeOneOld* array)
-// {
-//     for(int j = 0; j < 100000; j++)
-//     {
-//         for(int i = 0; i < size; i++)
-//         {
-//             array[i].i = (array[i].f[0]) * array[i].i;
-//         }
-//     }
-// }
 
 void calculationsOne(int size)
 {
@@ -143,9 +92,9 @@ void calculationsTwo(int size, struct nodeOneOld* array)
 
 int main(int argc, char *argv[])
 {
-   int n = atoi(argv[1]);
+    int n = atoi(argv[1]); // command line argument represents size of AoS
    
-    struct nodeOneOld* arrayTwoOld = (struct nodeOneOld*) malloc(n * sizeof(struct nodeOneOld));
+    struct nodeOneOld* arrayTwoOld = (struct nodeOneOld*) malloc(n * sizeof(struct nodeOneOld)); // dynamic AoS
     
     populateNode(arrayTwoOld,n);
 
@@ -155,18 +104,8 @@ int main(int argc, char *argv[])
     int i = (rand() % n);
     int j = (rand() % 67);
 
-    // arrayOneOld[i].a = 1;
-    // arrayOneOld[i].b = 10.0;
-    // arrayOneOld[i].c = 9;
+    // print outputs for checking validity
 
-    // arrayTwoOld[i].a = 1;
-    // arrayTwoOld[i].b = 10.0;
-    // arrayTwoOld[i].c = 9;
-
-    // multNodeOneOld(n);
-    // multArrays(n, arrayTwoOld);
-
-    //validity check
     printf("Validity check\n");
 
     printf("\na: ---\n%d",arrayTwoOld[i].a);

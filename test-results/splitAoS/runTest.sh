@@ -2,10 +2,6 @@
 
 clang -g unsplit.c -o unsplit
 
-# clang -g peeled.c -o peeled
-
-# clang -emit-llvm peeled.c -fno-discard-value-names -S -o peeled.ll
-
 ############################################ Measuring compiling time ########################################
 
 #Capturing start time in milliseconds
@@ -29,11 +25,3 @@ milli_time=$((end_time - start_time))
 
 #Displaying elapsed time in milliseconds
 echo "Elapsed time (milliseconds): $milli_time ms"
-
-# Uncomment below if you want to run it on current terminal - does not give reliable results
-
-# /usr/bin/time -v ./unordered >> unorderedOutput.txt 2>&1 | tee unorderedOutput.txt
-
-# /usr/bin/time -v ./ordered >> orderedOutput.txt 2>&1 | tee orderedOutput.txt
-
-# /usr/bin/time -v ./optimised >> optimisedOutput.txt 2>&1 | tee optimisedOutput.txt

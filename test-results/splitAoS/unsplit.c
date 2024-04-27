@@ -1,9 +1,5 @@
 /*
- DON'T USE THIS TEST FOR FINAL REPORT!!!
-
- It doesn't consider affinity group checks.
-
- Modify it to use affinity groups before running this test program.
+ This test ONLY considers hotness when splitting - it doesn't consider affinity group checks.
 */
 
 #include <stdio.h>
@@ -26,9 +22,6 @@ struct nodeOneOld
     float j;
 };
 
-// struct nodeOneOld arrayOneOld[1000000];
-// struct nodeOneOld arrayTwoOld[1000000];
-
 void populateNodeOne(struct nodeOneOld* arrayOne, struct nodeOneOld* arrayTwo, int size)
 {
     for(int i = 0; i < size; i++)
@@ -45,16 +38,6 @@ void populateNodeOne(struct nodeOneOld* arrayOne, struct nodeOneOld* arrayTwo, i
         arrayTwo[i].a = 1;
         arrayTwo[i].b = 10.0;
         arrayTwo[i].c = 9;
-
-        /*
-        Uncommenting below causes errors - find out why and fix! Possibly due to changing the malloc() allocation size 
-        */
-
-        // arrayTwo[i].d = 23.0;
-        // arrayTwo[i].e = 'a';
-        // // for(int j = 0; j < 67; j++)
-        // //     arrayTwo[i].f[j] = 23.0;
-        // arrayTwo[i].g = 23.0;
     }
 }
 
@@ -86,20 +69,11 @@ void multArrays(struct nodeOneOld* arrayOne, struct nodeOneOld* arrayTwo, int si
 
 int main(int argc, char *argv[])
 {
-   // int n = 99999;
-   int n = atoi(argv[1]);
+   int n = atoi(argv[1]); // command line argument represents size of AoS
    
-    ////static
-    // struct nodeOneOld arrayOneOld[n];
-    ////dynamic
+    // dynamic AoS
     struct nodeOneOld* arrayOne = (struct nodeOneOld*) malloc(n*sizeof(struct nodeOneOld));
     struct nodeOneOld* arrayTwo = (struct nodeOneOld*) malloc(n*sizeof(struct nodeOneOld));
-
-    //  struct nodeOneOld* arrayOneOld = aligned_alloc(64,sizeof(struct nodeOneOld) * n); //no difference
-    // struct nodeOneOld* arrayTwoOld = aligned_alloc(64,sizeof(struct nodeOneOld) * n); //no difference
-
-    // struct nodeOneOld arrayOneLocal[n];
-    // struct nodeOneOld arrayTwoLocal[n];
 
     populateNodeOne(arrayOne, arrayTwo, n);
 
@@ -109,23 +83,15 @@ int main(int argc, char *argv[])
     arrayOne[i].a = 1;
     arrayOne[i].b = 10.0;
     arrayOne[i].c = 9;
-    // arrayOneLocal[i].d = 23.0;
-    // arrayOneLocal[i].e = 'a';
-    // arrayOneLocal[i].f = 23.0; -
-    // arrayOneLocal[i].g = 23.0;
 
     arrayTwo[i].a = 1;
     arrayTwo[i].b = 10.0;
     arrayTwo[i].c = 9;
-    // arrayTwoLocal[i].d = 23.0;
-    // arrayTwoLocal[i].e = 'a';
-    // arrayTwoLocal[i].f = 23.0;
-    // arrayTwoLocal[i].g = 23.0;
 
     multArrayOne(arrayOne,n);
     multArrays(arrayOne,arrayTwo,n);
 
-    //validity check
+    // print outputs for checking validity
     printf("Validity check\n");
 
     printf("\na: ---\n%d",arrayOne[i].a);
@@ -133,11 +99,9 @@ int main(int argc, char *argv[])
     printf("\nc: ---\n%d",arrayOne[i].c);
     printf("\nd: ---\n%lld",arrayOne[i].d);
     printf("\ne: ---\n%d",arrayOne[i].e);
-    // printf("\nf: ---\n%f",arrayOneOld[i].f[j]);
     printf("\ng: ---\n%f",arrayOne[i].g);
     printf("\nh: ---\n%f",arrayOne[i].h);
     printf("\ni: ---\n%f",arrayOne[i].i);
-    // printf("\nj: ---\n%f\n",arrayOne[i].j[2]);
 
     free(arrayOne);
     free(arrayTwo);

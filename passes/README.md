@@ -18,3 +18,9 @@
 source clean.sh
 ```
 
+## Navigation:
+
+- [Main README](../README.md)
+- [./passes README](./README.md)
+- [./test-results README](../test-results/README.md)
+<!-- - [./demo-programs README](../demo-programs/README.md) -->

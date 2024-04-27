@@ -1,6 +1,8 @@
 #include <stdio.h>
 #include <stdlib.h>
 
+#define SIZE 1000 // this represents the size of the AoS
+
 struct nodeOneOld
 {
 
@@ -18,8 +20,8 @@ struct nodeOneOld
     float j;
 };
 
-struct nodeOneOld arrayOneOld[1000000];
-struct nodeOneOld arrayTwoOld[1000000];
+struct nodeOneOld arrayOneOld[SIZE]; // global AoS
+struct nodeOneOld arrayTwoOld[SIZE]; // global AoS
 
 void populateNodeOneOld(int size)
 {
@@ -37,11 +39,6 @@ void populateNodeOneOld(int size)
         arrayTwoOld[i].a = 1;
         arrayTwoOld[i].b = 10.0;
         arrayTwoOld[i].c = 9;
-        // arrayTwoOld[i].d = 23.0;
-        // arrayTwoOld[i].e = 'a';
-        // for(int j = 0; j < 67; j++)
-        //     arrayTwoOld[i].f[j] = 23.0;
-        // arrayTwoOld[i].g = 23.0;
     }
 }
 
@@ -73,46 +70,23 @@ void multArrays(int size)
 
 int main(int argc, char *argv[])
 {
-   // int n = 99999;
-   int n = atoi(argv[1]);
-   
-    ////static
-    // struct nodeOneOld arrayOneOld[n];
-    ////dynamic
-    // struct nodeOneOld* arrayOneOld = (struct nodeOneOld*) malloc(n*sizeof(struct nodeOneOld));
-    // arrayTwoOld = (struct nodeOneOld*) malloc(n*sizeof(struct nodeOneOld));
+    populateNodeOneOld(SIZE);
 
-    //  struct nodeOneOld* arrayOneOld = aligned_alloc(64,sizeof(struct nodeOneOld) * n); //no difference
-    // struct nodeOneOld* arrayTwoOld = aligned_alloc(64,sizeof(struct nodeOneOld) * n); //no difference
-
-    // struct nodeOneOld arrayOneLocal[n];
-    // struct nodeOneOld arrayTwoLocal[n];
-
-    populateNodeOneOld(n);
-
-    int i = (rand() % n);
+    int i = (rand() % SIZE);
     int j = (rand() % 67);
 
     arrayOneOld[i].a = 1;
     arrayOneOld[i].b = 10.0;
     arrayOneOld[i].c = 9;
-    // arrayOneLocal[i].d = 23.0;
-    // arrayOneLocal[i].e = 'a';
-    // arrayOneLocal[i].f = 23.0; -
-    // arrayOneLocal[i].g = 23.0;
 
     arrayTwoOld[i].a = 1;
     arrayTwoOld[i].b = 10.0;
     arrayTwoOld[i].c = 9;
-    // arrayTwoLocal[i].d = 23.0;
-    // arrayTwoLocal[i].e = 'a';
-    // arrayTwoLocal[i].f = 23.0;
-    // arrayTwoLocal[i].g = 23.0;
 
-    multNodeOneOld(n);
-    multArrays(n);
+    multNodeOneOld(SIZE);
+    multArrays(SIZE);
 
-    //validity check
+    // print outputs for checking validity
     printf("Validity check\n");
 
     printf("\na: ---\n%d",arrayOneOld[i].a);
@@ -120,12 +94,9 @@ int main(int argc, char *argv[])
     printf("\nc: ---\n%d",arrayOneOld[i].c);
     printf("\nd: ---\n%lld",arrayOneOld[i].d);
     printf("\ne: ---\n%d",arrayOneOld[i].e);
-    // printf("\nf: ---\n%f",arrayOneOld[i].f[j]);
     printf("\ng: ---\n%f",arrayOneOld[i].g);
     printf("\nh: ---\n%f",arrayOneOld[i].h);
     printf("\ni: ---\n%f",arrayOneOld[i].i);
-    // printf("\nj: ---\n%f\n",arrayOneOld[i].j[2]);
-
 
     return 0;
 }
