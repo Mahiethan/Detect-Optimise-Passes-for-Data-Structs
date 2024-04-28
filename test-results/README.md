@@ -18,9 +18,9 @@ Note that the following executables **require a command line argument** to be pr
 
 The executables inside the directory `./peelAoS` do not require a command line argument as the AoS size is defined inside the source code of `unpeeled.c`. The default value is `1000` and this value can be changed from the `SIZE` variable.
 
-## Navigation:
+## *Navigation*:
 
 - [Main README](../README.md)
 - [./passes README](../passes/README.md)
 - [./test-results README](./README.md)
-<!-- - [./demo-programs README](../demo-programs/README.md) -->
+- [./demo-programs README](../demo-programs/README.md)

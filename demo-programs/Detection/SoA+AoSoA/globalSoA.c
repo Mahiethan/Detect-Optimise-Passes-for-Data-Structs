@@ -1,0 +1,127 @@
+#include <stdlib.h> //used for malloc()
+#include <stdio.h> //for printf statements
+
+#define SizeA 100000
+#define SizeB 200000
+#define SizeC 300000
+
+struct StructureOne //SoA (with static arrays)
+{
+    int a[SizeA]; //sizes predefined for static arrays
+    int b[SizeB];
+    char c[SizeC];
+};
+
+struct test 
+{
+    int a; 
+    int b;
+    char c[SizeC];
+};
+
+struct StructureOne globalOne;
+struct test globalTwo;
+struct StructureOne globalThree[100];
+struct StructureOne* globalFour;
+struct StructureOne* globalFive;
+struct test* globalSix;
+
+
+void populateStructure(struct StructureOne* soa, int sizeA, int sizeB, int sizeC)
+{
+    int i;
+    for(i  = 0; i < sizeA; i++)
+    {
+        soa->a[i] = i;
+    }
+    for(i  = 0; i < sizeB; i++)
+    {
+        soa->b[i] = i;
+    }
+    for(i  = 0; i < sizeC; i++)
+    {
+        soa->c[i] = i;
+    }
+}
+
+void freeStructure(struct StructureOne* soa)
+{
+    free(soa);
+}
+
+void printStructure(struct StructureOne* soa, int sizeA, int sizeB, int sizeC)
+{
+    int i;
+    printf("Array a: \n");
+    for(i  = 0; i < sizeA; i++)
+    {
+        printf("Index %d: %d\n",i,soa->a[i]);
+    }
+    printf("Array b: \n");
+    for(i  = 0; i < sizeB; i++)
+    {
+        printf("Index %d: %d\n",i,soa->b[i]);
+    }
+    printf("Array c: \n");
+    for(i  = 0; i < sizeC; i++)
+    {
+        printf("Index %d: %c\n",i,soa->c[i]);
+    }
+}
+
+void populateTwo(struct StructureOne* s)
+{
+   struct StructureOne* s5 = (struct StructureOne*) malloc(sizeof(struct StructureOne)); //SoA 5 (%s5 in @populateTwo)
+   populateStructure(s,200,200,200);
+   populateStructure(s5,200,200,200);
+   free(s5);
+
+}
+
+void populateOne(struct StructureOne* s)
+{
+   struct StructureOne staticStruct; //SoA 4 (%staticStruct in @populateOne)
+   staticStruct.a[99] = 1000;
+   populateTwo(s);
+}
+
+void populateZero(struct StructureOne* s)
+{
+   struct StructureOne* s4 = (struct StructureOne*) malloc(sizeof(struct StructureOne)); //SoA 3 (%s4 in @populateZero)
+   populateStructure(s4,100,100,100); 
+   populateOne(s);
+   free(s4);
+
+}
+
+void populateAoS(struct StructureOne* s)
+{
+    s[97].a[45] = 100;
+    s[23].a[45] = 100;
+}
+
+int main()
+{
+    globalOne.c[300] = 99; //SoA 1 (%globalOne)
+
+    globalTwo.c[300] = 9; //NOT an SoA
+
+    globalThree[9].a[100] = 9; //NOT an SoA (AoSoA)
+
+    struct test aos[12]; //AoS
+
+    aos[2].a = 123;
+
+    globalFour = (struct StructureOne*) calloc(100,sizeof(globalOne)); //NOT an SoA (AoSoA)
+
+    populateAoS(globalFour); //now detected as AoS
+
+    globalFive = (struct StructureOne*) calloc(1,sizeof(globalOne));
+
+    populateZero(globalFive); //SoA 2 (%globalFive)
+
+    free(globalFour);
+    free(globalFive);
+
+    return 0;
+}

@@ -7,7 +7,7 @@
 
 - Please run the compiler passes on the DCS lab machines, since it has a working version of LLVM required for this project. Otherwise, please install the version LLVM-18 or newer.
 
-- Alternatively, to test the compiler passes on multiple files simultaneously, or to get more accurate results, you can run this project on the DCS Batch Compute system. This platform works with this project, as it was used to collect test results.
+- Alternatively, to test the compiler passes on multiple files simultaneously, or to get more accurate results, you can run this project on the DCS Batch Compute system. This platform works with this project, as it was used to collect the test results.
 
 ## How to run the code:
 
@@ -19,7 +19,7 @@ The compiler passes are found in `./passes`. The existing `.so` files were alrea
 
 After compiling the passes, feel free to utilise them with the C programs stored in the folder `./demo-programs`. This folder contains specific C programs that were used to test the functionality of the compiler passes during the implementation, and these compiler passes are guaranteed to work on these test programs.
 
-Additionally, you can insert your own custom C programs and test the compiler passes on them. A [`README`](./passes/README.md) file is included in this folder to show what commands are necessary to apply the compiler passes on C programs.
+Additionally, you can insert your own custom C programs and test the compiler passes on them. A [`README`](./demo-programs/README.md) file is included in this folder to which leads to other README files that give instructions on how to apply the compiler passes on C programs.
 
 ## Test results:
 
@@ -27,11 +27,11 @@ Please see the [README](./test-results/README.md) file in `./test-results` folde
 
 ## Written project deliverables:
 
-The Specification, Progress Report and the Final Report are all available within this project as `.pdf` files for easier viewing.
+The Specification, Progress Report and the Final Report are all available within this project as `.pdf` files, which can be viewed alongside the source code and test results of this project.
 
-## Navigation:
+## *Navigation*:
 
 - [Main README](./README.md)
 - [./passes README](./passes/README.md)
 - [./test-results README](./test-results/README.md)
-<!-- - [./demo-programs README](./demo-programs/README.md) -->
+- [./demo-programs README](./demo-programs/README.md)
