@@ -5,7 +5,9 @@
 
 ## Pre-requisites:
 
-- Please run the compiler passes on the DCS lab machines, since it has a working version of LLVM required for this project. Otherwise, please install the version LLVM-18 or newer.
+- It is recommended that you run the compiler passes on the DCS lab machines, since it has a working version of LLVM required for this project. Otherwise, please install the version LLVM-18 or newer on your current system.
+
+  - If you are using your own system, there is no guarantee that the programs or compiler passes will work out of the box. If errors occur when running the programs or compiler passes, ensure that you **re-compile** the programs and compiler passes on your system before using it. Refer to the README files present in each folder for instructions on how to do this.
 
 - Alternatively, to test the compiler passes on multiple files simultaneously, or to get more accurate results, you can run this project on the DCS Batch Compute system. This platform works with this project, as it was used to collect the test results.
 
@@ -27,7 +29,7 @@ Please see the [README](./test-results/README.md) file in `./test-results` folde
 
 ## Written project deliverables:
 
-The Specification, Progress Report and the Final Report are all available within this project as `.pdf` files, which can be viewed alongside the source code and test results of this project.
+Copies of the Specification, Progress Report and the Final Report are all available within this project as `.pdf` files, which can be viewed alongside the source code and test results of this project.
 
 ## *Navigation*:
 

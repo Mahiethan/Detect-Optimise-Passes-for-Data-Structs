@@ -27,7 +27,7 @@ Replace `{IR_FILENAME}` with any one of the available `.ll` files.
 Replace `{OUTPUT_IR_FILENAME}` with:
 -  your desired output file name with extension `.ll` (e.g. `output.ll`)
 OR 
-- use `\dev\null` if you don't want any output IR.
+- use `/dev/null` if you don't want any output IR.
 
 The value given to the `-passes` flag can be changed to any other available compiler pass.
 

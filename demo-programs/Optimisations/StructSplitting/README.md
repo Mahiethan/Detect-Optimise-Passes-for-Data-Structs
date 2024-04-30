@@ -19,7 +19,7 @@ Replace {yourCustomProgram.ll} with your desired output name, which MUST include
 ## To apply an optimisation to a particular program:
 
 ```bash
-opt -load-pass-plugin=../../../passes/allPasses.so -passes="splitAoS" < {INPUT_IR_FILENAME} > {OUTPUT_IR_FILENAME}  
+opt -load-pass-plugin=../../../passes/allPasses.so -passes="splitAoS" < {INPUT_IR_FILENAME} > {OUTPUT_IR_FILENAME}
 ```
 
 Replace `{IR_FILENAME}` with any one of the available `.ll` files.
@@ -27,7 +27,7 @@ Replace `{IR_FILENAME}` with any one of the available `.ll` files.
 Replace `{OUTPUT_IR_FILENAME}` with:
 -  your desired output file name with extension `.ll` (e.g. `output.ll`)
 OR 
-- use `\dev\null` if you don't want any output IR.
+- use `/dev/null` if you don't want any output IR.
 
 The value given to the `-passes` flag can be changed to any other available compiler pass.
 
